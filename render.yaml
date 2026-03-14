@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: libraryms
+    runtime: python
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate
+    startCommand: gunicorn libraryms.wsgi:application
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: libraryms.settings
+      - key: PYTHON_VERSION
+        value: 3.11
