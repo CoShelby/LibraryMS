@@ -1,0 +1,63 @@
+﻿{% extends "base.html" %}
+
+{% block title %}مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}
+
+{% block content %}
+<section class="space-y-8">
+    <div class="card p-8 md:p-10 relative overflow-hidden">
+        <div class="absolute -left-12 -top-12 w-48 h-48 rounded-full bg-emerald-200/40 dark:bg-emerald-600/10 animate-floaty"></div>
+        <div class="absolute -right-8 -bottom-8 w-40 h-40 rounded-full bg-amber-200/50 dark:bg-amber-500/10 animate-floaty"></div>
+
+        <div class="relative z-10">
+            <h1 class="text-3xl md:text-4xl font-black mb-3">ابحث في سجلات الكتب الورقية والرقمية</h1>
+            <p class="text-sm md:text-base text-slate-600 dark:text-slate-300 mb-6">أدخل كلمة البحث، ثم انتقل إلى صفحة النتائج المتقدمة لتطبيق جميع الفلاتر.</p>
+
+            <form method="get" action="{% url 'search_results' %}" class="flex flex-col md:flex-row gap-3">
+                <input type="text" name="query" class="input-field flex-1" placeholder="العنوان، المؤلف، الفئة، رقم ديوي..." required>
+                <button type="submit" class="btn-primary px-8">بحث</button>
+            </form>
+        </div>
+    </div>
+
+    {% if recent_searches %}
+        <div class="card">
+            <h2 class="text-lg font-extrabold mb-3">آخر عمليات البحث</h2>
+            <div class="flex flex-wrap gap-2">
+                {% for keyword in recent_searches %}
+                    <a href="{% url 'search_results' %}?query={{ keyword|urlencode }}" class="px-3 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-sm font-bold">{{ keyword }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="card">
+            <h2 class="text-xl font-extrabold mb-4">الفئات الشائعة</h2>
+            <div class="flex flex-wrap gap-2">
+                {% for cat in popular_categories %}
+                    <a href="{% url 'search_results' %}?category={{ cat.id }}" class="px-3 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-sm font-bold">
+                        {{ cat.name }}{% if cat.name_en %} / {{ cat.name_en }}{% endif %}
+                    </a>
+                {% empty %}
+                    <p class="text-sm text-slate-500">لا توجد فئات حتى الآن.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="card">
+            <h2 class="text-xl font-extrabold mb-4">الأكثر مشاهدة</h2>
+            <div class="space-y-3">
+                {% for book in popular_books %}
+                    <a href="{% url 'book_detail' book.id %}" class="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 last:border-0">
+                        <span class="font-bold">{{ book.title }}</span>
+                        <span class="text-xs text-slate-500">{{ book.view_count }} مشاهدة</span>
+                    </a>
+                {% empty %}
+                    <p class="text-sm text-slate-500">لا توجد بيانات عرض بعد.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</section>
+{% endblock %}
+

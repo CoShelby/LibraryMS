@@ -1,0 +1,30 @@
+﻿{% extends "base.html" %}
+
+{% block title %}قراءة كتاب رقمي | مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}
+
+{% block content %}
+<section class="space-y-4">
+    <div class="flex items-center justify-between gap-2 flex-wrap">
+        <h1 class="text-2xl font-black">{{ digital_book.book.title }}</h1>
+        <div class="flex gap-2">
+            <a href="{% url 'download_digital_book' digital_book.book.id %}" class="btn-primary">تحميل الكتاب</a>
+            <a href="{% url 'book_detail' digital_book.book.id %}" class="btn-secondary">تفاصيل الكتاب</a>
+        </div>
+    </div>
+
+    <div class="card p-0 overflow-hidden h-[78vh]">
+        {% if digital_book.pdf_file %}
+            <object data="{{ digital_book.pdf_file.url }}#toolbar=1&navpanes=1&scrollbar=1" type="application/pdf" class="w-full h-full">
+                <iframe src="{{ digital_book.pdf_file.url }}" class="w-full h-full border-0" title="{{ digital_book.book.title }}"></iframe>
+                <div class="p-6 text-center">
+                    <p class="mb-3">تعذر عرض الملف داخل المتصفح.</p>
+                    <a href="{% url 'download_digital_book' digital_book.book.id %}" class="btn-primary">تحميل الملف</a>
+                </div>
+            </object>
+        {% else %}
+            <div class="w-full h-full grid place-content-center text-slate-500">ملف PDF غير متوفر.</div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+

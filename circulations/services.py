@@ -1,0 +1,239 @@
+﻿from datetime import timedelta
+
+from django.utils import timezone
+
+from books.models import BookCopy
+
+from .models import Borrowing, Fine, Reservation
+
+MAX_BORROW_LIMIT = 3
+BORROW_DAYS = 3
+RESERVATION_DAYS = 2
+FINE_PER_DAY = 1000
+
+
+def get_active_borrows_count(member):
+    return Borrowing.objects.filter(member=member, return_date__isnull=True).count()
+
+
+def _expire_pending_reservations():
+    now = timezone.now()
+    Reservation.objects.filter(
+        status__in=["pending", "approved"],
+        cancel_date__isnull=False,
+        cancel_date__lt=now,
+    ).update(status="cancelled")
+
+
+def can_member_borrow(member):
+    return get_active_borrows_count(member) < MAX_BORROW_LIMIT
+
+
+def _book_supply(book):
+    usable_copies = BookCopy.objects.filter(book=book, status="new").count()
+    active_borrowings = Borrowing.objects.filter(book_copy__book=book, return_date__isnull=True).count()
+    approved_reservations = Reservation.objects.filter(book=book, status="approved").count()
+    available_after_reservations = max(usable_copies - active_borrowings - approved_reservations, 0)
+    return {
+        "usable_copies": usable_copies,
+        "active_borrowings": active_borrowings,
+        "approved_reservations": approved_reservations,
+        "available_after_reservations": available_after_reservations,
+    }
+
+
+def get_book_available_copies(book):
+    return _book_supply(book)["available_after_reservations"]
+
+
+def _find_available_copy(book, preferred_copy=None):
+    active_copy_ids = Borrowing.objects.filter(book_copy__book=book, return_date__isnull=True).values_list(
+        "book_copy_id", flat=True
+    )
+
+    if preferred_copy:
+        if preferred_copy.book_id != book.id:
+            raise ValueError("هذه النسخة لا تتبع للكتاب المحدد.")
+        if preferred_copy.status != "new":
+            raise ValueError("حالة النسخة لا تسمح بالاستعارة.")
+        if preferred_copy.id in active_copy_ids:
+            raise ValueError("هذه النسخة مستعارة بالفعل.")
+        return preferred_copy
+
+    return (
+        BookCopy.objects.filter(book=book, status="new")
+        .exclude(id__in=active_copy_ids)
+        .order_by("id")
+        .first()
+    )
+
+
+def borrow_book(member, book, employee, preferred_copy=None):
+    _expire_pending_reservations()
+
+    if not can_member_borrow(member):
+        raise ValueError("لا يمكن استعارة أكثر من 3 كتب في نفس الوقت.")
+
+    member_approved_reservation = (
+        Reservation.objects.filter(member=member, book=book, status="approved").order_by("reservation_date").first()
+    )
+
+    if not member_approved_reservation and get_book_available_copies(book) <= 0:
+        raise ValueError("لا توجد نسخ متاحة حاليًا.")
+
+    copy = _find_available_copy(book, preferred_copy=preferred_copy)
+    if not copy:
+        raise ValueError("لا توجد نسخة صالحة للاستعارة.")
+
+    due_date = timezone.now().date() + timedelta(days=BORROW_DAYS)
+
+    borrowing = Borrowing.objects.create(
+        member=member,
+        book_copy=copy,
+        employee=employee,
+        borrow_date=timezone.now().date(),
+        due_date=due_date,
+        renewed=False,
+        renewal_requested=False,
+    )
+
+    if member_approved_reservation:
+        member_approved_reservation.status = "completed"
+        member_approved_reservation.related_borrow = borrowing
+        member_approved_reservation.save(update_fields=["status", "related_borrow"])
+
+    return borrowing
+
+
+def renew_borrowing(borrowing):
+    _expire_pending_reservations()
+
+    if borrowing.return_date:
+        raise ValueError("لا يمكن تجديد إعارة تم إرجاعها.")
+
+    if borrowing.renewed:
+        raise ValueError("تم تجديد هذه الإعارة مسبقًا.")
+
+    borrowing.due_date = borrowing.due_date + timedelta(days=BORROW_DAYS)
+    borrowing.renewed = True
+    borrowing.renewal_requested = False
+    borrowing.save(update_fields=["due_date", "renewed", "renewal_requested"])
+    return borrowing
+
+
+def request_renewal(borrowing):
+    if borrowing.return_date:
+        raise ValueError("لا يمكن طلب تجديد لإعارة منتهية.")
+
+    if borrowing.renewed:
+        raise ValueError("تم تجديد هذه الإعارة مسبقًا.")
+
+    if borrowing.renewal_requested:
+        raise ValueError("تم إرسال طلب تجديد مسبقًا.")
+
+    borrowing.renewal_requested = True
+    borrowing.save(update_fields=["renewal_requested"])
+    return borrowing
+
+
+def reject_renewal_request(borrowing):
+    if not borrowing.renewal_requested:
+        raise ValueError("لا يوجد طلب تجديد معلق.")
+
+    borrowing.renewal_requested = False
+    borrowing.save(update_fields=["renewal_requested"])
+    return borrowing
+
+
+def return_book(borrowing):
+    if borrowing.return_date:
+        raise ValueError("تم إرجاع هذا الكتاب مسبقًا.")
+
+    borrowing.return_date = timezone.now().date()
+    borrowing.renewal_requested = False
+    borrowing.save(update_fields=["return_date", "renewal_requested"])
+
+    fine = None
+    if borrowing.return_date > borrowing.due_date:
+        days_late = (borrowing.return_date - borrowing.due_date).days
+        amount = days_late * FINE_PER_DAY
+        fine = Fine.objects.create(
+            borrowing=borrowing,
+            days_late=days_late,
+            amount=amount,
+        )
+
+    return fine
+
+
+def reserve_book(member, book):
+    _expire_pending_reservations()
+
+    if Reservation.objects.filter(member=member, book=book, status__in=["pending", "approved"]).exists():
+        raise ValueError("لديك طلب حجز نشط مسبقًا لنفس الكتاب.")
+
+    active_reservations = Reservation.objects.filter(member=member, status__in=["pending", "approved"]).count()
+    if active_reservations >= 3:
+        raise ValueError("لا يمكن تقديم أكثر من 3 طلبات حجز نشطة.")
+
+    reservation = Reservation.objects.create(
+        member=member,
+        book=book,
+        status="pending",
+        cancel_date=timezone.now() + timedelta(days=RESERVATION_DAYS),
+    )
+    return reservation
+
+
+def approve_reservation(reservation):
+    _expire_pending_reservations()
+
+    if reservation.status != "pending":
+        raise ValueError("لا يمكن اعتماد هذا الحجز.")
+
+    if get_book_available_copies(reservation.book) <= 0:
+        raise ValueError("لا توجد نسخة متاحة لاعتماد الحجز حاليًا.")
+
+    reservation.status = "approved"
+    reservation.save(update_fields=["status"])
+    return reservation
+
+
+def cancel_reservation(reservation):
+    _expire_pending_reservations()
+
+    if reservation.status not in {"pending", "approved"}:
+        raise ValueError("لا يمكن إلغاء هذا الحجز.")
+
+    reservation.status = "cancelled"
+    reservation.cancel_date = timezone.now()
+    reservation.save(update_fields=["status", "cancel_date"])
+    return reservation
+
+
+def complete_reservation(reservation, employee=None):
+    _expire_pending_reservations()
+
+    if reservation.status == "pending":
+        approve_reservation(reservation)
+        reservation.refresh_from_db()
+
+    if reservation.status != "approved":
+        raise ValueError("الحجز غير معتمد ولا يمكن إتمام الاستعارة.")
+
+    borrowing = borrow_book(reservation.member, reservation.book, employee)
+    reservation.related_borrow = borrowing
+    reservation.status = "completed"
+    reservation.save(update_fields=["related_borrow", "status"])
+    return borrowing
+
+
+def get_member_active_borrowings(member):
+    _expire_pending_reservations()
+    return Borrowing.objects.select_related("book_copy__book").filter(member=member, return_date__isnull=True)
+
+
+def get_member_active_reservations(member):
+    _expire_pending_reservations()
+    return Reservation.objects.select_related("book").filter(member=member, status__in=["pending", "approved"])
+

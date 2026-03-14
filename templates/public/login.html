@@ -1,0 +1,41 @@
+﻿{% extends "base.html" %}
+
+{% block title %}تسجيل الدخول | مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}
+
+{% block content %}
+<div class="min-h-[70vh] flex items-center justify-center">
+    <div class="w-full max-w-md card">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-black">دخول الإدارة</h1>
+            <p class="text-sm text-slate-500 mt-1">الدخول مخصص لحسابات الأدمن فقط</p>
+        </div>
+
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+
+            {% if form.errors %}
+                <div class="p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
+                    بيانات الدخول غير صحيحة أو الحساب غير مصرح له.
+                </div>
+            {% endif %}
+
+            <div>
+                <label class="block text-sm font-bold mb-1" for="id_username">اسم المستخدم</label>
+                <input id="id_username" type="text" name="username" required class="input-field" autofocus>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold mb-1" for="id_password">كلمة المرور</label>
+                <input id="id_password" type="password" name="password" required class="input-field">
+            </div>
+
+            {% if next %}
+                <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+
+            <button type="submit" class="btn-primary w-full py-3">تسجيل الدخول</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

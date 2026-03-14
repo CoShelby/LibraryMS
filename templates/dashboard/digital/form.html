@@ -1,0 +1,157 @@
+﻿{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="max-w-4xl mx-auto space-y-5">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-black">{{ title }}</h1>
+        <a href="{% url 'dashboard_digital_list' %}" class="btn-secondary">رجوع</a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="card space-y-4">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="{{ form.book.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.book.label }}</label>
+                {{ form.book }}
+                {% for error in form.book.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <label for="{{ form.pdf_file.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.pdf_file.label }}</label>
+                {{ form.pdf_file }}
+                {% for error in form.pdf_file.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+                <p class="text-xs text-slate-500 mt-1">سيحاول النظام تعبئة العنوان وعدد الصفحات والغلاف تلقائيًا من ملف PDF عند الحفظ.</p>
+            </div>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+            <label class="inline-flex items-center gap-2 text-sm font-bold">{{ form.create_new_book }} إنشاء كتاب جديد مع هذا الملف</label>
+            {% for error in form.create_new_book.errors %}
+                <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="new-book-fields">
+            <div>
+                <label for="{{ form.new_title.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_title.label }}</label>
+                {{ form.new_title }}
+                {% for error in form.new_title.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <label for="{{ form.new_dewey_decimal_number.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_dewey_decimal_number.label }}</label>
+                {{ form.new_dewey_decimal_number }}
+                {% for error in form.new_dewey_decimal_number.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <label for="{{ form.new_author_names.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_author_names.label }}</label>
+                {{ form.new_author_names }}
+                {% for error in form.new_author_names.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <label for="{{ form.new_category_name.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_category_name.label }}</label>
+                {{ form.new_category_name }}
+                {% for error in form.new_category_name.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <label for="{{ form.new_publisher_name.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_publisher_name.label }}</label>
+                {{ form.new_publisher_name }}
+                {% for error in form.new_publisher_name.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <label for="{{ form.new_publication_year.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_publication_year.label }}</label>
+                {{ form.new_publication_year }}
+                {% for error in form.new_publication_year.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <label for="{{ form.new_language.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_language.label }}</label>
+                {{ form.new_language }}
+                {% for error in form.new_language.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <label for="{{ form.new_pages.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_pages.label }}</label>
+                {{ form.new_pages }}
+                <p class="text-xs text-slate-500 mt-1">يُحتسب تلقائيًا من PDF إن تُرك فارغًا.</p>
+                {% for error in form.new_pages.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div class="md:col-span-2">
+                <label for="{{ form.new_cover_image.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_cover_image.label }}</label>
+                {{ form.new_cover_image }}
+                <p class="text-xs text-slate-500 mt-1">إن لم تُرفق صورة، سيُحاول النظام استخراج غلاف من أول صفحة PDF.</p>
+                {% for error in form.new_cover_image.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div class="md:col-span-2">
+                <label for="{{ form.new_description.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_description.label }}</label>
+                {{ form.new_description }}
+                {% for error in form.new_description.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <datalist id="authors-options">
+            {% for name in authors_options %}
+                <option value="{{ name }}"></option>
+            {% endfor %}
+        </datalist>
+        <datalist id="categories-options">
+            {% for name in categories_options %}
+                <option value="{{ name }}"></option>
+            {% endfor %}
+        </datalist>
+        <datalist id="publishers-options">
+            {% for name in publishers_options %}
+                <option value="{{ name }}"></option>
+            {% endfor %}
+        </datalist>
+
+        <button type="submit" class="btn-primary">{{ submit_label }}</button>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const createCheckbox = document.getElementById('{{ form.create_new_book.id_for_label }}');
+    const newFieldsBox = document.getElementById('new-book-fields');
+    const existingBookField = document.getElementById('{{ form.book.id_for_label }}');
+
+    function toggleNewBookFields() {
+        if (!createCheckbox || !newFieldsBox || !existingBookField) return;
+        const createNew = createCheckbox.checked;
+        newFieldsBox.style.display = createNew ? 'grid' : 'none';
+        existingBookField.closest('div').style.opacity = createNew ? '0.6' : '1';
+    }
+
+    toggleNewBookFields();
+    if (createCheckbox) {
+        createCheckbox.addEventListener('change', toggleNewBookFields);
+    }
+</script>
+{% endblock %}
+
+
+

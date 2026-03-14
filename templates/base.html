@@ -1,0 +1,246 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: ['class', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#5d3e3f',
+                        brandSoft: '#967462',
+                        paper: '#ece0ca',
+                        mint: '#a6baae',
+                        panel: '#ffffff',
+                        night: '#1f1b1b'
+                    },
+                    fontFamily: {
+                        sans: ['Cairo', 'sans-serif']
+                    },
+                    keyframes: {
+                        floaty: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-6px)' }
+                        }
+                    },
+                    animation: {
+                        floaty: 'floaty 6s ease-in-out infinite'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body class="bg-paper dark:bg-night text-slate-900 dark:text-slate-100 font-sans">
+    <div class="md:hidden sticky top-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+        <div class="px-4 py-3 flex items-center justify-between">
+            <button id="mobile-menu-btn" type="button" class="btn-secondary px-3 py-2">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <h1 class="text-sm font-black text-brand dark:text-mint">مكتبة كلية الحاسبات وتقنية المعلومات</h1>
+            <button id="theme-toggle-mobile" type="button" class="btn-secondary px-3 py-2">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="drawer-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden"></div>
+
+    <aside id="app-drawer" class="fixed top-0 right-0 h-screen w-72 bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-50 transform translate-x-full md:translate-x-0 transition-transform duration-300 overflow-y-auto">
+        <div class="p-5 border-b border-slate-200 dark:border-slate-800">
+            <h1 class="text-lg font-black text-brand dark:text-mint leading-7">مكتبة كلية الحاسبات<br>وتقنية المعلومات</h1>
+            <p class="text-xs text-slate-500 mt-2">نظام إدارة المكتبة الورقية والرقمية</p>
+        </div>
+
+        {% with path=request.path %}
+        <nav class="p-4 space-y-2 text-sm font-bold">
+            <a href="{% url 'home' %}" class="sidebar-link {% if path == '/' %}sidebar-link-active{% endif %}"><i class="fa-solid fa-house"></i> الرئيسية</a>
+            <a href="{% url 'book_list' %}" class="sidebar-link {% if '/books/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-book"></i> دليل الكتب الورقية</a>
+            <a href="{% url 'digital_list' %}" class="sidebar-link {% if '/digital/' in path and '/dashboard/digital/' not in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-file-pdf"></i> المكتبة الرقمية</a>
+            <a href="{% url 'member_portal' %}" class="sidebar-link {% if '/circulations/member/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-id-card"></i> بوابة العضو</a>
+
+            {% if request.user.is_authenticated and request.user.is_superuser or request.user.is_authenticated and request.user.is_admin or request.user.is_authenticated and request.user.is_staff %}
+                <div class="pt-4 mt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">قائمة الإدارة</div>
+
+                <a href="{% url 'dashboard_home' %}" class="sidebar-link {% if path == '/dashboard/' %}sidebar-link-active{% endif %}"><i class="fa-solid fa-gauge"></i> لوحة التحكم</a>
+
+                {% if request.user.is_superuser or request.user.can_manage_books %}
+                    <a href="{% url 'dashboard_books_list' %}" class="sidebar-link {% if '/dashboard/books/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-book-open"></i> إدارة الكتب</a>
+                    <a href="{% url 'dashboard_digital_list' %}" class="sidebar-link {% if '/dashboard/digital/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-laptop-file"></i> إدارة الكتب الرقمية</a>
+                {% endif %}
+
+                {% if request.user.is_superuser or request.user.can_manage_members %}
+                    <a href="{% url 'member_list' %}" class="sidebar-link {% if '/members/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-users"></i> إدارة الأعضاء</a>
+                {% endif %}
+
+                {% if request.user.is_superuser or request.user.can_manage_circulation %}
+                    <a href="{% url 'dashboard_circulation' %}" class="sidebar-link {% if '/dashboard/circulation/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-right-left"></i> إدارة الاستعارات</a>
+                {% endif %}
+
+                {% if request.user.is_superuser or request.user.can_manage_categories %}
+                    <a href="{% url 'dashboard_categories' %}" class="sidebar-link {% if '/dashboard/categories/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-tags"></i> الفئات والمؤلفون والناشرون</a>
+                {% endif %}
+
+                <a href="{% url 'dashboard_reports' %}" class="sidebar-link {% if '/dashboard/reports/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-table"></i> التقارير</a>
+
+                {% if request.user.is_superuser or request.user.can_manage_admins %}
+                    <a href="{% url 'dashboard_admin_users' %}" class="sidebar-link {% if '/dashboard/admins/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-user-shield"></i> إدارة الأدمنز</a>
+                {% endif %}
+            {% endif %}
+        </nav>
+        {% endwith %}
+
+        <div class="p-4 mt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+            <button id="theme-toggle" class="w-full btn-secondary"><i class="fa-solid fa-moon ml-2"></i>تغيير الثيم</button>
+
+            {% if request.user.is_authenticated %}
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="w-full btn-primary"><i class="fa-solid fa-right-from-bracket ml-2"></i>تسجيل الخروج</button>
+                </form>
+            {% else %}
+                <a href="{% url 'login' %}" class="w-full btn-primary"><i class="fa-solid fa-right-to-bracket ml-2"></i>تسجيل الدخول</a>
+            {% endif %}
+        </div>
+    </aside>
+
+    <main class="min-h-screen p-4 md:p-8 md:pr-80">
+        {% if request.path != '/' and '/dashboard/' not in request.path and '/members/' not in request.path %}
+            <div class="mb-4">
+                <a href="{% url 'home' %}" class="btn-secondary"><i class="fa-solid fa-arrow-right ml-2"></i>العودة للرئيسية</a>
+            </div>
+        {% endif %}
+
+        {% if messages %}
+            <div class="space-y-2 mb-5">
+                {% for message in messages %}
+                    <div class="p-3 rounded-lg text-sm font-bold {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-emerald-50 text-emerald-700 border border-emerald-200{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <div id="reserveModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/70">
+        <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl">
+            <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="font-extrabold">طلب حجز كتاب ورقي</h3>
+                <button type="button" onclick="closeReserveModal()" class="text-slate-500 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="reserveForm" method="post" class="p-4 space-y-3">
+                {% csrf_token %}
+                <p class="text-sm">الكتاب: <span id="modalBookTitle" class="font-bold"></span></p>
+                <input type="text" name="membership" required class="input-field" placeholder="أدخل رقم العضوية لإتمام الحجز">
+                <button type="submit" class="btn-primary w-full">إرسال طلب الحجز</button>
+                <p class="text-xs text-slate-500">الحجز صالح لمدة يومين فقط.</p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const html = document.documentElement;
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeToggleMobileBtn = document.getElementById('theme-toggle-mobile');
+
+        function applyTheme(theme) {
+            html.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        }
+
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            applyTheme(savedTheme);
+        } else {
+            applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        }
+
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', () => {
+                const current = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+                applyTheme(current === 'dark' ? 'light' : 'dark');
+            });
+        }
+
+        if (themeToggleMobileBtn) {
+            themeToggleMobileBtn.addEventListener('click', () => {
+                const current = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+                applyTheme(current === 'dark' ? 'light' : 'dark');
+            });
+        }
+
+        const drawer = document.getElementById('app-drawer');
+        const drawerBtn = document.getElementById('mobile-menu-btn');
+        const drawerBackdrop = document.getElementById('drawer-backdrop');
+
+        function openDrawer() {
+            if (!drawer || !drawerBackdrop) return;
+            drawer.classList.remove('translate-x-full');
+            drawerBackdrop.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDrawer() {
+            if (!drawer || !drawerBackdrop) return;
+            drawer.classList.add('translate-x-full');
+            drawerBackdrop.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        if (drawerBtn) {
+            drawerBtn.addEventListener('click', openDrawer);
+        }
+        if (drawerBackdrop) {
+            drawerBackdrop.addEventListener('click', closeDrawer);
+        }
+
+        function openReserveModal(bookId, bookTitle) {
+            const modal = document.getElementById('reserveModal');
+            const form = document.getElementById('reserveForm');
+            const title = document.getElementById('modalBookTitle');
+            if (!modal || !form || !title) return;
+
+            form.action = `/circulations/reserve/${bookId}/`;
+            title.innerText = bookTitle;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeReserveModal() {
+            const modal = document.getElementById('reserveModal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        const reserveModal = document.getElementById('reserveModal');
+        if (reserveModal) {
+            reserveModal.addEventListener('click', function (event) {
+                if (event.target === this) closeReserveModal();
+            });
+        }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+
+
+

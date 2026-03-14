@@ -1,0 +1,64 @@
+﻿{% extends "base.html" %}
+
+{% block title %}LibraryMS | {{ title }}{% endblock %}
+
+{% block content %}
+<section class="max-w-4xl mx-auto space-y-5">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-extrabold">{{ title }}</h1>
+        <a href="{% url 'member_list' %}" class="btn-secondary">رجوع</a>
+    </div>
+
+    <form method="post" class="card space-y-4">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for field in form %}
+                <div data-member-field="{{ field.name }}">
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-semibold mb-1">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <p class="text-xs text-slate-500 mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn-primary">حفظ العضو</button>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const memberTypeSelect = document.getElementById('{{ form.member_type.id_for_label }}');
+    const workplaceField = document.querySelector('[data-member-field="workplace"]');
+    const studentFields = [
+        document.querySelector('[data-member-field="university_id"]'),
+        document.querySelector('[data-member-field="major"]'),
+        document.querySelector('[data-member-field="level"]')
+    ];
+
+    function toggleMemberFields() {
+        if (!memberTypeSelect) return;
+        const value = memberTypeSelect.value;
+
+        if (workplaceField) {
+            workplaceField.style.display = (value === 'staff' || value === 'faculty') ? 'block' : 'none';
+        }
+
+        studentFields.forEach((field) => {
+            if (!field) return;
+            field.style.display = value === 'student' ? 'block' : 'none';
+        });
+    }
+
+    toggleMemberFields();
+    if (memberTypeSelect) {
+        memberTypeSelect.addEventListener('change', toggleMemberFields);
+    }
+</script>
+{% endblock %}
+

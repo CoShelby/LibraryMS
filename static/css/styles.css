@@ -1,0 +1,122 @@
+﻿:root {
+    color-scheme: light;
+    --c1: #5d3e3f;
+    --c2: #967462;
+    --c3: #ece0ca;
+    --c4: #a6baae;
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+body {
+    font-family: 'Cairo', sans-serif;
+    background: radial-gradient(circle at top left, rgba(166, 186, 174, 0.22), transparent 40%), var(--c3);
+}
+
+[data-theme="dark"] body {
+    background: #1f1b1b;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    border-radius: 0.9rem;
+    padding: 0.65rem 0.8rem;
+    color: #1f2937;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+[data-theme="dark"] .sidebar-link {
+    color: #e2e8f0;
+}
+
+.sidebar-link:hover {
+    transform: scale(1.02);
+}
+
+.sidebar-link-active {
+    background: linear-gradient(135deg, var(--c1) 0%, var(--c2) 100%);
+    color: #ffffff !important;
+    transform: translateX(-3px);
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(93, 62, 63, 0.16);
+    border-radius: 1.2rem;
+    box-shadow: 0 12px 28px rgba(93, 62, 63, 0.12);
+    padding: 1rem;
+    backdrop-filter: blur(6px);
+}
+
+[data-theme="dark"] .card {
+    background: rgba(15, 23, 42, 0.85);
+    border-color: rgba(166, 186, 174, 0.2);
+    box-shadow: none;
+}
+
+.input-field {
+    width: 100%;
+    border: 1px solid rgba(93, 62, 63, 0.25);
+    border-radius: 0.85rem;
+    padding: 0.65rem 0.8rem;
+    background: #ffffff;
+    color: #111827;
+    font-size: 0.95rem;
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: var(--c1);
+    box-shadow: 0 0 0 3px rgba(93, 62, 63, 0.2);
+}
+
+[data-theme="dark"] .input-field {
+    background: #0b1220;
+    color: #e2e8f0;
+    border-color: rgba(166, 186, 174, 0.35);
+}
+
+.btn-primary,
+.btn-secondary {
+    border: 0;
+    border-radius: 0.85rem;
+    padding: 0.65rem 1rem;
+    font-size: 0.92rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--c1) 0%, #734f50 100%);
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, var(--c4) 0%, #92afa2 100%);
+    color: #253032;
+}
+
+.btn-secondary:hover {
+    filter: brightness(1.03);
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .sidebar-link {
+        padding: 0.55rem 0.7rem;
+    }
+}

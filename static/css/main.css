@@ -1,0 +1,56 @@
+body{
+
+font-family: "Cairo", sans-serif;
+
+margin:0;
+
+background:#ece0ca;
+
+color:#5d3e3f;
+
+direction:rtl;
+
+display:flex;
+
+}
+
+
+/* المحتوى */
+
+.content{
+
+margin-right:250px;
+
+padding:30px;
+
+width:100%;
+
+}
+
+
+/* بطاقات */
+
+.card{
+
+background:white;
+
+padding:20px;
+
+margin:10px 0;
+
+border-radius:10px;
+
+box-shadow:0 3px 8px rgba(0,0,0,0.1);
+
+}
+
+
+/* الوضع الليلي */
+
+.dark-mode{
+
+background:#1e1e1e;
+
+color:#ece0ca;
+
+}

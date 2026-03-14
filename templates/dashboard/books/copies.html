@@ -1,0 +1,48 @@
+﻿{% extends "base.html" %}
+
+{% block title %}إدارة النسخ | {{ book.title }}{% endblock %}
+
+{% block content %}
+<section class="space-y-5">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-black">نسخ الكتاب: {{ book.title }}</h1>
+        <a href="{% url 'dashboard_books_list' %}" class="btn-secondary">رجوع لإدارة الكتب</a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <article class="card">
+            <h2 class="text-xl font-black mb-1">إضافة نسخة جديدة</h2>
+            <p class="text-xs text-slate-500 mb-4">إذا تُركت الحقول فارغة سيتم التوليد تلقائيًا بصيغة QR: {{ book.id }}-رقم_النسخة. حالات النسخة المتاحة: جديد أو تالف فقط.</p>
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                {% for field in form %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}
+                            <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn-primary w-full">حفظ النسخة</button>
+            </form>
+        </article>
+
+        <article class="card">
+            <h2 class="text-xl font-black mb-4">النسخ الحالية</h2>
+            <div class="space-y-2 max-h-[520px] overflow-y-auto">
+                {% for copy in copies %}
+                    <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                        <div class="font-bold">النسخة {{ copy.copy_number|default:"-" }}</div>
+                        <div class="text-xs text-slate-500">QR: {{ copy.barcode }}</div>
+                        <div class="text-xs mt-1">{{ copy.get_status_display }}</div>
+                    </div>
+                {% empty %}
+                    <p class="text-sm text-slate-500">لا توجد نسخ لهذا الكتاب.</p>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+</section>
+{% endblock %}
+

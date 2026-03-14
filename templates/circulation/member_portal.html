@@ -1,0 +1,69 @@
+﻿{% extends "base.html" %}
+
+{% block title %}مكتبة كلية الحاسبات وتقنية المعلومات | بوابة العضو{% endblock %}
+
+{% block content %}
+<section class="space-y-6">
+    <div class="card">
+        <h1 class="text-2xl font-extrabold mb-4">بوابة العضو للمتابعة وطلبات التجديد</h1>
+        <form method="get" class="flex gap-2">
+            <input type="text" name="membership" class="input-field" placeholder="أدخل رقم العضوية (QR)" value="{{ membership }}" required>
+            <button type="submit" class="btn-primary">عرض</button>
+        </form>
+    </div>
+
+    {% if member %}
+        <div class="card">
+            <h2 class="text-xl font-bold">{{ member.name }}</h2>
+            <p class="text-sm text-slate-500">رقم العضوية: {{ member.membership_number }}</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <article class="card">
+                <h3 class="text-lg font-extrabold mb-3">الاستعارات النشطة</h3>
+                <div class="space-y-3">
+                    {% for borrowing in borrowings %}
+                        <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                            <div class="font-bold">{{ borrowing.book_copy.book.title }}</div>
+                            <div class="text-xs text-slate-500 mt-1">النسخة QR: {{ borrowing.book_copy.barcode }}</div>
+                            <div class="text-xs text-slate-500">تاريخ الاستحقاق: {{ borrowing.due_date }}</div>
+                            <form method="post" action="{% url 'renew_borrowing' borrowing.id %}" class="mt-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="membership" value="{{ member.membership_number }}">
+                                <button type="submit" class="btn-secondary w-full" {% if borrowing.renewed or borrowing.renewal_requested %}disabled{% endif %}>
+                                    {% if borrowing.renewed %}تم التجديد مسبقًا{% elif borrowing.renewal_requested %}طلب التجديد قيد المراجعة{% else %}إرسال طلب تجديد{% endif %}
+                                </button>
+                            </form>
+                        </div>
+                    {% empty %}
+                        <p class="text-sm text-slate-500">لا توجد استعارات نشطة.</p>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <article class="card">
+                <h3 class="text-lg font-extrabold mb-3">طلبات الحجز</h3>
+                <div class="space-y-3">
+                    {% for reservation in reservations %}
+                        <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                            <div class="font-bold">{{ reservation.book.title }}</div>
+                            <div class="text-xs text-slate-500">الحالة: {{ reservation.get_status_display }}</div>
+                            <div class="text-xs text-slate-500">ينتهي: {{ reservation.cancel_date|default:"-" }}</div>
+                            {% if reservation.status == 'pending' or reservation.status == 'approved' %}
+                                <form method="post" action="{% url 'cancel_reservation' reservation.id %}" class="mt-2">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="membership" value="{{ member.membership_number }}">
+                                    <button type="submit" class="btn-secondary w-full">إلغاء الطلب</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <p class="text-sm text-slate-500">لا توجد طلبات حجز نشطة.</p>
+                    {% endfor %}
+                </div>
+            </article>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
+

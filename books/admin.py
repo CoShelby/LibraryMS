@@ -1,0 +1,34 @@
+﻿from django.contrib import admin
+
+from .models import Author, Book, BookCopy, Category, Publisher
+
+
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "name_en", "category_id", "shelf_location")
+    search_fields = ("name", "name_en", "category_id")
+
+
+@admin.register(Author)
+class AuthorAdmin(admin.ModelAdmin):
+    search_fields = ("name",)
+
+
+@admin.register(Publisher)
+class PublisherAdmin(admin.ModelAdmin):
+    list_display = ("name", "city", "country")
+    search_fields = ("name",)
+
+
+@admin.register(Book)
+class BookAdmin(admin.ModelAdmin):
+    list_display = ("title", "category", "publisher", "publication_year", "language", "view_count")
+    search_fields = ("title", "dewey_decimal_number")
+    list_filter = ("category", "publication_year", "language")
+
+
+@admin.register(BookCopy)
+class BookCopyAdmin(admin.ModelAdmin):
+    list_display = ("book", "barcode", "copy_number", "status")
+    search_fields = ("barcode", "copy_number", "book__title")
+    list_filter = ("status",)

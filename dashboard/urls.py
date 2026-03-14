@@ -1,0 +1,30 @@
+﻿from django.urls import path
+
+from . import views
+
+urlpatterns = [
+    path("", views.dashboard_home, name="dashboard_home"),
+    path("books/", views.dashboard_books_list, name="dashboard_books_list"),
+    path("books/add/", views.dashboard_add_book, name="dashboard_add_book"),
+    path("books/edit/<int:book_id>/", views.dashboard_edit_book, name="dashboard_edit_book"),
+    path("books/<int:book_id>/copies/", views.dashboard_book_copies, name="dashboard_book_copies"),
+    path("books/<int:book_id>/confirm-physical/", views.dashboard_confirm_physical_book, name="dashboard_confirm_physical_book"),
+    path("digital/", views.dashboard_digital_list, name="dashboard_digital_list"),
+    path("digital/add/", views.dashboard_digital_add, name="dashboard_digital_add"),
+    path("digital/edit/<int:digital_id>/", views.dashboard_digital_edit, name="dashboard_digital_edit"),
+    path("categories/", views.dashboard_categories, name="dashboard_categories"),
+    path("categories/<str:entity_type>/<int:entity_id>/update/", views.dashboard_update_entity, name="dashboard_update_entity"),
+    path("categories/<str:entity_type>/<int:entity_id>/delete/", views.dashboard_delete_entity, name="dashboard_delete_entity"),
+    path("circulation/", views.dashboard_circulation, name="dashboard_circulation"),
+    path("circulation/manual-borrow/", views.dashboard_manual_borrow, name="dashboard_manual_borrow"),
+    path("circulation/reservations/<int:reservation_id>/approve/", views.dashboard_approve_reservation, name="dashboard_approve_reservation"),
+    path("circulation/reservations/<int:reservation_id>/complete/", views.dashboard_complete_reservation, name="dashboard_complete_reservation"),
+    path("circulation/reservations/<int:reservation_id>/cancel/", views.dashboard_cancel_reservation, name="dashboard_cancel_reservation"),
+    path("circulation/borrowings/<int:borrowing_id>/return/", views.dashboard_return_borrowing, name="dashboard_return_borrowing"),
+    path("circulation/borrowings/<int:borrowing_id>/approve-renewal/", views.dashboard_approve_renewal, name="dashboard_approve_renewal"),
+    path("circulation/borrowings/<int:borrowing_id>/reject-renewal/", views.dashboard_reject_renewal, name="dashboard_reject_renewal"),
+    path("reports/", views.dashboard_reports, name="dashboard_reports"),
+    path("admins/", views.dashboard_admin_users, name="dashboard_admin_users"),
+    path("api/check-entity/", views.api_check_entity, name="api_check_entity"),
+    path("api/create-entity/", views.api_create_entity, name="api_create_entity"),
+]

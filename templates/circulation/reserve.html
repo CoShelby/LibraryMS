@@ -1,0 +1,17 @@
+﻿{% extends "base.html" %}
+
+{% block title %}LibraryMS | Reserve{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto card space-y-4">
+    <h1 class="text-2xl font-extrabold">حجز كتاب</h1>
+    <p class="text-sm text-slate-500">{{ book.title }}</p>
+
+    <form method="post" class="space-y-3">
+        {% csrf_token %}
+        <input type="text" name="membership" class="input-field" placeholder="رقم العضوية" required>
+        <button type="submit" class="btn-primary w-full">تأكيد الحجز</button>
+    </form>
+</div>
+{% endblock %}
+

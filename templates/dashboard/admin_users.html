@@ -1,0 +1,47 @@
+﻿{% extends "base.html" %}
+
+{% block title %}إدارة الأدمنز{% endblock %}
+
+{% block content %}
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <article class="card">
+        <h1 class="text-xl font-black mb-4">إنشاء حساب أدمن</h1>
+        <form method="post" class="space-y-3">
+            {% csrf_token %}
+            {% for field in form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}
+                        <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn-primary w-full">إنشاء الحساب</button>
+        </form>
+    </article>
+
+    <article class="card">
+        <h2 class="text-xl font-black mb-4">حسابات الأدمن الحالية</h2>
+        <div class="space-y-2 max-h-[520px] overflow-y-auto">
+            {% for admin_user in admins %}
+                <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                    <div class="font-bold">{{ admin_user.username }}</div>
+                    <div class="text-xs text-slate-500 mt-1">
+                        {% if admin_user.can_manage_books %}إدارة الكتب {% endif %}
+                        {% if admin_user.can_manage_members %}| إدارة الأعضاء {% endif %}
+                        {% if admin_user.can_manage_categories %}| إدارة الفئات {% endif %}
+                        {% if admin_user.can_manage_circulation %}| إدارة الاستعارات {% endif %}
+                        {% if admin_user.can_manage_admins %}| إدارة الأدمنز {% endif %}
+                        {% if admin_user.is_superuser %}| Superuser{% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <p class="text-slate-500 text-sm">لا توجد حسابات أدمن.</p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+{% endblock %}
+
+

@@ -1,0 +1,129 @@
+﻿{% extends "base.html" %}
+
+{% block title %}إدارة الاستعارات{% endblock %}
+
+{% block content %}
+<section class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-black">إدارة الاستعارات</h1>
+        <a href="{% url 'dashboard_home' %}" class="btn-secondary">رجوع للوحة التحكم</a>
+    </div>
+
+    <article class="card">
+        <h2 class="text-xl font-black mb-3">استعارة يدوية بواسطة الأدمن</h2>
+        <form method="post" action="{% url 'dashboard_manual_borrow' %}" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            {% csrf_token %}
+            <input type="text" name="membership_number" class="input-field" placeholder="رقم العضوية" required>
+            <select name="book_id" class="input-field" required>
+                <option value="">اختر الكتاب</option>
+                {% for book in books %}
+                    <option value="{{ book.id }}">{{ book.title }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="copy_barcode" class="input-field" placeholder="QR النسخة (اختياري)">
+            <button type="submit" class="btn-primary">تسجيل الاستعارة</button>
+        </form>
+        <p class="text-xs text-slate-500 mt-2">تظهر في القائمة الكتب الورقية فقط. الكتب الرقمية تحتاج أولاً لتأكيد ورقي من إدارة الكتب.</p>
+    </article>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <article class="card">
+            <h2 class="text-xl font-black mb-4">طلبات الحجز</h2>
+            <div class="space-y-3 max-h-[560px] overflow-y-auto">
+                {% for reservation in pending_reservations %}
+                    <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-2">
+                        <div class="font-bold">{{ reservation.book.title }}</div>
+                        <div class="text-xs text-slate-500">العضو: {{ reservation.member.name }} ({{ reservation.member.membership_number }})</div>
+                        <div class="text-xs text-slate-500">تاريخ الطلب: {{ reservation.reservation_date|date:"Y-m-d H:i" }}</div>
+                        <div class="flex gap-2">
+                            <form method="post" action="{% url 'dashboard_approve_reservation' reservation.id %}" class="flex-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-primary w-full">اعتماد الحجز</button>
+                            </form>
+                            <form method="post" action="{% url 'dashboard_cancel_reservation' reservation.id %}" class="flex-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-secondary w-full">رفض</button>
+                            </form>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-sm text-slate-500">لا توجد طلبات حجز.</p>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="card">
+            <h2 class="text-xl font-black mb-4">الحجوزات المعتمدة</h2>
+            <div class="space-y-3 max-h-[560px] overflow-y-auto">
+                {% for reservation in approved_reservations %}
+                    <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-2">
+                        <div class="font-bold">{{ reservation.book.title }}</div>
+                        <div class="text-xs text-slate-500">العضو: {{ reservation.member.name }}</div>
+                        <div class="text-xs text-slate-500">ينتهي: {{ reservation.cancel_date|date:"Y-m-d H:i"|default:"-" }}</div>
+                        <div class="flex gap-2">
+                            <form method="post" action="{% url 'dashboard_complete_reservation' reservation.id %}" class="flex-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-primary w-full">إتمام الاستعارة</button>
+                            </form>
+                            <form method="post" action="{% url 'dashboard_cancel_reservation' reservation.id %}" class="flex-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-secondary w-full">إلغاء الحجز</button>
+                            </form>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-sm text-slate-500">لا توجد حجوزات معتمدة.</p>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="card">
+            <h2 class="text-xl font-black mb-4">طلبات التجديد</h2>
+            <div class="space-y-3 max-h-[560px] overflow-y-auto">
+                {% for borrowing in renewal_requests %}
+                    <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-2">
+                        <div class="font-bold">{{ borrowing.book_copy.book.title }}</div>
+                        <div class="text-xs text-slate-500">العضو: {{ borrowing.member.name }}</div>
+                        <div class="text-xs text-slate-500">الاستحقاق الحالي: {{ borrowing.due_date|date:"Y-m-d" }}</div>
+                        <div class="flex gap-2">
+                            <form method="post" action="{% url 'dashboard_approve_renewal' borrowing.id %}" class="flex-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-primary w-full">موافقة</button>
+                            </form>
+                            <form method="post" action="{% url 'dashboard_reject_renewal' borrowing.id %}" class="flex-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-secondary w-full">رفض</button>
+                            </form>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-sm text-slate-500">لا توجد طلبات تجديد.</p>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+
+    <article class="card">
+        <h2 class="text-xl font-black mb-4">الاستعارات النشطة</h2>
+        <div class="space-y-3 max-h-[560px] overflow-y-auto">
+            {% for borrowing in active_borrowings %}
+                <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-2">
+                    <div class="font-bold">{{ borrowing.book_copy.book.title }}</div>
+                    <div class="text-xs text-slate-500">النسخة QR: {{ borrowing.book_copy.barcode }}</div>
+                    <div class="text-xs text-slate-500">العضو: {{ borrowing.member.name }}</div>
+                    <div class="text-xs text-slate-500">الاستحقاق: {{ borrowing.due_date|date:"Y-m-d" }}</div>
+                    <form method="post" action="{% url 'dashboard_return_borrowing' borrowing.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-primary w-full">تسجيل إرجاع الكتاب</button>
+                    </form>
+                </div>
+            {% empty %}
+                <p class="text-sm text-slate-500">لا توجد استعارات نشطة.</p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+{% endblock %}
+
+
+

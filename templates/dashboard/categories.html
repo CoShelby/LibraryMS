@@ -1,0 +1,127 @@
+﻿{% extends "base.html" %}
+
+{% block title %}الفئات والمؤلفون والناشرون{% endblock %}
+
+{% block content %}
+<section class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <article class="card space-y-6">
+        <div>
+            <h1 class="text-xl font-black mb-3">إضافة فئة</h1>
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="category">
+                {% for field in category_form %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}
+                            <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn-primary w-full">حفظ الفئة</button>
+            </form>
+        </div>
+
+        <div class="border-t border-slate-200 dark:border-slate-800 pt-5">
+            <h2 class="text-lg font-black mb-3">إضافة مؤلف</h2>
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="author">
+                {% for field in author_form %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}
+                            <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn-secondary w-full">حفظ المؤلف</button>
+            </form>
+        </div>
+
+        <div class="border-t border-slate-200 dark:border-slate-800 pt-5">
+            <h2 class="text-lg font-black mb-3">إضافة ناشر</h2>
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="publisher">
+                {% for field in publisher_form %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}
+                            <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn-secondary w-full">حفظ الناشر</button>
+            </form>
+        </div>
+    </article>
+
+    <article class="card xl:col-span-2">
+        <h2 class="text-xl font-black mb-4">السجلات الحالية (تعديل / حذف)</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <h3 class="font-black mb-2">الفئات</h3>
+                <div class="space-y-2 max-h-[520px] overflow-y-auto">
+                    {% for category in categories %}
+                        <form method="post" action="{% url 'dashboard_update_entity' 'category' category.id %}" class="p-2 rounded bg-slate-50 dark:bg-slate-800 space-y-1">
+                            {% csrf_token %}
+                            <input type="text" name="name" value="{{ category.name }}" class="input-field text-sm">
+                            <input type="text" name="name_en" value="{{ category.name_en }}" class="input-field text-sm" placeholder="English name">
+                            <input type="text" name="shelf_location" value="{{ category.shelf_location|default:'' }}" class="input-field text-sm" placeholder="موقع الرف">
+                            <div class="flex gap-1">
+                                <button type="submit" class="btn-primary flex-1 text-xs">تعديل</button>
+                                <button type="submit" formaction="{% url 'dashboard_delete_entity' 'category' category.id %}" class="btn-secondary flex-1 text-xs" onclick="return confirm('حذف الفئة؟')">حذف</button>
+                            </div>
+                        </form>
+                    {% empty %}
+                        <p class="text-xs text-slate-500">لا توجد فئات.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div>
+                <h3 class="font-black mb-2">المؤلفون</h3>
+                <div class="space-y-2 max-h-[520px] overflow-y-auto">
+                    {% for author in authors %}
+                        <form method="post" action="{% url 'dashboard_update_entity' 'author' author.id %}" class="p-2 rounded bg-slate-50 dark:bg-slate-800 space-y-1">
+                            {% csrf_token %}
+                            <input type="text" name="name" value="{{ author.name }}" class="input-field text-sm">
+                            <div class="flex gap-1">
+                                <button type="submit" class="btn-primary flex-1 text-xs">تعديل</button>
+                                <button type="submit" formaction="{% url 'dashboard_delete_entity' 'author' author.id %}" class="btn-secondary flex-1 text-xs" onclick="return confirm('حذف المؤلف؟')">حذف</button>
+                            </div>
+                        </form>
+                    {% empty %}
+                        <p class="text-xs text-slate-500">لا يوجد مؤلفون.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div>
+                <h3 class="font-black mb-2">الناشرون</h3>
+                <div class="space-y-2 max-h-[520px] overflow-y-auto">
+                    {% for publisher in publishers %}
+                        <form method="post" action="{% url 'dashboard_update_entity' 'publisher' publisher.id %}" class="p-2 rounded bg-slate-50 dark:bg-slate-800 space-y-1">
+                            {% csrf_token %}
+                            <input type="text" name="name" value="{{ publisher.name }}" class="input-field text-sm">
+                            <input type="text" name="city" value="{{ publisher.city|default:'' }}" class="input-field text-sm" placeholder="المدينة">
+                            <input type="text" name="country" value="{{ publisher.country|default:'' }}" class="input-field text-sm" placeholder="الدولة">
+                            <div class="flex gap-1">
+                                <button type="submit" class="btn-primary flex-1 text-xs">تعديل</button>
+                                <button type="submit" formaction="{% url 'dashboard_delete_entity' 'publisher' publisher.id %}" class="btn-secondary flex-1 text-xs" onclick="return confirm('حذف الناشر؟')">حذف</button>
+                            </div>
+                        </form>
+                    {% empty %}
+                        <p class="text-xs text-slate-500">لا يوجد ناشرون.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </article>
+</section>
+{% endblock %}
+

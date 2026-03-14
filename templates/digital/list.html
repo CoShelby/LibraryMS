@@ -1,0 +1,35 @@
+﻿{% extends "base.html" %}
+
+{% block title %}المكتبة الرقمية | مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}
+
+{% block content %}
+<section class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-black">المكتبة الرقمية</h1>
+        <a href="{% url 'search_results' %}?search_scope=digital" class="btn-secondary">بحث داخل الرقمي</a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {% for dbook in digital_books %}
+            <article class="card flex flex-col">
+                {% if dbook.book.cover_image %}
+                    <img src="{{ dbook.book.cover_image.url }}" alt="{{ dbook.book.title }}" class="w-full h-44 object-cover rounded-xl mb-3">
+                {% else %}
+                    <div class="w-full h-44 rounded-xl mb-3 bg-slate-100 dark:bg-slate-800 grid place-content-center text-slate-400">
+                        <i class="fa-solid fa-file-pdf text-4xl"></i>
+                    </div>
+                {% endif %}
+                <h2 class="font-black text-lg">{{ dbook.book.title }}</h2>
+                <p class="text-sm text-slate-500 mt-1">{{ dbook.book.category.name|default:"-" }}</p>
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <a href="{% url 'read_digital_book' dbook.book.id %}" class="btn-primary text-center">قراءة الآن</a>
+                    <a href="{% url 'download_digital_book' dbook.book.id %}" class="btn-secondary text-center">تحميل</a>
+                </div>
+            </article>
+        {% empty %}
+            <div class="col-span-full card text-center py-10 text-slate-500">لا توجد كتب رقمية مضافة حالياً.</div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
+
