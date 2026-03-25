@@ -1,0 +1,41 @@
+﻿{% extends "base.html" %}
+
+{% block title %}حسابي الإداري{% endblock %}
+
+{% block content %}
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <article class="card">
+        <h1 class="text-xl font-black mb-4">بيانات الحساب</h1>
+        <form method="post" class="space-y-3">
+            {% csrf_token %}
+            {% for field in profile_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}
+                        <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            <button type="submit" name="save_profile" class="btn-primary w-full">حفظ البيانات</button>
+        </form>
+    </article>
+
+    <article class="card">
+        <h2 class="text-xl font-black mb-4">تغيير كلمة المرور</h2>
+        <form method="post" class="space-y-3">
+            {% csrf_token %}
+            {% for field in password_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}
+                        <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            <button type="submit" name="change_password" class="btn-primary w-full">تغيير كلمة المرور</button>
+        </form>
+    </article>
+</section>
+{% endblock %}

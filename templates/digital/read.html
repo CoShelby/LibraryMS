@@ -14,17 +14,21 @@
 
     <div class="card p-0 overflow-hidden h-[78vh]">
         {% if digital_book.pdf_file %}
-            <object data="{{ digital_book.pdf_file.url }}#toolbar=1&navpanes=1&scrollbar=1" type="application/pdf" class="w-full h-full">
-                <iframe src="{{ digital_book.pdf_file.url }}" class="w-full h-full border-0" title="{{ digital_book.book.title }}"></iframe>
-                <div class="p-6 text-center">
-                    <p class="mb-3">تعذر عرض الملف داخل المتصفح.</p>
-                    <a href="{% url 'download_digital_book' digital_book.book.id %}" class="btn-primary">تحميل الملف</a>
-                </div>
-            </object>
+            <iframe
+                src="{{ digital_book.pdf_file.url }}#toolbar=1&navpanes=1&scrollbar=1"
+                class="w-full h-full border-0"
+                title="{{ digital_book.book.title }}"
+                loading="eager">
+            </iframe>
         {% else %}
             <div class="w-full h-full grid place-content-center text-slate-500">ملف PDF غير متوفر.</div>
         {% endif %}
     </div>
+
+    {% if digital_book.pdf_file %}
+        <div class="text-sm text-slate-500">
+            إذا لم يظهر الملف داخل الإطار، يمكنك <a href="{% url 'download_digital_book' digital_book.book.id %}" class="text-brand font-bold">تحميله من هنا</a>.
+        </div>
+    {% endif %}
 </section>
 {% endblock %}
-

@@ -15,9 +15,6 @@ class AdminAuthenticationForm(AuthenticationForm):
 
 
 class AdminUserCreationForm(forms.ModelForm):
-    password1 = forms.CharField(label="كلمة المرور", widget=forms.PasswordInput)
-    password2 = forms.CharField(label="تأكيد كلمة المرور", widget=forms.PasswordInput)
-
     class Meta:
         model = User
         fields = [
@@ -25,46 +22,142 @@ class AdminUserCreationForm(forms.ModelForm):
             "first_name",
             "last_name",
             "email",
-            "can_manage_admins",
             "can_manage_books",
             "can_manage_members",
             "can_manage_circulation",
             "can_manage_categories",
+            "is_active",
         ]
         labels = {
             "username": "اسم المستخدم",
             "first_name": "الاسم الأول",
             "last_name": "اسم العائلة",
             "email": "البريد الإلكتروني",
-            "can_manage_admins": "يمكنه إنشاء/إدارة الأدمنز",
             "can_manage_books": "يمكنه إدارة الكتب والنسخ والرقمي",
             "can_manage_members": "يمكنه إدارة الأعضاء",
             "can_manage_circulation": "يمكنه إدارة الاستعارات",
             "can_manage_categories": "يمكنه إدارة الفئات/المؤلفين/الناشرين",
+            "is_active": "الحساب مفعل",
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field_name, field in self.fields.items():
-            if field_name.startswith("can_manage_"):
+            if field_name.startswith("can_manage_") or field_name == "is_active":
                 field.widget.attrs.update({"class": "h-4 w-4"})
             else:
                 field.widget.attrs.update({"class": "input-field"})
 
-    def clean(self):
-        cleaned_data = super().clean()
-        password1 = cleaned_data.get("password1")
-        password2 = cleaned_data.get("password2")
-        if password1 and password2 and password1 != password2:
-            self.add_error("password2", "كلمتا المرور غير متطابقتين.")
-        return cleaned_data
+    def clean_username(self):
+        username = (self.cleaned_data.get("username") or "").strip()
+        if not username:
+            raise forms.ValidationError("اسم المستخدم مطلوب.")
+        query = User.objects.filter(username__iexact=username)
+        if query.exists():
+            raise forms.ValidationError("اسم المستخدم مستخدم مسبقًا.")
+        return username
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip()
+        if email and User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("هذا البريد مستخدم مسبقًا.")
+        return email
 
     def save(self, commit=True):
         user = super().save(commit=False)
         user.is_staff = True
         user.is_admin = True
-        user.set_password(self.cleaned_data["password1"])
+        user.can_manage_admins = False
+        user.set_unusable_password()
         if commit:
             user.save()
         return user
 
+
+class AdminUserUpdateForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = [
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "can_manage_books",
+            "can_manage_members",
+            "can_manage_circulation",
+            "can_manage_categories",
+            "is_active",
+        ]
+        labels = {
+            "username": "اسم المستخدم",
+            "first_name": "الاسم الأول",
+            "last_name": "اسم العائلة",
+            "email": "البريد الإلكتروني",
+            "can_manage_books": "يمكنه إدارة الكتب",
+            "can_manage_members": "يمكنه إدارة الأعضاء",
+            "can_manage_circulation": "يمكنه إدارة الاستعارات",
+            "can_manage_categories": "يمكنه إدارة الفئات",
+            "is_active": "الحساب مفعل",
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.instance_user = kwargs.get("instance")
+        super().__init__(*args, **kwargs)
+        for field_name, field in self.fields.items():
+            if field_name.startswith("can_manage_") or field_name == "is_active":
+                field.widget.attrs.update({"class": "h-4 w-4"})
+            else:
+                field.widget.attrs.update({"class": "input-field"})
+
+    def clean_username(self):
+        username = (self.cleaned_data.get("username") or "").strip()
+        if not username:
+            raise forms.ValidationError("اسم المستخدم مطلوب.")
+        query = User.objects.filter(username__iexact=username)
+        if self.instance_user and self.instance_user.pk:
+            query = query.exclude(pk=self.instance_user.pk)
+        if query.exists():
+            raise forms.ValidationError("اسم المستخدم مستخدم مسبقًا.")
+        return username
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip()
+        query = User.objects.filter(email__iexact=email)
+        if self.instance_user and self.instance_user.pk:
+            query = query.exclude(pk=self.instance_user.pk)
+        if email and query.exists():
+            raise forms.ValidationError("هذا البريد مستخدم مسبقًا.")
+        return email
+
+
+class AdminSelfProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["username", "first_name", "last_name", "email"]
+        labels = {
+            "username": "اسم المستخدم",
+            "first_name": "الاسم الأول",
+            "last_name": "اسم العائلة",
+            "email": "البريد الإلكتروني",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.update({"class": "input-field"})
+
+    def clean_username(self):
+        username = (self.cleaned_data.get("username") or "").strip()
+        if not username:
+            raise forms.ValidationError("اسم المستخدم مطلوب.")
+        query = User.objects.filter(username__iexact=username).exclude(pk=self.instance.pk)
+        if query.exists():
+            raise forms.ValidationError("اسم المستخدم مستخدم مسبقًا.")
+        return username
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip()
+        query = User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk)
+        if email and query.exists():
+            raise forms.ValidationError("هذا البريد مستخدم مسبقًا.")
+        return email

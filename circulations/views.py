@@ -1,7 +1,7 @@
 ﻿from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 
-from accounts.services import admin_capability_required
+from accounts.services import admin_capability_required, is_library_admin
 from books.models import Book
 from members.models import Member
 
@@ -11,6 +11,8 @@ from .services import (
     cancel_reservation,
     get_member_active_borrowings,
     get_member_active_reservations,
+    get_member_borrowing_history,
+    get_member_reservation_history,
     request_renewal,
     reserve_book,
 )
@@ -59,17 +61,33 @@ def reserve_view(request, book_id):
 
 def member_portal_view(request):
     membership_number = (request.GET.get("membership") or "").strip()
+    member_id = (request.GET.get("member_id") or "").strip()
+
     member = None
     borrowings = []
     reservations = []
+    borrowing_history = []
+    reservation_history = []
 
-    if membership_number:
+    is_admin_view = is_library_admin(request.user)
+
+    if is_admin_view and member_id:
+        try:
+            member = Member.objects.get(id=int(member_id))
+            membership_number = member.membership_number
+        except (ValueError, Member.DoesNotExist):
+            messages.error(request, "تعذر العثور على العضو المطلوب.")
+    elif membership_number:
         try:
             member = Member.objects.get(membership_number=membership_number)
-            borrowings = get_member_active_borrowings(member)
-            reservations = get_member_active_reservations(member)
         except Member.DoesNotExist:
             messages.error(request, "رقم العضوية غير موجود.")
+
+    if member:
+        borrowings = get_member_active_borrowings(member)
+        reservations = get_member_active_reservations(member)
+        borrowing_history = get_member_borrowing_history(member).filter(return_date__isnull=False)
+        reservation_history = get_member_reservation_history(member).exclude(status__in=["pending", "approved"])
 
     return render(
         request,
@@ -78,7 +96,10 @@ def member_portal_view(request):
             "member": member,
             "borrowings": borrowings,
             "reservations": reservations,
+            "borrowing_history": borrowing_history,
+            "reservation_history": reservation_history,
             "membership": membership_number,
+            "is_admin_view": is_admin_view,
         },
     )
 

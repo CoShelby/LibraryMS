@@ -25,6 +25,8 @@ class Member(models.Model):
     workplace = models.CharField(max_length=200, blank=True, null=True)
     membership_expiry = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
+    card_print_count = models.PositiveIntegerField(default=0)
+    last_card_printed_at = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return self.name

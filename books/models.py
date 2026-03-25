@@ -4,8 +4,8 @@ from django.utils.text import slugify
 
 class Category(models.Model):
     category_id = models.CharField(max_length=50, unique=True, blank=True)
-    name = models.CharField(max_length=200)  # Arabic name
-    name_en = models.CharField(max_length=200, blank=True, default="")
+    name = models.CharField(max_length=200, db_index=True)  # Arabic name
+    name_en = models.CharField(max_length=200, blank=True, default="", db_index=True)
     shelf_location = models.CharField(max_length=200, blank=True, null=True)
 
     def save(self, *args, **kwargs):
@@ -24,14 +24,14 @@ class Category(models.Model):
 
 
 class Author(models.Model):
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, db_index=True)
 
     def __str__(self):
         return self.name
 
 
 class Publisher(models.Model):
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, db_index=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
 
@@ -45,20 +45,26 @@ class Book(models.Model):
         ("english", "الإنجليزية"),
     ]
 
-    dewey_decimal_number = models.CharField(max_length=100)
-    title = models.CharField(max_length=300)
+    dewey_decimal_number = models.CharField(max_length=100, db_index=True)
+    title = models.CharField(max_length=300, db_index=True)
     authors = models.ManyToManyField(Author)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     publisher = models.ForeignKey(Publisher, on_delete=models.SET_NULL, null=True)
     publication_year = models.IntegerField(blank=True, null=True)
     edition = models.CharField(max_length=50, blank=True, null=True)
     volume = models.CharField(max_length=50, blank=True, null=True)
-    language = models.CharField(max_length=20, choices=LANGUAGE_CHOICES, default="arabic")
+    language = models.CharField(max_length=20, choices=LANGUAGE_CHOICES, default="arabic", db_index=True)
     pages = models.IntegerField(blank=True, null=True)
     cover_image = models.ImageField(upload_to="books/covers/", blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    view_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    view_count = models.PositiveIntegerField(default=0, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["title", "view_count"]),
+            models.Index(fields=["language", "publication_year"]),
+        ]
 
     def __str__(self):
         return self.title

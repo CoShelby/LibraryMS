@@ -1,16 +1,22 @@
 ﻿import json
 import os
+import secrets
 
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
+from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.core.files.base import ContentFile
+from django.core.mail import send_mail
 from django.db.models import Count, ExpressionWrapper, F, IntegerField, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
-
-from accounts.forms import AdminUserCreationForm
+from accounts.forms import AdminSelfProfileForm, AdminUserCreationForm, AdminUserUpdateForm
 from accounts.models import User
 from accounts.services import admin_capability_required, admin_required, has_admin_capability
 from books.models import Author, Book, BookCopy, Category, Publisher
@@ -28,7 +34,6 @@ from digital_library.models import DigitalLibrary
 from members.models import Member
 
 from .forms import AuthorForm, BookCopyForm, BookForm, CategoryForm, DigitalLibraryForm, PublisherForm
-
 
 def _split_names(raw_value):
     prepared = (raw_value or "").replace("،", ",")
@@ -133,7 +138,7 @@ def dashboard_home(request):
         "can_manage_books": has_admin_capability(request.user, "can_manage_books"),
         "can_manage_members": has_admin_capability(request.user, "can_manage_members"),
         "can_manage_categories": has_admin_capability(request.user, "can_manage_categories"),
-        "can_manage_admins": has_admin_capability(request.user, "can_manage_admins"),
+        "can_manage_admins": request.user.is_superuser,
         "can_manage_circulation": has_admin_capability(request.user, "can_manage_circulation"),
     }
     return render(request, "dashboard/home.html", context)
@@ -803,28 +808,215 @@ def dashboard_reports(request):
         },
     )
 
-@admin_capability_required("can_manage_admins")
+def _superadmin_required(request):
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        raise PermissionDenied("Only super admin can manage admin accounts.")
+
+
+def _manager_email():
+    return (getattr(settings, "ADMIN_MANAGER_EMAIL", "") or "").strip()
+
+
+def _reset_code_cache_key(user_id):
+    return f"dashboard:admin-reset-code:{user_id}"
+
+
+def _generate_reset_code():
+    return f"{secrets.randbelow(1000000):06d}"
+
+
+def _issue_admin_reset_code(user):
+    code = _generate_reset_code()
+    cache.set(_reset_code_cache_key(user.id), code, timeout=getattr(settings, "ADMIN_RESET_CODE_TTL_SECONDS", 600))
+    _send_admin_reset_code(user, code)
+
+
+def _send_admin_reset_code(user, code):
+    manager_email = _manager_email()
+    if not manager_email:
+        raise ValueError("بريد المدير غير مضبوط. اضبط ADMIN_MANAGER_EMAIL في الإعدادات.")
+
+    send_mail(
+        subject="كود تحقق مؤقت لإعادة تعيين كلمة مرور الأدمن",
+        message=(
+            f"طلب إعادة تعيين كلمة مرور للأدمن: {user.username}\n"
+            f"الكود المؤقت: {code}\n"
+            f"مدة صلاحية الكود: {getattr(settings, 'ADMIN_RESET_CODE_TTL_SECONDS', 600) // 60} دقائق."
+        ),
+        from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@libraryms.local"),
+        recipient_list=[manager_email],
+        fail_silently=False,
+    )
+
+
+def _apply_input_css(form):
+    for field in form.fields.values():
+        field.widget.attrs.update({"class": "input-field"})
+
+
+@admin_required
 def dashboard_admin_users(request):
+    _superadmin_required(request)
+
     if request.method == "POST":
         form = AdminUserCreationForm(request.POST)
         if form.is_valid():
             new_admin = form.save()
-            messages.success(request, f"تم إنشاء حساب الأدمن: {new_admin.username}")
+            try:
+                _issue_admin_reset_code(new_admin)
+                messages.success(request, "تم إنشاء الأدمن وإرسال كود التحقق المؤقت إلى بريد المدير.")
+            except Exception as exc:
+                messages.warning(request, f"تم إنشاء الأدمن لكن تعذر إرسال كود التحقق: {exc}")
             return redirect("dashboard_admin_users")
     else:
-        form = AdminUserCreationForm()
+        form = AdminUserCreationForm(initial={"is_active": True})
 
-    admins = User.objects.filter(is_staff=True).order_by("username")
+    admins = User.objects.filter(is_staff=True, is_superuser=False).order_by("username")
     return render(
         request,
         "dashboard/admin_users.html",
         {
             "form": form,
             "admins": admins,
+            "manager_email": _manager_email(),
         },
     )
 
 
+@admin_required
+def dashboard_admin_edit(request, admin_id):
+    _superadmin_required(request)
+    admin_user = get_object_or_404(User, id=admin_id, is_staff=True, is_superuser=False)
+
+    if request.method == "POST":
+        form = AdminUserUpdateForm(request.POST, instance=admin_user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "تم تحديث بيانات الأدمن.")
+            return redirect("dashboard_admin_users")
+    else:
+        form = AdminUserUpdateForm(instance=admin_user)
+
+    return render(
+        request,
+        "dashboard/admin_user_edit.html",
+        {
+            "form": form,
+            "admin_user": admin_user,
+        },
+    )
+
+
+@admin_required
+def dashboard_admin_toggle_active(request, admin_id):
+    _superadmin_required(request)
+    admin_user = get_object_or_404(User, id=admin_id, is_staff=True, is_superuser=False)
+
+    if request.method == "POST":
+        admin_user.is_active = not admin_user.is_active
+        admin_user.save(update_fields=["is_active"])
+        messages.success(request, "تم تحديث حالة حساب الأدمن.")
+
+    return redirect("dashboard_admin_users")
+
+
+@admin_required
+def dashboard_admin_delete(request, admin_id):
+    _superadmin_required(request)
+    admin_user = get_object_or_404(User, id=admin_id, is_staff=True, is_superuser=False)
+
+    if request.method == "POST":
+        username = admin_user.username
+        admin_user.delete()
+        messages.success(request, f"تم حذف حساب الأدمن: {username}")
+
+    return redirect("dashboard_admin_users")
+
+
+@admin_required
+def dashboard_admin_send_reset_code(request, admin_id):
+    _superadmin_required(request)
+    admin_user = get_object_or_404(User, id=admin_id, is_staff=True, is_superuser=False)
+
+    if request.method == "POST":
+        try:
+            _issue_admin_reset_code(admin_user)
+            messages.success(request, "تم إرسال كود التحقق المؤقت إلى بريد المدير.")
+        except Exception as exc:
+            messages.error(request, f"تعذر إرسال كود التحقق: {exc}")
+
+    return redirect("dashboard_admin_users")
+
+
+@admin_required
+def dashboard_admin_reset_password(request, admin_id):
+    _superadmin_required(request)
+    admin_user = get_object_or_404(User, id=admin_id, is_staff=True, is_superuser=False)
+
+    verification_code = ""
+    form = SetPasswordForm(user=admin_user)
+    _apply_input_css(form)
+
+    if request.method == "POST":
+        verification_code = (request.POST.get("verification_code") or "").strip()
+        expected_code = cache.get(_reset_code_cache_key(admin_user.id))
+
+        if not expected_code:
+            messages.error(request, "لا يوجد كود صالح لهذا الحساب أو انتهت صلاحيته. أعد إرسال كود جديد.")
+        elif verification_code != str(expected_code):
+            messages.error(request, "كود التحقق غير صحيح.")
+        else:
+            form = SetPasswordForm(user=admin_user, data=request.POST)
+            _apply_input_css(form)
+            if form.is_valid():
+                form.save()  # Django hashing + set_password
+                cache.delete(_reset_code_cache_key(admin_user.id))
+                messages.success(request, "تم تعيين كلمة المرور بنجاح.")
+                return redirect("dashboard_admin_users")
+
+    return render(
+        request,
+        "dashboard/admin_reset_password.html",
+        {
+            "form": form,
+            "admin_user": admin_user,
+            "verification_code": verification_code,
+            "manager_email": _manager_email(),
+        },
+    )
+
+
+@admin_required
+def dashboard_my_account(request):
+    profile_form = AdminSelfProfileForm(instance=request.user, prefix="profile")
+    password_form = PasswordChangeForm(user=request.user, prefix="password")
+    _apply_input_css(password_form)
+
+    if request.method == "POST":
+        if "save_profile" in request.POST:
+            profile_form = AdminSelfProfileForm(request.POST, instance=request.user, prefix="profile")
+            if profile_form.is_valid():
+                profile_form.save()
+                messages.success(request, "تم تحديث بيانات الحساب.")
+                return redirect("dashboard_my_account")
+
+        if "change_password" in request.POST:
+            password_form = PasswordChangeForm(user=request.user, data=request.POST, prefix="password")
+            _apply_input_css(password_form)
+            if password_form.is_valid():
+                user = password_form.save()
+                update_session_auth_hash(request, user)
+                messages.success(request, "تم تغيير كلمة المرور بنجاح.")
+                return redirect("dashboard_my_account")
+
+    return render(
+        request,
+        "dashboard/my_account.html",
+        {
+            "profile_form": profile_form,
+            "password_form": password_form,
+        },
+    )
 @admin_capability_required("can_manage_books")
 def api_check_entity(request):
     entity_type = request.GET.get("type")
@@ -887,6 +1079,13 @@ def api_create_entity(request):
         return JsonResponse({"success": True, "id": obj.id, "name": getattr(obj, "name", "")})
     except Exception as exc:
         return JsonResponse({"error": str(exc)}, status=500)
+
+
+
+
+
+
+
 
 
 

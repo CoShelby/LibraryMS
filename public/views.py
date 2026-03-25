@@ -1,7 +1,8 @@
-﻿from django.shortcuts import render
+﻿from django.http import JsonResponse
+from django.shortcuts import render
 
 from books.forms import BookSearchForm
-from books.services import get_homepage_data, search_books_service
+from books.services import get_homepage_data, search_books_service, search_suggestions_service
 
 
 SEARCH_TRIGGER_FIELDS = [
@@ -79,3 +80,9 @@ def search_results_view(request):
             "recent_searches": request.session.get("recent_searches", []),
         },
     )
+
+
+def search_suggestions_view(request):
+    query = (request.GET.get("q") or "").strip()
+    suggestions = search_suggestions_service(query=query, limit=8) if query else []
+    return JsonResponse({"results": suggestions})

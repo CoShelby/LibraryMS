@@ -273,7 +273,7 @@ class DigitalLibraryForm(forms.ModelForm):
         ]:
             self.fields[name].widget.attrs.update({"class": "input-field"})
 
-        self.fields["new_title"].widget.attrs.update({"placeholder": "يمكن تركه فارغًا ليؤخذ من اسم الملف"})
+        self.fields["new_title"].widget.attrs.update({"placeholder": "عنوان الكتاب (يفضل إدخاله)"})
         self.fields["create_new_book"].widget.attrs.update({"class": "h-4 w-4"})
         self.fields["new_author_names"].widget.attrs.update({"list": "authors-options"})
         self.fields["new_category_name"].widget.attrs.update({"list": "categories-options"})
@@ -330,3 +330,4 @@ class DigitalLibraryForm(forms.ModelForm):
             self.add_error("book", "اختر كتابًا موجودًا أو فعّل إنشاء كتاب جديد.")
 
         return cleaned_data
+

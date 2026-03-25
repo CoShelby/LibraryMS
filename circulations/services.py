@@ -169,6 +169,10 @@ def return_book(borrowing):
 def reserve_book(member, book):
     _expire_pending_reservations()
 
+    # الحجز مسموح فقط للكتب الورقية التي لديها نسخة واحدة على الأقل.
+    if not BookCopy.objects.filter(book=book).exists():
+        raise ValueError("لا يمكن حجز كتاب رقمي فقط بدون نسخة ورقية.")
+
     if Reservation.objects.filter(member=member, book=book, status__in=["pending", "approved"]).exists():
         raise ValueError("لديك طلب حجز نشط مسبقًا لنفس الكتاب.")
 
@@ -237,3 +241,10 @@ def get_member_active_reservations(member):
     _expire_pending_reservations()
     return Reservation.objects.select_related("book").filter(member=member, status__in=["pending", "approved"])
 
+
+def get_member_borrowing_history(member):
+    return Borrowing.objects.select_related("book_copy__book").filter(member=member).order_by("-borrow_date", "-id")
+
+
+def get_member_reservation_history(member):
+    return Reservation.objects.select_related("book").filter(member=member).order_by("-reservation_date", "-id")

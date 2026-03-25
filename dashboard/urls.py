@@ -24,7 +24,13 @@ urlpatterns = [
     path("circulation/borrowings/<int:borrowing_id>/approve-renewal/", views.dashboard_approve_renewal, name="dashboard_approve_renewal"),
     path("circulation/borrowings/<int:borrowing_id>/reject-renewal/", views.dashboard_reject_renewal, name="dashboard_reject_renewal"),
     path("reports/", views.dashboard_reports, name="dashboard_reports"),
+    path("my-account/", views.dashboard_my_account, name="dashboard_my_account"),
     path("admins/", views.dashboard_admin_users, name="dashboard_admin_users"),
+    path("admins/<int:admin_id>/edit/", views.dashboard_admin_edit, name="dashboard_admin_edit"),
+    path("admins/<int:admin_id>/toggle-active/", views.dashboard_admin_toggle_active, name="dashboard_admin_toggle_active"),
+    path("admins/<int:admin_id>/delete/", views.dashboard_admin_delete, name="dashboard_admin_delete"),
+    path("admins/<int:admin_id>/send-reset-code/", views.dashboard_admin_send_reset_code, name="dashboard_admin_send_reset_code"),
+    path("admins/<int:admin_id>/reset-password/", views.dashboard_admin_reset_password, name="dashboard_admin_reset_password"),
     path("api/check-entity/", views.api_check_entity, name="api_check_entity"),
     path("api/create-entity/", views.api_create_entity, name="api_create_entity"),
 ]

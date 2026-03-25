@@ -6,7 +6,7 @@
 <section class="space-y-5">
     <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
         <h1 class="text-2xl font-extrabold">إدارة الأعضاء</h1>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
             <form method="get" action="{% url 'member_list' %}" class="flex gap-2">
                 <input type="text" name="query" value="{{ query }}" placeholder="بحث بالاسم أو الرقم" class="input-field">
                 <button type="submit" class="btn-secondary">بحث</button>
@@ -15,58 +15,91 @@
         </div>
     </div>
 
-    <div class="card p-0 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-slate-50 dark:bg-slate-800">
-                    <tr>
-                        <th class="p-3 text-right">الاسم</th>
-                        <th class="p-3 text-right">رقم العضوية (QR)</th>
-                        <th class="p-3 text-right">النوع</th>
-                        <th class="p-3 text-right">الانتهاء</th>
-                        <th class="p-3 text-right">الحالة</th>
-                        <th class="p-3 text-right">إجراء</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for member in members %}
-                        <tr class="border-t border-slate-100 dark:border-slate-800">
-                            <td class="p-3 font-semibold">{{ member.name }}</td>
-                            <td class="p-3">{{ member.membership_number }}</td>
-                            <td class="p-3">{{ member.get_member_type_display }}</td>
-                            <td class="p-3">{{ member.membership_expiry|date:"Y-m-d" }}</td>
-                            <td class="p-3">
-                                {% if member.membership_expiry >= today %}
-                                    <span class="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">نشط</span>
-                                {% else %}
-                                    <span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">منتهي</span>
-                                {% endif %}
-                            </td>
-                            <td class="p-3">
-                                <a href="{% url 'edit_member' member.id %}" class="px-3 py-1 rounded border border-slate-300 text-xs">تعديل</a>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr><td colspan="6" class="p-8 text-center text-slate-500">لا يوجد أعضاء.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <form method="post" action="{% url 'print_member_cards' %}" class="space-y-3">
+        {% csrf_token %}
+
+        <div class="card flex flex-wrap items-center gap-2 justify-between">
+            <div class="flex items-center gap-2">
+                <input id="selectAllMembers" type="checkbox" class="h-4 w-4">
+                <label for="selectAllMembers" class="text-sm font-bold">تحديد كل أعضاء الصفحة</label>
+            </div>
+            <button type="submit" class="btn-secondary">
+                <i class="fa-solid fa-print ml-2"></i>طباعة بطاقة
+            </button>
         </div>
 
-        {% if members.has_other_pages %}
-            <div class="p-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-2 text-sm">
-                {% if members.has_previous %}
-                    <a href="?page={{ members.previous_page_number }}{% if query %}&query={{ query }}{% endif %}" class="px-3 py-1 rounded border border-slate-300">السابق</a>
-                {% endif %}
-
-                <span class="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800">{{ members.number }} / {{ members.paginator.num_pages }}</span>
-
-                {% if members.has_next %}
-                    <a href="?page={{ members.next_page_number }}{% if query %}&query={{ query }}{% endif %}" class="px-3 py-1 rounded border border-slate-300">التالي</a>
-                {% endif %}
+        <div class="card p-0 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 dark:bg-slate-800">
+                        <tr>
+                            <th class="p-3 text-right w-10">تحديد</th>
+                            <th class="p-3 text-right">الاسم</th>
+                            <th class="p-3 text-right">رقم العضوية (QR)</th>
+                            <th class="p-3 text-right">النوع</th>
+                            <th class="p-3 text-right">الانتهاء</th>
+                            <th class="p-3 text-right">الحالة</th>
+                            <th class="p-3 text-right">إجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member in members %}
+                            <tr class="border-t border-slate-100 dark:border-slate-800">
+                                <td class="p-3">
+                                    <input type="checkbox" name="member_ids" value="{{ member.id }}" class="member-checkbox h-4 w-4">
+                                </td>
+                                <td class="p-3 font-semibold">{{ member.name }}</td>
+                                <td class="p-3">{{ member.membership_number }}</td>
+                                <td class="p-3">{{ member.get_member_type_display }}</td>
+                                <td class="p-3">{{ member.membership_expiry|date:"Y-m-d" }}</td>
+                                <td class="p-3">
+                                    {% if member.membership_expiry >= today %}
+                                        <span class="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">نشط</span>
+                                    {% else %}
+                                        <span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">منتهي</span>
+                                    {% endif %}
+                                </td>
+                                <td class="p-3">
+                                    <a href="{% url 'edit_member' member.id %}" class="px-3 py-1 rounded border border-slate-300 text-xs">تعديل</a>
+                                    <a href="{% url 'member_portal' %}?membership={{ member.membership_number|urlencode }}" class="px-3 py-1 rounded border border-slate-300 text-xs">سجل الاستعارات</a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="7" class="p-8 text-center text-slate-500">لا يوجد أعضاء.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-        {% endif %}
-    </div>
+
+            {% if members.has_other_pages %}
+                <div class="p-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-2 text-sm">
+                    {% if members.has_previous %}
+                        <a href="?page={{ members.previous_page_number }}{% if query %}&query={{ query }}{% endif %}" class="px-3 py-1 rounded border border-slate-300">السابق</a>
+                    {% endif %}
+
+                    <span class="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800">{{ members.number }} / {{ members.paginator.num_pages }}</span>
+
+                    {% if members.has_next %}
+                        <a href="?page={{ members.next_page_number }}{% if query %}&query={{ query }}{% endif %}" class="px-3 py-1 rounded border border-slate-300">التالي</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </form>
 </section>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+    const selectAll = document.getElementById('selectAllMembers');
+    const memberChecks = document.querySelectorAll('.member-checkbox');
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            memberChecks.forEach((checkbox) => {
+                checkbox.checked = this.checked;
+            });
+        });
+    }
+</script>
+{% endblock %}

@@ -46,11 +46,14 @@
 </head>
 <body class="bg-paper dark:bg-night text-slate-900 dark:text-slate-100 font-sans">
     <div class="md:hidden sticky top-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur border-b border-slate-200 dark:border-slate-800">
-        <div class="px-4 py-3 flex items-center justify-between">
+        <div class="px-4 py-3 flex items-center justify-between gap-2">
             <button id="mobile-menu-btn" type="button" class="btn-secondary px-3 py-2">
                 <i class="fa-solid fa-bars"></i>
             </button>
-            <h1 class="text-sm font-black text-brand dark:text-mint">مكتبة كلية الحاسبات وتقنية المعلومات</h1>
+            <div class="nav-brand min-w-0">
+                <img src="{% static 'images/logo.jpg' %}" alt="Library Logo" class="mobile-nav-logo">
+                <h1 class="text-xs font-black text-brand dark:text-mint truncate">مكتبة كلية الحاسبات وتقنية المعلومات</h1>
+            </div>
             <button id="theme-toggle-mobile" type="button" class="btn-secondary px-3 py-2">
                 <i class="fa-solid fa-moon"></i>
             </button>
@@ -61,7 +64,10 @@
 
     <aside id="app-drawer" class="fixed top-0 right-0 h-screen w-72 bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-50 transform translate-x-full md:translate-x-0 transition-transform duration-300 overflow-y-auto">
         <div class="p-5 border-b border-slate-200 dark:border-slate-800">
-            <h1 class="text-lg font-black text-brand dark:text-mint leading-7">مكتبة كلية الحاسبات<br>وتقنية المعلومات</h1>
+            <div class="nav-brand mb-2">
+                <img src="{% static 'images/logo.jpg' %}" alt="Library Logo" class="nav-logo">
+                <h1 class="text-lg font-black text-brand dark:text-mint leading-7">مكتبة كلية الحاسبات<br>وتقنية المعلومات</h1>
+            </div>
             <p class="text-xs text-slate-500 mt-2">نظام إدارة المكتبة الورقية والرقمية</p>
         </div>
 
@@ -96,9 +102,11 @@
 
                 <a href="{% url 'dashboard_reports' %}" class="sidebar-link {% if '/dashboard/reports/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-table"></i> التقارير</a>
 
-                {% if request.user.is_superuser or request.user.can_manage_admins %}
+                {% if request.user.is_superuser %}
                     <a href="{% url 'dashboard_admin_users' %}" class="sidebar-link {% if '/dashboard/admins/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-user-shield"></i> إدارة الأدمنز</a>
                 {% endif %}
+
+                <a href="{% url 'dashboard_my_account' %}" class="sidebar-link {% if '/dashboard/my-account/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-user-gear"></i> حسابي الإداري</a>
             {% endif %}
         </nav>
         {% endwith %}
@@ -241,6 +249,3 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
-
-
-

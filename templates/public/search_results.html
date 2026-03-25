@@ -1,4 +1,5 @@
 ﻿{% extends "base.html" %}
+{% load static %}
 
 {% block title %}نتائج البحث | مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}
 
@@ -13,8 +14,11 @@
             </div>
         </div>
 
-        <form method="get" action="{% url 'search_results' %}" class="flex gap-2">
-            <input type="text" name="query" value="{{ form.query.value|default:'' }}" class="input-field" placeholder="ابحث بعنوان كتاب، مؤلف، فئة، ديوي...">
+        <form method="get" action="{% url 'search_results' %}" class="flex gap-2" autocomplete="off">
+            <div class="relative flex-1">
+                <input id="searchQueryInput" type="text" name="query" value="{{ form.query.value|default:'' }}" class="input-field" placeholder="ابحث بعنوان كتاب، مؤلف، فئة، ديوي...">
+                <div id="searchSuggestions" class="hidden absolute z-30 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg p-1"></div>
+            </div>
             {% if form.search_scope.value %}<input type="hidden" name="search_scope" value="{{ form.search_scope.value }}">{% endif %}
             {% if form.category.value %}<input type="hidden" name="category" value="{{ form.category.value }}">{% endif %}
             {% if form.author.value %}<input type="hidden" name="author" value="{{ form.author.value }}">{% endif %}
@@ -41,9 +45,7 @@
                     {% if book.cover_image %}
                         <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="w-full h-44 object-cover rounded-xl mb-3">
                     {% else %}
-                        <div class="w-full h-44 rounded-xl mb-3 bg-slate-100 dark:bg-slate-800 grid place-content-center text-slate-400">
-                            <i class="fa-solid fa-book text-4xl"></i>
-                        </div>
+                        <img src="{% static 'images/logo.jpg' %}" alt="{{ book.title }}" class="w-full h-44 object-contain rounded-xl mb-3 bg-slate-100 dark:bg-slate-800 p-3">
                     {% endif %}
 
                     <h3 class="font-black text-lg">{{ book.title }}</h3>
@@ -64,8 +66,19 @@
 
                     <div class="mt-4 grid grid-cols-2 gap-2">
                         <a href="{% url 'book_detail' book.id %}" class="btn-primary text-center">التفاصيل</a>
-                        <button type="button" onclick="openReserveModal('{{ book.id }}', '{{ book.title|escapejs }}')" class="btn-secondary">حجز</button>
+                        {% if book.has_physical_copy %}
+                            <button type="button" onclick="openReserveModal('{{ book.id }}', '{{ book.title|escapejs }}')" class="btn-secondary">حجز</button>
+                        {% else %}
+                            <span class="text-center text-xs px-2 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500">الحجز للورقي فقط</span>
+                        {% endif %}
                     </div>
+
+                    {% if book.has_digital %}
+                        <div class="mt-2 grid grid-cols-2 gap-2">
+                            <a href="{% url 'read_digital_book' book.id %}" class="btn-secondary text-center">قراءة</a>
+                            <a href="{% url 'download_digital_book' book.id %}" class="btn-secondary text-center">تحميل</a>
+                        </div>
+                    {% endif %}
                 </article>
             {% empty %}
                 <div class="col-span-full card text-center py-10 text-slate-500">لا توجد نتائج مطابقة.</div>
@@ -126,6 +139,72 @@
     if (openFilterDrawerBtn) openFilterDrawerBtn.addEventListener('click', openFilterDrawer);
     if (closeFilterDrawerBtn) closeFilterDrawerBtn.addEventListener('click', closeFilterDrawer);
     if (filterBackdrop) filterBackdrop.addEventListener('click', closeFilterDrawer);
+
+    const searchInput = document.getElementById('searchQueryInput');
+    const suggestionsBox = document.getElementById('searchSuggestions');
+    let searchTimer = null;
+
+    function clearSuggestions() {
+        if (!suggestionsBox) {
+            return;
+        }
+        suggestionsBox.innerHTML = '';
+        suggestionsBox.classList.add('hidden');
+    }
+
+    function renderSuggestions(results) {
+        if (!suggestionsBox) {
+            return;
+        }
+
+        if (!results.length) {
+            clearSuggestions();
+            return;
+        }
+
+        suggestionsBox.innerHTML = '';
+        results.forEach((item) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'w-full text-right rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800';
+            button.innerHTML = `<div class="text-sm font-bold">${item.title}</div><div class="text-xs text-slate-500">${item.category || '-'}</div>`;
+            button.addEventListener('click', () => {
+                if (searchInput) {
+                    searchInput.value = item.title;
+                    searchInput.form.submit();
+                }
+            });
+            suggestionsBox.appendChild(button);
+        });
+        suggestionsBox.classList.remove('hidden');
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            const query = searchInput.value.trim();
+
+            if (query.length < 1) {
+                clearSuggestions();
+                return;
+            }
+
+            searchTimer = setTimeout(() => {
+                fetch(`{% url 'search_suggestions' %}?q=${encodeURIComponent(query)}`)
+                    .then((response) => response.json())
+                    .then((data) => renderSuggestions(data.results || []))
+                    .catch(() => clearSuggestions());
+            }, 220);
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        if (!suggestionsBox || !searchInput) {
+            return;
+        }
+        if (!suggestionsBox.contains(event.target) && event.target !== searchInput) {
+            clearSuggestions();
+        }
+    });
 </script>
 {% endblock %}
-

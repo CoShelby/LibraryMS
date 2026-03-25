@@ -26,7 +26,7 @@
                 {% for error in form.pdf_file.errors %}
                     <p class="text-xs text-red-600 mt-1">{{ error }}</p>
                 {% endfor %}
-                <p class="text-xs text-slate-500 mt-1">سيحاول النظام تعبئة العنوان وعدد الصفحات والغلاف تلقائيًا من ملف PDF عند الحفظ.</p>
+                <p class="text-xs text-slate-500 mt-1">يحاول النظام استخراج العنوان وعدد الصفحات والغلاف من ملف PDF عند توفر دعم الاستخراج.</p>
             </div>
         </div>
 
@@ -90,7 +90,7 @@
             <div>
                 <label for="{{ form.new_pages.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_pages.label }}</label>
                 {{ form.new_pages }}
-                <p class="text-xs text-slate-500 mt-1">يُحتسب تلقائيًا من PDF إن تُرك فارغًا.</p>
+                <p class="text-xs text-slate-500 mt-1">عند نجاح الاستخراج من PDF سيتم استخدام عدد الصفحات المكتشف.</p>
                 {% for error in form.new_pages.errors %}
                     <p class="text-xs text-red-600 mt-1">{{ error }}</p>
                 {% endfor %}
@@ -98,7 +98,7 @@
             <div class="md:col-span-2">
                 <label for="{{ form.new_cover_image.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_cover_image.label }}</label>
                 {{ form.new_cover_image }}
-                <p class="text-xs text-slate-500 mt-1">إن لم تُرفق صورة، سيُحاول النظام استخراج غلاف من أول صفحة PDF.</p>
+                <p class="text-xs text-slate-500 mt-1">عند نجاح الاستخراج يمكن استخدام أول صفحة من PDF كغلاف.</p>
                 {% for error in form.new_cover_image.errors %}
                     <p class="text-xs text-red-600 mt-1">{{ error }}</p>
                 {% endfor %}
@@ -152,6 +152,7 @@
     }
 </script>
 {% endblock %}
+
 
 
 

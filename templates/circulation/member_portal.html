@@ -6,6 +6,9 @@
 <section class="space-y-6">
     <div class="card">
         <h1 class="text-2xl font-extrabold mb-4">بوابة العضو للمتابعة وطلبات التجديد</h1>
+        {% if is_admin_view %}
+            <p class="text-xs text-slate-500 mb-3">يمكنك إدخال رقم العضوية أو فتح البوابة مباشرة من صفحة إدارة الأعضاء.</p>
+        {% endif %}
         <form method="get" class="flex gap-2">
             <input type="text" name="membership" class="input-field" placeholder="أدخل رقم العضوية (QR)" value="{{ membership }}" required>
             <button type="submit" class="btn-primary">عرض</button>
@@ -42,7 +45,7 @@
             </article>
 
             <article class="card">
-                <h3 class="text-lg font-extrabold mb-3">طلبات الحجز</h3>
+                <h3 class="text-lg font-extrabold mb-3">طلبات الحجز النشطة</h3>
                 <div class="space-y-3">
                     {% for reservation in reservations %}
                         <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
@@ -63,7 +66,38 @@
                 </div>
             </article>
         </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <article class="card">
+                <h3 class="text-lg font-extrabold mb-3">سجل الاستعارات السابقة</h3>
+                <div class="space-y-3">
+                    {% for borrowing in borrowing_history %}
+                        <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                            <div class="font-bold">{{ borrowing.book_copy.book.title }}</div>
+                            <div class="text-xs text-slate-500">تاريخ الاستعارة: {{ borrowing.borrow_date }}</div>
+                            <div class="text-xs text-slate-500">تاريخ الإرجاع: {{ borrowing.return_date|default:"-" }}</div>
+                        </div>
+                    {% empty %}
+                        <p class="text-sm text-slate-500">لا يوجد سجل استعارات سابقة.</p>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <article class="card">
+                <h3 class="text-lg font-extrabold mb-3">سجل الحجوزات السابقة</h3>
+                <div class="space-y-3">
+                    {% for reservation in reservation_history %}
+                        <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                            <div class="font-bold">{{ reservation.book.title }}</div>
+                            <div class="text-xs text-slate-500">الحالة: {{ reservation.get_status_display }}</div>
+                            <div class="text-xs text-slate-500">تاريخ الطلب: {{ reservation.reservation_date|date:"Y-m-d H:i" }}</div>
+                        </div>
+                    {% empty %}
+                        <p class="text-sm text-slate-500">لا يوجد سجل حجوزات سابقة.</p>
+                    {% endfor %}
+                </div>
+            </article>
+        </div>
     {% endif %}
 </section>
 {% endblock %}
-
