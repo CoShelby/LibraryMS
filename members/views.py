@@ -1,4 +1,4 @@
-﻿from django.contrib import messages
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Case, F, IntegerField, Q, When
@@ -18,6 +18,7 @@ def _chunk_members(members, chunk_size=4):
 @admin_capability_required("can_manage_members")
 def member_list(request):
     query = request.GET.get("query", "")
+    unprinted_only = request.GET.get("unprinted_only", "")
     members = Member.objects.all().order_by("-created_at")
 
     if query:
@@ -26,6 +27,9 @@ def member_list(request):
             | Q(membership_number__icontains=query)
             | Q(university_id__icontains=query)
         )
+        
+    if unprinted_only == "1":
+        members = members.filter(is_printed=False)
 
     paginator = Paginator(members, 10)
     page_number = request.GET.get("page")
@@ -37,6 +41,7 @@ def member_list(request):
         {
             "members": page_obj,
             "query": query,
+            "unprinted_only": unprinted_only,
             "today": timezone.now().date(),
         },
     )
@@ -77,6 +82,7 @@ def print_member_cards(request):
         Member.objects.filter(id__in=[member.id for member in members]).update(
             card_print_count=F("card_print_count") + 1,
             last_card_printed_at=timezone.now(),
+            is_printed=True,
         )
 
     return render(

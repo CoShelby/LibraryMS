@@ -135,7 +135,6 @@
                 <div class="notification-menu">
                     <button id="adminNotificationsToggle" type="button" class="btn-secondary notification-button">
                         <i class="fa-solid fa-bell"></i>
-                        <span>الإشعارات</span>
                         {% if admin_notification_unread_count %}
                             <span class="notification-badge">{{ admin_notification_unread_count }}</span>
                         {% endif %}
@@ -277,6 +276,9 @@
         if (drawerBackdrop) {
             drawerBackdrop.addEventListener('click', closeDrawer);
         }
+
+        const notificationsToggle = document.getElementById('adminNotificationsToggle');
+        const notificationsPanel = document.getElementById('adminNotificationsPanel');
 
         if (notificationsToggle && notificationsPanel) {
             notificationsToggle.addEventListener('click', () => {

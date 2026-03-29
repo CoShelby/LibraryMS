@@ -1,4 +1,4 @@
-﻿from django.db.models import Count, ExpressionWrapper, F, IntegerField, Q
+from django.db.models import Count, ExpressionWrapper, F, IntegerField, Q
 from django.shortcuts import get_object_or_404, render
 
 from .models import Book
@@ -51,24 +51,8 @@ def book_detail_view(request, book_id):
     has_physical_copies = total_copies_count > 0
     digital_copy = getattr(book, "digitallibrary", None)
 
-    similar_books = (
-        Book.objects.select_related("category")
-        .prefetch_related("authors")
-        .filter(category=book.category)
-        .exclude(id=book.id)
-        .order_by("-view_count", "-created_at")[:6]
-    )
-
-    if similar_books.count() < 6:
-        extra = (
-            Book.objects.select_related("category")
-            .prefetch_related("authors")
-            .filter(language=book.language)
-            .exclude(id=book.id)
-            .exclude(id__in=[item.id for item in similar_books])
-            .order_by("-view_count")[: 6 - similar_books.count()]
-        )
-        similar_books = list(similar_books) + list(extra)
+    from .services import get_similar_books
+    similar_books = get_similar_books(book, limit=6)
 
     context = {
         "book": book,

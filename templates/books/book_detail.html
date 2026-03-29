@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% load static %}
 
 {% block title %}{{ book.title }} | مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}
@@ -49,9 +49,9 @@
         <aside class="space-y-4">
             <div class="card p-0 overflow-hidden">
                 {% if book.cover_image %}
-                    <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="w-full h-96 object-cover">
+                    <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="w-full aspect-[2/3] object-cover">
                 {% else %}
-                    <img src="{% static 'images/logo.jpg' %}" alt="{{ book.title }}" class="w-full h-96 object-contain bg-slate-100 dark:bg-slate-800 p-4">
+                    <img src="{% static 'images/logo.jpg' %}" alt="{{ book.title }}" class="w-full aspect-[2/3] object-contain bg-slate-100 dark:bg-slate-800 p-4">
                 {% endif %}
             </div>
 

@@ -1,4 +1,4 @@
-﻿from django.db import models
+from django.db import models
 
 
 class Member(models.Model):
@@ -28,6 +28,7 @@ class Member(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     card_print_count = models.PositiveIntegerField(default=0)
     last_card_printed_at = models.DateTimeField(blank=True, null=True)
+    is_printed = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name

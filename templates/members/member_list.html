@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}LibraryMS | Members{% endblock %}
 
@@ -7,8 +7,12 @@
     <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
         <h1 class="text-2xl font-extrabold">إدارة الأعضاء</h1>
         <div class="flex gap-2 flex-wrap">
-            <form method="get" action="{% url 'member_list' %}" class="flex gap-2">
+            <form method="get" action="{% url 'member_list' %}" class="flex flex-wrap gap-2 items-center">
                 <input type="text" name="query" value="{{ query }}" placeholder="بحث بالاسم أو الرقم" class="input-field">
+                <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <input type="checkbox" name="unprinted_only" value="1" id="unprintedFilter" {% if unprinted_only == '1' %}checked{% endif %} class="h-4 w-4 outline-none">
+                    <label for="unprintedFilter" class="text-sm font-bold cursor-pointer">غير المطبوعة فقط</label>
+                </div>
                 <button type="submit" class="btn-secondary">بحث</button>
             </form>
             <a href="{% url 'add_member' %}" class="btn-primary">إضافة عضو</a>
@@ -74,13 +78,13 @@
             {% if members.has_other_pages %}
                 <div class="p-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-2 text-sm">
                     {% if members.has_previous %}
-                        <a href="?page={{ members.previous_page_number }}{% if query %}&query={{ query }}{% endif %}" class="px-3 py-1 rounded border border-slate-300">السابق</a>
+                        <a href="?page={{ members.previous_page_number }}{% if query %}&query={{ query }}{% endif %}{% if unprinted_only == '1' %}&unprinted_only=1{% endif %}" class="px-3 py-1 rounded border border-slate-300">السابق</a>
                     {% endif %}
 
                     <span class="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800">{{ members.number }} / {{ members.paginator.num_pages }}</span>
 
                     {% if members.has_next %}
-                        <a href="?page={{ members.next_page_number }}{% if query %}&query={{ query }}{% endif %}" class="px-3 py-1 rounded border border-slate-300">التالي</a>
+                        <a href="?page={{ members.next_page_number }}{% if query %}&query={{ query }}{% endif %}{% if unprinted_only == '1' %}&unprinted_only=1{% endif %}" class="px-3 py-1 rounded border border-slate-300">التالي</a>
                     {% endif %}
                 </div>
             {% endif %}
