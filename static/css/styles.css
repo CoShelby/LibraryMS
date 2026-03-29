@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     color-scheme: light;
     --c1: #5d3e3f;
     --c2: #967462;
@@ -348,6 +348,11 @@ body {
 
     .print-only {
         display: block !important;
+    }
+
+    .print-visible-overflow {
+        overflow: visible !important;
+        max-height: none !important;
     }
 
     .report-table {

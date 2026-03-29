@@ -1,6 +1,34 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}{{ title }}{% endblock %}
+
+{% block extra_head %}
+<!-- TomSelect CSS -->
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+<style>
+    /* Adjust tom-select to match tailwind inputs */
+    .ts-control {
+        border: 1px solid rgba(93, 62, 63, 0.25) !important;
+        border-radius: 0.85rem !important;
+        padding: 0.65rem 0.8rem !important;
+        box-shadow: none !important;
+        font-family: 'Cairo', sans-serif !important;
+    }
+    .ts-dropdown {
+        border-radius: 0.85rem !important;
+        overflow: hidden;
+        border: 1px solid rgba(93, 62, 63, 0.15) !important;
+    }
+    html[data-theme="dark"] .ts-control {
+        background: #0b1220 !important;
+        border-color: rgba(166, 186, 174, 0.35) !important;
+    }
+    html[data-theme="dark"] .ts-dropdown {
+        background: #0f172a !important;
+        color: #e2e8f0 !important;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <section class="max-w-4xl mx-auto space-y-5">
@@ -134,7 +162,19 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const bookSelect = document.getElementById('{{ form.book.id_for_label }}');
+        if (bookSelect) {
+            new TomSelect(bookSelect, {
+                create: false,
+                sortField: { field: "text", direction: "asc" },
+                placeholder: "ابحث عن الجزء الورقي للكتاب..."
+            });
+        }
+    });
+
     const createCheckbox = document.getElementById('{{ form.create_new_book.id_for_label }}');
     const newFieldsBox = document.getElementById('new-book-fields');
     const existingBookField = document.getElementById('{{ form.book.id_for_label }}');

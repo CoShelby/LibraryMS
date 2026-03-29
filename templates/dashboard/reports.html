@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}التقارير{% endblock %}
 
@@ -19,11 +19,13 @@
     </div>
 
     <form method="get" class="card grid grid-cols-1 md:grid-cols-4 gap-3 print-hidden">
-        <select name="table" class="input-field" onchange="this.form.submit()">
-            {% for key, config in report_tables.items %}
-                <option value="{{ key }}" {% if key == active_table %}selected{% endif %}>{{ config.label }}</option>
-            {% endfor %}
-        </select>
+        <div class="md:col-span-full">
+            <div class="flex flex-wrap gap-2">
+                {% for key, config in report_tables.items %}
+                    <button type="submit" name="table" value="{{ key }}" class="{% if key == active_table %}btn-primary{% else %}btn-secondary{% endif %}">{{ config.label }}</button>
+                {% endfor %}
+            </div>
+        </div>
 
         <select name="sort" class="input-field">
             {% for value, label in sort_options %}
@@ -42,9 +44,9 @@
         <button type="submit" class="btn-primary">عرض</button>
     </form>
 
-    <div class="card p-0 overflow-hidden">
+    <div class="card p-0 overflow-hidden print-visible-overflow">
         <div class="p-4 border-b border-slate-200 dark:border-slate-800 font-bold">جدول: {{ active_label }} ({{ rows|length }} صف)</div>
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto print-visible-overflow">
             <table class="w-full text-sm report-table">
                 <thead class="bg-slate-50 dark:bg-slate-800">
                     <tr>

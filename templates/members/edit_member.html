@@ -1,2 +1,18 @@
-﻿{% extends "members/add_member.html" %}
+{% extends "members/add_member.html" %}
 
+{% block extra_actions %}
+{% if member %}
+<button type="button" onclick="if(confirm('هل أنت متأكد من حذف هذا العضو نهائياً؟')) document.getElementById('deleteMemberForm').submit();" class="btn-secondary !text-red-600 !border-red-200 hover:!bg-red-50" title="حذف العضو">
+    <i class="fa-solid fa-trash px-1"></i>
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+{{ block.super }}
+{% if member %}
+<form id="deleteMemberForm" method="post" action="{% url 'delete_member' member.id %}" style="display: none;">
+    {% csrf_token %}
+</form>
+{% endif %}
+{% endblock %}

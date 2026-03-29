@@ -43,6 +43,7 @@
     </script>
 
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-paper dark:bg-night text-slate-900 dark:text-slate-100 font-sans">
     <div class="md:hidden sticky top-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur border-b border-slate-200 dark:border-slate-800">
@@ -152,11 +153,23 @@
                         </div>
                         <div class="space-y-2">
                             {% for notification in admin_notifications %}
-                                <article class="notification-item {% if not notification.is_read %}notification-item-unread{% endif %}">
-                                    <div class="text-sm font-bold">{{ notification.title }}</div>
-                                    <div class="text-xs text-slate-500 mt-1">{{ notification.message|linebreaksbr }}</div>
-                                    <div class="text-[11px] text-slate-400 mt-2">{{ notification.created_at|date:"Y-m-d H:i" }}</div>
-                                </article>
+                                {% if not notification.is_read %}
+                                    <form method="post" action="{% url 'dashboard_mark_single_notification_read' notification.id %}" class="m-0">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button type="submit" class="w-full text-right notification-item notification-item-unread hover:bg-slate-100 dark:hover:bg-slate-800 transition block">
+                                            <div class="text-sm font-bold">{{ notification.title }}</div>
+                                            <div class="text-xs text-slate-500 mt-1">{{ notification.message|linebreaksbr }}</div>
+                                            <div class="text-[11px] text-slate-400 mt-2">{{ notification.created_at|date:"Y-m-d H:i" }}</div>
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <article class="notification-item">
+                                        <div class="text-sm font-bold">{{ notification.title }}</div>
+                                        <div class="text-xs text-slate-500 mt-1">{{ notification.message|linebreaksbr }}</div>
+                                        <div class="text-[11px] text-slate-400 mt-2">{{ notification.created_at|date:"Y-m-d H:i" }}</div>
+                                    </article>
+                                {% endif %}
                             {% empty %}
                                 <p class="text-sm text-slate-500">لا توجد إشعارات حاليًا.</p>
                             {% endfor %}
