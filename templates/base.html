@@ -1,4 +1,4 @@
-﻿{% load static %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="light">
 <head>
@@ -155,7 +155,7 @@
                             {% for notification in admin_notifications %}
                                 <article class="notification-item {% if not notification.is_read %}notification-item-unread{% endif %}">
                                     <div class="text-sm font-bold">{{ notification.title }}</div>
-                                    <div class="text-xs text-slate-500 mt-1">{{ notification.message }}</div>
+                                    <div class="text-xs text-slate-500 mt-1">{{ notification.message|linebreaksbr }}</div>
                                     <div class="text-[11px] text-slate-400 mt-2">{{ notification.created_at|date:"Y-m-d H:i" }}</div>
                                 </article>
                             {% empty %}

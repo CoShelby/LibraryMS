@@ -1,4 +1,4 @@
-﻿from django.utils import timezone
+from django.utils import timezone
 
 from books.models import BookCopy
 from circulations.models import Borrowing, Reservation
@@ -100,6 +100,83 @@ def notify_reserved_book_available(book):
         )
 
 
+def sync_high_risk_members_notifications():
+    now = timezone.now()
+    thirty_days_ago = now - timezone.timedelta(days=30)
+    from django.db.models import Count, Q, F
+    from members.models import Member
+    
+    members_with_stats = Member.objects.annotate(
+        current_overdues=Count(
+            'borrowing',
+            filter=Q(borrowing__return_date__isnull=True, borrowing__due_date__lt=now)
+        ),
+        recent_delays=Count(
+            'borrowing',
+            filter=Q(
+                borrowing__due_date__gte=thirty_days_ago,
+                borrowing__due_date__lt=now,
+            ) & (Q(borrowing__return_date__isnull=True) | Q(borrowing__return_date__gt=F('borrowing__due_date')))
+        )
+    ).filter(
+        Q(current_overdues__gt=2) | Q(recent_delays__gte=2)
+    )
+
+    current_high_risk_member_ids = set()
+
+    for member in members_with_stats:
+        current_high_risk_member_ids.add(member.id)
+        
+        all_delays = Borrowing.objects.filter(
+            member=member,
+            due_date__lt=now
+        ).filter(
+            Q(return_date__isnull=True) | Q(return_date__gt=F('due_date'))
+        )
+        total_delays = all_delays.count()
+        
+        total_overdue_seconds = 0
+        for b in all_delays:
+            end_date = b.return_date if b.return_date else now
+            delay = end_date - b.due_date
+            if delay.total_seconds() > 0:
+                total_overdue_seconds += delay.total_seconds()
+        
+        total_overdue_days = int(total_overdue_seconds // 86400)
+        
+        message = (f"العضو: {member.name}\n"
+                   f"عدد التأخيرات: {total_delays}\n"
+                   f"إجمالي أيام التأخير: {total_overdue_days} يوم\n"
+                   f"معرف العضو: {member.id}")
+        
+        existing = Notification.objects.filter(
+            notification_type=Notification.TYPE_HIGH_RISK_MEMBER,
+            message__contains=f"معرف العضو: {member.id}"
+        ).first()
+        
+        if existing:
+            if existing.message != message:
+                existing.message = message
+                existing.save(update_fields=["message", "updated_at"])
+        else:
+            Notification.objects.create(
+                notification_type=Notification.TYPE_HIGH_RISK_MEMBER,
+                title="عضو غير ملتزم - تأخيرات متكررة",
+                message=message
+            )
+
+    all_high_risk = Notification.objects.filter(notification_type=Notification.TYPE_HIGH_RISK_MEMBER)
+    for notif in all_high_risk:
+        is_current = False
+        for m_id in current_high_risk_member_ids:
+            if f"معرف العضو: {m_id}" in notif.message:
+                is_current = True
+                break
+        if not is_current:
+            notif.delete()
+
+
 def get_admin_notifications(limit=8):
     sync_overdue_notifications()
+    sync_high_risk_members_notifications()
     return Notification.objects.order_by("-updated_at", "-id")[:limit]

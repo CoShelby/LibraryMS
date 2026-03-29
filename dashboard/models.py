@@ -1,4 +1,4 @@
-﻿from django.db import models
+from django.db import models
 
 from circulations.models import Borrowing, Reservation
 
@@ -7,10 +7,12 @@ class Notification(models.Model):
     TYPE_OVERDUE = "overdue"
     TYPE_RESERVATION_CREATED = "reservation_created"
     TYPE_RESERVATION_AVAILABLE = "reservation_available"
+    TYPE_HIGH_RISK_MEMBER = "high_risk_member"
     TYPE_CHOICES = [
         (TYPE_OVERDUE, "استعارة متأخرة"),
         (TYPE_RESERVATION_CREATED, "طلب حجز جديد"),
         (TYPE_RESERVATION_AVAILABLE, "كتاب محجوز أصبح متاحًا"),
+        (TYPE_HIGH_RISK_MEMBER, "إشعار عضو غير ملتزم"),
     ]
 
     notification_type = models.CharField(max_length=40, choices=TYPE_CHOICES, db_index=True)
