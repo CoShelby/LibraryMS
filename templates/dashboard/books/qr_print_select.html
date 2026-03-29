@@ -1,0 +1,120 @@
+﻿{% extends "base.html" %}
+
+{% block title %}طباعة QR للنسخ{% endblock %}
+
+{% block content %}
+<section class="space-y-5">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+            <h1 class="text-2xl font-black">طباعة QR للنسخ</h1>
+            {% if selected_book %}
+                <p class="text-sm text-slate-500">الكتاب المحدد: {{ selected_book.title }}</p>
+            {% else %}
+                <p class="text-sm text-slate-500">يمكنك طباعة النسخ غير المطبوعة أو تحديد نسخ بعينها أو طباعة كل النسخ.</p>
+            {% endif %}
+        </div>
+        <a href="{% if selected_book %}{% url 'dashboard_book_copies' selected_book.id %}{% else %}{% url 'dashboard_books_list' %}{% endif %}" class="btn-secondary">رجوع</a>
+    </div>
+
+    <form method="get" class="card grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+        {% if selected_book %}<input type="hidden" name="book" value="{{ selected_book.id }}">{% endif %}
+        <div class="md:col-span-2">
+            <label class="block text-sm font-bold mb-1">بحث</label>
+            <div class="flex gap-2">
+                <input id="qrPrintSearchInput" type="text" name="q" value="{{ query }}" class="input-field" placeholder="عنوان الكتاب أو كود النسخة">
+                <button type="button" class="btn-secondary qr-scan-button" data-scan-target="qrPrintSearchInput">مسح QR</button>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-bold mb-1">النطاق المعروض</label>
+            <select name="scope" class="input-field">
+                <option value="unprinted" {% if scope == 'unprinted' %}selected{% endif %}>غير المطبوعة فقط</option>
+                <option value="all" {% if scope == 'all' %}selected{% endif %}>كل النسخ</option>
+            </select>
+        </div>
+        <button type="submit" class="btn-primary">تحديث</button>
+    </form>
+
+    <form method="post" class="space-y-3">
+        {% csrf_token %}
+        {% if selected_book %}<input type="hidden" name="book" value="{{ selected_book.id }}">{% endif %}
+        <input type="hidden" name="q" value="{{ query }}">
+
+        <div class="card flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <input id="selectAllCopies" type="checkbox" class="h-4 w-4">
+                <label for="selectAllCopies" class="text-sm font-bold">تحديد كل نسخ الصفحة</label>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button type="submit" name="print_mode" value="selected" class="btn-primary">طباعة المحدد</button>
+                <button type="submit" name="print_mode" value="unprinted" class="btn-secondary">طباعة غير المطبوعة</button>
+                <button type="submit" name="print_mode" value="all" class="btn-secondary">طباعة الكل</button>
+            </div>
+        </div>
+
+        <div class="card p-0 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 dark:bg-slate-800">
+                        <tr>
+                            <th class="p-3 text-right w-10">تحديد</th>
+                            <th class="p-3 text-right">الكتاب</th>
+                            <th class="p-3 text-right">الكود</th>
+                            <th class="p-3 text-right">الحالة</th>
+                            <th class="p-3 text-right">الطباعة</th>
+                            <th class="p-3 text-right">الإضافة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for copy in copies %}
+                            <tr class="border-t border-slate-100 dark:border-slate-800">
+                                <td class="p-3"><input type="checkbox" name="copy_ids" value="{{ copy.id }}" class="copy-checkbox h-4 w-4"></td>
+                                <td class="p-3 font-semibold">{{ copy.book.title }}</td>
+                                <td class="p-3" dir="ltr">{{ copy.barcode }}</td>
+                                <td class="p-3">{{ copy.get_status_display }}</td>
+                                <td class="p-3">
+                                    {% if copy.is_printed %}
+                                        <span class="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">مطبوعة</span>
+                                    {% else %}
+                                        <span class="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">غير مطبوعة</span>
+                                    {% endif %}
+                                </td>
+                                <td class="p-3">{{ copy.created_at|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="6" class="p-8 text-center text-slate-500">لا توجد نسخ مطابقة.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if copies.has_other_pages %}
+                <div class="p-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-2 text-sm">
+                    {% if copies.has_previous %}
+                        <a href="?page={{ copies.previous_page_number }}{% if selected_book %}&book={{ selected_book.id }}{% endif %}{% if scope %}&scope={{ scope }}{% endif %}{% if query %}&q={{ query|urlencode }}{% endif %}" class="px-3 py-1 rounded border border-slate-300">السابق</a>
+                    {% endif %}
+                    <span class="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800">{{ copies.number }} / {{ copies.paginator.num_pages }}</span>
+                    {% if copies.has_next %}
+                        <a href="?page={{ copies.next_page_number }}{% if selected_book %}&book={{ selected_book.id }}{% endif %}{% if scope %}&scope={{ scope }}{% endif %}{% if query %}&q={{ query|urlencode }}{% endif %}" class="px-3 py-1 rounded border border-slate-300">التالي</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const selectAllCopies = document.getElementById('selectAllCopies');
+    const copyChecks = document.querySelectorAll('.copy-checkbox');
+
+    if (selectAllCopies) {
+        selectAllCopies.addEventListener('change', function () {
+            copyChecks.forEach((checkbox) => {
+                checkbox.checked = this.checked;
+            });
+        });
+    }
+</script>
+{% endblock %}

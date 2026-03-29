@@ -3,39 +3,63 @@
 {% block title %}حسابي الإداري{% endblock %}
 
 {% block content %}
-<section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <article class="card">
-        <h1 class="text-xl font-black mb-4">بيانات الحساب</h1>
-        <form method="post" class="space-y-3">
-            {% csrf_token %}
-            {% for field in profile_form %}
-                <div>
-                    <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
-                    {{ field }}
-                    {% for error in field.errors %}
-                        <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+<section class="space-y-6">
+    <article class="card overflow-hidden">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h1 class="text-2xl font-black">حسابي</h1>
+                <p class="text-sm text-slate-500 mt-1">إدارة بياناتك الشخصية وكلمة المرور من مكان واحد.</p>
+                <div class="flex flex-wrap gap-2 mt-3">
+                    {% for item in capability_labels %}
+                        <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-sm font-bold">{{ item }}</span>
+                    {% empty %}
+                        <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-sm font-bold">صلاحيات أساسية</span>
                     {% endfor %}
                 </div>
-            {% endfor %}
-            <button type="submit" name="save_profile" class="btn-primary w-full">حفظ البيانات</button>
-        </form>
+            </div>
+            <div class="grid grid-cols-2 gap-3 text-center">
+                <div class="rounded-2xl bg-slate-50 dark:bg-slate-900/60 p-4 min-w-[120px]">
+                    <div class="text-xs text-slate-500">الأدمنز المُدارون</div>
+                    <div class="text-2xl font-black mt-1">{{ managed_admins_count }}</div>
+                </div>
+                <div class="rounded-2xl bg-slate-50 dark:bg-slate-900/60 p-4 min-w-[120px]">
+                    <div class="text-xs text-slate-500">اسم المستخدم</div>
+                    <div class="text-lg font-black mt-1">{{ request.user.username }}</div>
+                </div>
+            </div>
+        </div>
     </article>
 
-    <article class="card">
-        <h2 class="text-xl font-black mb-4">تغيير كلمة المرور</h2>
-        <form method="post" class="space-y-3">
-            {% csrf_token %}
-            {% for field in password_form %}
-                <div>
-                    <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
-                    {{ field }}
-                    {% for error in field.errors %}
-                        <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                    {% endfor %}
-                </div>
-            {% endfor %}
-            <button type="submit" name="change_password" class="btn-primary w-full">تغيير كلمة المرور</button>
-        </form>
-    </article>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <article class="card">
+            <h2 class="text-xl font-black mb-4">البيانات الشخصية</h2>
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                {% for field in profile_form %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" name="save_profile" class="btn-primary w-full">حفظ البيانات</button>
+            </form>
+        </article>
+
+        <article class="card">
+            <h2 class="text-xl font-black mb-4">تغيير كلمة المرور</h2>
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                {% for field in password_form %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" name="change_password" class="btn-primary w-full">تحديث كلمة المرور</button>
+            </form>
+        </article>
+    </div>
 </section>
 {% endblock %}

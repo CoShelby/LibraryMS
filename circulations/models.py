@@ -10,9 +10,10 @@ class Borrowing(models.Model):
     book_copy = models.ForeignKey(BookCopy, on_delete=models.CASCADE)
     member = models.ForeignKey(Member, on_delete=models.CASCADE)
     employee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    borrow_date = models.DateField()
-    due_date = models.DateField()
-    return_date = models.DateField(blank=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_borrowings')
+    borrow_date = models.DateTimeField()
+    due_date = models.DateTimeField()
+    return_date = models.DateTimeField(blank=True, null=True)
     renewed = models.BooleanField(default=False)
     renewal_requested = models.BooleanField(default=False)
 
@@ -49,6 +50,15 @@ class Fine(models.Model):
 
     def __str__(self):
         return f"{self.amount}"
+
+
+class FinePayment(models.Model):
+    fine = models.OneToOneField(Fine, on_delete=models.CASCADE, related_name='payment')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_fine_payments')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.fine_id}'
 
 
 class Loan(models.Model):

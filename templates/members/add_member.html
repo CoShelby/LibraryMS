@@ -9,7 +9,7 @@
         <a href="{% url 'member_list' %}" class="btn-secondary">رجوع</a>
     </div>
 
-    <form method="post" class="card space-y-4">
+    <form method="post" enctype="multipart/form-data" class="card space-y-4">
         {% csrf_token %}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {% for field in form %}
@@ -51,7 +51,10 @@
 
         studentFields.forEach((field) => {
             if (!field) return;
-            field.style.display = value === 'student' ? 'block' : 'none';
+            field.style.display = value === 'student' ? 'block' : 'block';
+            if (value !== 'student' && (field.dataset.memberField === 'major' || field.dataset.memberField === 'level' || field.dataset.memberField === 'university_id')) {
+                field.style.display = 'none';
+            }
         });
     }
 
@@ -61,4 +64,3 @@
     }
 </script>
 {% endblock %}
-

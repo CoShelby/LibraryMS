@@ -92,7 +92,7 @@ def print_member_cards(request):
 @admin_capability_required("can_manage_members")
 def add_member(request):
     if request.method == "POST":
-        form = MemberForm(request.POST)
+        form = MemberForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
             messages.success(request, "Member created successfully.")
@@ -107,7 +107,7 @@ def add_member(request):
 def edit_member(request, member_id):
     member = get_object_or_404(Member, id=member_id)
     if request.method == "POST":
-        form = MemberForm(request.POST, instance=member)
+        form = MemberForm(request.POST, request.FILES, instance=member)
         if form.is_valid():
             form.save()
             messages.success(request, "Member updated successfully.")

@@ -22,13 +22,13 @@ class PublisherAdmin(admin.ModelAdmin):
 
 @admin.register(Book)
 class BookAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "publisher", "publication_year", "language", "view_count")
+    list_display = ("title", "category", "publisher", "created_by", "publication_year", "language", "view_count")
     search_fields = ("title", "dewey_decimal_number")
     list_filter = ("category", "publication_year", "language")
 
 
 @admin.register(BookCopy)
 class BookCopyAdmin(admin.ModelAdmin):
-    list_display = ("book", "barcode", "copy_number", "status")
+    list_display = ("book", "barcode", "copy_number", "status", "is_printed", "created_at")
     search_fields = ("barcode", "copy_number", "book__title")
-    list_filter = ("status",)
+    list_filter = ("status", "is_printed")

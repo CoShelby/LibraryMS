@@ -23,6 +23,7 @@ class Member(models.Model):
     major = models.CharField(max_length=200, blank=True, null=True)
     level = models.CharField(max_length=10, choices=STUDY_LEVEL, blank=True, null=True)
     workplace = models.CharField(max_length=200, blank=True, null=True)
+    photo = models.ImageField(upload_to="members/photos/", blank=True, null=True)
     membership_expiry = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
     card_print_count = models.PositiveIntegerField(default=0)

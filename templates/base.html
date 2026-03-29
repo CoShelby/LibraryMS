@@ -102,7 +102,7 @@
 
                 <a href="{% url 'dashboard_reports' %}" class="sidebar-link {% if '/dashboard/reports/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-table"></i> التقارير</a>
 
-                {% if request.user.is_superuser %}
+                {% if admin_can_manage_accounts %}
                     <a href="{% url 'dashboard_admin_users' %}" class="sidebar-link {% if '/dashboard/admins/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-user-shield"></i> إدارة الأدمنز</a>
                 {% endif %}
 
@@ -126,6 +126,46 @@
     </aside>
 
     <main class="min-h-screen p-4 md:p-8 md:pr-80">
+        {% if request.user.is_authenticated and request.user.is_superuser or request.user.is_authenticated and request.user.is_admin or request.user.is_authenticated and request.user.is_staff %}
+            <div class="admin-toolbar print-hidden">
+                <div>
+                    <div class="text-sm font-black">لوحة الإدارة</div>
+                    <div class="text-xs text-slate-500">{{ request.user.username }}</div>
+                </div>
+                <div class="notification-menu">
+                    <button id="adminNotificationsToggle" type="button" class="btn-secondary notification-button">
+                        <i class="fa-solid fa-bell"></i>
+                        <span>الإشعارات</span>
+                        {% if admin_notification_unread_count %}
+                            <span class="notification-badge">{{ admin_notification_unread_count }}</span>
+                        {% endif %}
+                    </button>
+                    <div id="adminNotificationsPanel" class="notification-panel hidden">
+                        <div class="notification-panel-header">
+                            <h3 class="font-black">أحدث الإشعارات</h3>
+                            {% if admin_notification_unread_count %}
+                                <form method="post" action="{% url 'dashboard_mark_notifications_read' %}" class="m-0">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="text-xs font-bold text-brand">تعليم الكل كمقروء</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                        <div class="space-y-2">
+                            {% for notification in admin_notifications %}
+                                <article class="notification-item {% if not notification.is_read %}notification-item-unread{% endif %}">
+                                    <div class="text-sm font-bold">{{ notification.title }}</div>
+                                    <div class="text-xs text-slate-500 mt-1">{{ notification.message }}</div>
+                                    <div class="text-[11px] text-slate-400 mt-2">{{ notification.created_at|date:"Y-m-d H:i" }}</div>
+                                </article>
+                            {% empty %}
+                                <p class="text-sm text-slate-500">لا توجد إشعارات حاليًا.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
         {% if request.path != '/' and '/dashboard/' not in request.path and '/members/' not in request.path %}
             <div class="mb-4">
                 <a href="{% url 'home' %}" class="btn-secondary"><i class="fa-solid fa-arrow-right ml-2"></i>العودة للرئيسية</a>
@@ -156,8 +196,22 @@
                 <p class="text-sm">الكتاب: <span id="modalBookTitle" class="font-bold"></span></p>
                 <input type="text" name="membership" required class="input-field" placeholder="أدخل رقم العضوية لإتمام الحجز">
                 <button type="submit" class="btn-primary w-full">إرسال طلب الحجز</button>
-                <p class="text-xs text-slate-500">الحجز صالح لمدة يومين فقط.</p>
+                <p class="text-xs text-slate-500">مدة الحجز تعتمد على إعدادات النظام الحالية.</p>
             </form>
+        </div>
+    </div>
+
+    <div id="qrScannerModal" class="fixed inset-0 z-[110] hidden items-center justify-center p-4 bg-black/70">
+        <div class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden">
+            <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="font-extrabold">مسح QR</h3>
+                <button type="button" id="closeScannerModal" class="text-slate-500 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 space-y-3">
+                <div id="qrScannerStatus" class="text-sm text-slate-500">جاري تجهيز الماسح...</div>
+                <div id="qrScannerReader" class="rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 min-h-[260px]"></div>
+                <p class="text-xs text-slate-500">سيطلب المتصفح إذن الوصول إلى الكاميرا عند أول استخدام. إذا تعذر ذلك، يبقى الإدخال اليدوي متاحًا بدون أي مشكلة.</p>
+            </div>
         </div>
     </div>
 
@@ -165,6 +219,13 @@
         const html = document.documentElement;
         const themeToggleBtn = document.getElementById('theme-toggle');
         const themeToggleMobileBtn = document.getElementById('theme-toggle-mobile');
+        const scannerModal = document.getElementById('qrScannerModal');
+        const scannerStatus = document.getElementById('qrScannerStatus');
+        const scannerReader = document.getElementById('qrScannerReader');
+        const closeScannerModalBtn = document.getElementById('closeScannerModal');
+        let activeScannerTarget = null;
+        let activeHtml5Qrcode = null;
+        let scannerLibraryPromise = null;
 
         function applyTheme(theme) {
             html.setAttribute('data-theme', theme);
@@ -217,6 +278,18 @@
             drawerBackdrop.addEventListener('click', closeDrawer);
         }
 
+        if (notificationsToggle && notificationsPanel) {
+            notificationsToggle.addEventListener('click', () => {
+                notificationsPanel.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!notificationsPanel.contains(event.target) && !notificationsToggle.contains(event.target)) {
+                    notificationsPanel.classList.add('hidden');
+                }
+            });
+        }
+
         function openReserveModal(bookId, bookTitle) {
             const modal = document.getElementById('reserveModal');
             const form = document.getElementById('reserveForm');
@@ -244,8 +317,126 @@
                 if (event.target === this) closeReserveModal();
             });
         }
+
+        function ensureScannerLibrary() {
+            if (window.Html5Qrcode) {
+                return Promise.resolve(window.Html5Qrcode);
+            }
+
+            if (!scannerLibraryPromise) {
+                scannerLibraryPromise = new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/html5-qrcode';
+                    script.onload = () => resolve(window.Html5Qrcode);
+                    script.onerror = () => reject(new Error('scanner-load-failed'));
+                    document.body.appendChild(script);
+                });
+            }
+
+            return scannerLibraryPromise;
+        }
+
+        async function stopScanner() {
+            if (activeHtml5Qrcode) {
+                try {
+                    await activeHtml5Qrcode.stop();
+                } catch (error) {
+                }
+                try {
+                    await activeHtml5Qrcode.clear();
+                } catch (error) {
+                }
+                activeHtml5Qrcode = null;
+            }
+            if (scannerReader) {
+                scannerReader.innerHTML = '';
+            }
+        }
+
+        async function requestCameraAccess() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('camera-unavailable');
+            }
+
+            const temporaryStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } },
+                audio: false,
+            });
+            temporaryStream.getTracks().forEach((track) => track.stop());
+        }
+
+        async function openScanner(targetId) {
+            const targetInput = document.getElementById(targetId);
+            if (!targetInput || !scannerModal || !scannerStatus || !scannerReader) {
+                return;
+            }
+
+            activeScannerTarget = targetInput;
+            scannerStatus.textContent = 'جاري تجهيز الماسح...';
+            scannerModal.classList.remove('hidden');
+            scannerModal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+
+            try {
+                const Html5Qrcode = await ensureScannerLibrary();
+                if (!Html5Qrcode || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    scannerStatus.textContent = 'الكاميرا غير متاحة على هذا الجهاز. استخدم الإدخال اليدوي.';
+                    return;
+                }
+
+                if (!window.isSecureContext && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+                    scannerStatus.textContent = 'فتح الكاميرا على الهاتف يتطلب HTTPS أو تشغيل الموقع محليًا.';
+                    return;
+                }
+
+                scannerStatus.textContent = 'انتظر طلب إذن الكاميرا من المتصفح ثم اسمح به.';
+                await requestCameraAccess();
+
+                activeHtml5Qrcode = new Html5Qrcode('qrScannerReader');
+                scannerStatus.textContent = 'وجّه الكاميرا إلى رمز QR.';
+
+                await activeHtml5Qrcode.start(
+                    { facingMode: { ideal: 'environment' } },
+                    { fps: 10, qrbox: { width: 220, height: 220 } },
+                    (decodedText) => {
+                        if (activeScannerTarget) {
+                            activeScannerTarget.value = decodedText;
+                            activeScannerTarget.dispatchEvent(new Event('input', { bubbles: true }));
+                            activeScannerTarget.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        closeScanner();
+                    },
+                    () => {}
+                );
+            } catch (error) {
+                scannerStatus.textContent = 'تعذر تشغيل الكاميرا أو تم رفض الإذن. يمكنك المتابعة بالإدخال اليدوي.';
+            }
+        }
+
+        async function closeScanner() {
+            await stopScanner();
+            if (!scannerModal) {
+                return;
+            }
+            scannerModal.classList.add('hidden');
+            scannerModal.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        document.querySelectorAll('.qr-scan-button').forEach((button) => {
+            button.addEventListener('click', () => openScanner(button.dataset.scanTarget));
+        });
+
+        closeScannerModalBtn?.addEventListener('click', closeScanner);
+        scannerModal?.addEventListener('click', (event) => {
+            if (event.target === scannerModal) {
+                closeScanner();
+            }
+        });
     </script>
 
     {% block extra_js %}{% endblock %}
 </body>
 </html>
+
+

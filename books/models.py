@@ -1,6 +1,8 @@
 ﻿from django.db import models
 from django.utils.text import slugify
 
+from accounts.models import User
+
 
 class Category(models.Model):
     category_id = models.CharField(max_length=50, unique=True, blank=True)
@@ -57,6 +59,7 @@ class Book(models.Model):
     pages = models.IntegerField(blank=True, null=True)
     cover_image = models.ImageField(upload_to="books/covers/", blank=True, null=True)
     description = models.TextField(blank=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_books')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     view_count = models.PositiveIntegerField(default=0, db_index=True)
 
@@ -80,6 +83,13 @@ class BookCopy(models.Model):
     copy_number = models.CharField(max_length=50, blank=True, null=True)
     barcode = models.CharField(max_length=100, unique=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS, default="new")
+    is_printed = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["book", "is_printed", "-created_at"]),
+        ]
 
     def _next_copy_number(self):
         existing = (
@@ -93,14 +103,21 @@ class BookCopy(models.Model):
                 numeric.append(int(value))
         return str((max(numeric) if numeric else 0) + 1)
 
+    def build_copy_code(self):
+        return f"{self.book_id}-{self.copy_number}"
+
     def save(self, *args, **kwargs):
+        # نحافظ على الترقيم التلقائي للنسخ عند عدم إدخال رقم نسخة يدويًا.
         if self.book_id and not (self.copy_number or "").strip():
             self.copy_number = self._next_copy_number()
 
+        # كود النسخة هو المصدر الموحد للطباعة والإعارة والـ QR.
         if self.book_id and not (self.barcode or "").strip():
-            self.barcode = f"{self.book_id}-{self.copy_number}"
+            self.barcode = self.build_copy_code()
 
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.book.title} - {self.barcode}"
+
+

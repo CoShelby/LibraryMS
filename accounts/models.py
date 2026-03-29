@@ -3,6 +3,13 @@ from django.db import models
 
 
 class User(AbstractUser):
+    created_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_admins',
+    )
     is_admin = models.BooleanField(default=False)
     can_manage_admins = models.BooleanField(default=False)
     can_manage_books = models.BooleanField(default=False)

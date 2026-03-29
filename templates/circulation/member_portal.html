@@ -9,8 +9,9 @@
         {% if is_admin_view %}
             <p class="text-xs text-slate-500 mb-3">يمكنك إدخال رقم العضوية أو فتح البوابة مباشرة من صفحة إدارة الأعضاء.</p>
         {% endif %}
-        <form method="get" class="flex gap-2">
-            <input type="text" name="membership" class="input-field" placeholder="أدخل رقم العضوية (QR)" value="{{ membership }}" required>
+        <form method="get" class="flex flex-col md:flex-row gap-2">
+            <input id="memberPortalInput" type="text" name="membership" class="input-field" placeholder="أدخل رقم العضوية (QR)" value="{{ membership }}" required>
+            <button type="button" class="btn-secondary qr-scan-button" data-scan-target="memberPortalInput">مسح QR</button>
             <button type="submit" class="btn-primary">عرض</button>
         </form>
     </div>
@@ -19,6 +20,7 @@
         <div class="card">
             <h2 class="text-xl font-bold">{{ member.name }}</h2>
             <p class="text-sm text-slate-500">رقم العضوية: {{ member.membership_number }}</p>
+            <p class="text-sm text-slate-500">انتهاء العضوية: {{ member.membership_expiry|date:"Y-m-d" }}</p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -29,7 +31,7 @@
                         <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
                             <div class="font-bold">{{ borrowing.book_copy.book.title }}</div>
                             <div class="text-xs text-slate-500 mt-1">النسخة QR: {{ borrowing.book_copy.barcode }}</div>
-                            <div class="text-xs text-slate-500">تاريخ الاستحقاق: {{ borrowing.due_date }}</div>
+                            <div class="text-xs text-slate-500">تاريخ الاستحقاق: {{ borrowing.due_date|date:"Y-m-d H:i" }}</div>
                             <form method="post" action="{% url 'renew_borrowing' borrowing.id %}" class="mt-2">
                                 {% csrf_token %}
                                 <input type="hidden" name="membership" value="{{ member.membership_number }}">
@@ -51,7 +53,7 @@
                         <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
                             <div class="font-bold">{{ reservation.book.title }}</div>
                             <div class="text-xs text-slate-500">الحالة: {{ reservation.get_status_display }}</div>
-                            <div class="text-xs text-slate-500">ينتهي: {{ reservation.cancel_date|default:"-" }}</div>
+                            <div class="text-xs text-slate-500">ينتهي: {{ reservation.cancel_date|date:"Y-m-d H:i"|default:"-" }}</div>
                             {% if reservation.status == 'pending' or reservation.status == 'approved' %}
                                 <form method="post" action="{% url 'cancel_reservation' reservation.id %}" class="mt-2">
                                     {% csrf_token %}
@@ -74,8 +76,8 @@
                     {% for borrowing in borrowing_history %}
                         <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
                             <div class="font-bold">{{ borrowing.book_copy.book.title }}</div>
-                            <div class="text-xs text-slate-500">تاريخ الاستعارة: {{ borrowing.borrow_date }}</div>
-                            <div class="text-xs text-slate-500">تاريخ الإرجاع: {{ borrowing.return_date|default:"-" }}</div>
+                            <div class="text-xs text-slate-500">تاريخ الاستعارة: {{ borrowing.borrow_date|date:"Y-m-d H:i" }}</div>
+                            <div class="text-xs text-slate-500">تاريخ الإرجاع: {{ borrowing.return_date|date:"Y-m-d H:i"|default:"-" }}</div>
                         </div>
                     {% empty %}
                         <p class="text-sm text-slate-500">لا يوجد سجل استعارات سابقة.</p>

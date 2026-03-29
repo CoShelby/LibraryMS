@@ -6,7 +6,7 @@
 <section class="space-y-6">
     <h1 class="text-2xl font-black">لوحة الإدارة</h1>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
         {% if can_manage_books %}
             <a href="{% url 'dashboard_books_list' %}" class="card block">
                 <div class="text-sm text-slate-500">إجمالي الكتب</div>
@@ -34,9 +34,19 @@
                 <div class="text-sm text-slate-500">الحجوزات المعلقة</div>
                 <div class="text-3xl font-black mt-2">{{ active_reservations }}</div>
             </a>
+            <a href="{% url 'dashboard_reports' %}?table=overdue" class="card block">
+                <div class="text-sm text-slate-500">المتأخرات</div>
+                <div class="text-3xl font-black mt-2">{{ overdue_borrows }}</div>
+            </a>
+            <a href="{% url 'dashboard_reports' %}?table=fines&amp;paid_status=unpaid" class="card block">
+                <div class="text-sm text-slate-500">الغرامات غير المدفوعة</div>
+                <div class="text-3xl font-black mt-2">{{ unpaid_fines }}</div>
+            </a>
         {% else %}
             <article class="card"><div class="text-sm text-slate-500">الاستعارات النشطة</div><div class="text-3xl font-black mt-2">{{ active_borrows }}</div></article>
             <article class="card"><div class="text-sm text-slate-500">الحجوزات المعلقة</div><div class="text-3xl font-black mt-2">{{ active_reservations }}</div></article>
+            <article class="card"><div class="text-sm text-slate-500">المتأخرات</div><div class="text-3xl font-black mt-2">{{ overdue_borrows }}</div></article>
+            <article class="card"><div class="text-sm text-slate-500">الغرامات غير المدفوعة</div><div class="text-3xl font-black mt-2">{{ unpaid_fines }}</div></article>
         {% endif %}
     </div>
 
@@ -46,6 +56,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-bold">
                 {% if can_manage_books %}
                     <a href="{% url 'dashboard_books_list' %}" class="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">إدارة الكتب</a>
+                    <a href="{% url 'dashboard_copy_qr_print' %}" class="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">طباعة QR للنسخ</a>
                     <a href="{% url 'dashboard_digital_list' %}" class="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">إدارة الكتب الرقمية</a>
                 {% endif %}
                 {% if can_manage_members %}
@@ -53,6 +64,8 @@
                 {% endif %}
                 {% if can_manage_circulation %}
                     <a href="{% url 'dashboard_circulation' %}" class="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">إدارة الاستعارات</a>
+                    <a href="{% url 'dashboard_reports' %}?table=overdue" class="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">المتأخرات</a>
+                    <a href="{% url 'dashboard_reports' %}?table=fines&amp;paid_status=unpaid" class="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">الغرامات</a>
                 {% endif %}
                 {% if can_manage_categories %}
                     <a href="{% url 'dashboard_categories' %}" class="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">الفئات والمؤلفون والناشرون</a>
@@ -80,5 +93,3 @@
     </div>
 </section>
 {% endblock %}
-
-

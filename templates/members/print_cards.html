@@ -37,7 +37,7 @@
         .membership-card {
             display: flex;
             border: 1px solid #0f172a;
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
             background: #fff;
             min-height: 64mm;
@@ -54,12 +54,6 @@
             border-left: 1px dashed #64748b;
         }
 
-        .face-title {
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
         .front-header {
             display: flex;
             align-items: center;
@@ -68,25 +62,59 @@
         }
 
         .front-logo {
-            width: 26px;
-            height: 26px;
+            width: 20px;
+            height: 20px;
             object-fit: contain;
         }
 
-        .front-lines {
-            font-size: 12px;
-            line-height: 1.8;
+        .library-title {
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1.5;
+        }
+
+        .front-body {
+            display: grid;
+            grid-template-columns: 64px 1fr;
+            gap: 10px;
+            align-items: start;
+        }
+
+        .member-photo,
+        .photo-placeholder {
+            width: 60px;
+            aspect-ratio: 3 / 4;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
         }
 
         .photo-placeholder {
-            margin-top: 8px;
-            border: 1px dashed #334155;
-            border-radius: 6px;
-            height: 85px;
             display: grid;
-            place-content: center;
+            place-items: center;
+            font-size: 10px;
             font-weight: 700;
-            color: #334155;
+            color: #64748b;
+        }
+
+        .front-lines {
+            font-size: 11px;
+            line-height: 1.75;
+        }
+
+        .front-lines strong {
+            font-weight: 800;
+        }
+
+        .type-badge {
+            display: inline-block;
+            margin-top: 4px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            font-size: 10px;
+            font-weight: 800;
         }
 
         .reprint-label {
@@ -102,11 +130,18 @@
             font-weight: 800;
         }
 
+        .back-face {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
         .qr-box {
             width: 100%;
             min-height: 130px;
             border: 1px solid #cbd5e1;
-            border-radius: 6px;
+            border-radius: 8px;
             display: grid;
             place-content: center;
             background: #fff;
@@ -121,7 +156,15 @@
             margin-top: 8px;
             text-align: center;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 800;
+        }
+
+        .back-note {
+            margin-top: 4px;
+            text-align: center;
+            font-size: 10px;
+            color: #64748b;
+            line-height: 1.6;
         }
 
         .print-meta {
@@ -163,22 +206,37 @@
                         {% endif %}
                         <div class="front-header">
                             <img src="{% static 'images/logo.jpg' %}" alt="Library Logo" class="front-logo">
-                            <div class="face-title">الوجه الأمامي</div>
+                            <div class="library-title">مكتبة كلية الحاسبات وتقنية المعلومات</div>
                         </div>
-                        <div class="front-lines">
-                            <div><strong>رقم العضو:</strong> {{ member.membership_number }}</div>
-                            <div><strong>اسم العضو:</strong> {{ member.name }}</div>
-                            <div><strong>تاريخ الإصدار:</strong> {{ member.created_at|date:"Y-m-d" }}</div>
+                        <div class="front-body">
+                            {% if member.photo %}
+                                <img src="{{ member.photo.url }}" alt="{{ member.name }}" class="member-photo">
+                            {% else %}
+                                <div class="photo-placeholder">بدون صورة</div>
+                            {% endif %}
+                            <div class="front-lines">
+                                <div><strong>رقم العضوية:</strong> {{ member.membership_number }}</div>
+                                <div><strong>اسم العضو:</strong> {{ member.name }}</div>
+                                <div><strong>تاريخ الانتهاء:</strong> {{ member.membership_expiry|date:"Y-m-d" }}</div>
+                                <div><strong>الهاتف:</strong> {{ member.phone }}</div>
+                                <div class="type-badge">{{ member.get_member_type_display }}</div>
+                                {% if member.member_type == 'student' %}
+                                    <div><strong>رقم القيد:</strong> {{ member.university_id|default:"-" }}</div>
+                                    <div><strong>التخصص:</strong> {{ member.major|default:"-" }}</div>
+                                    <div><strong>المستوى:</strong> {{ member.get_level_display|default:"-" }}</div>
+                                {% else %}
+                                    <div><strong>جهة العمل:</strong> {{ member.workplace|default:"-" }}</div>
+                                {% endif %}
+                            </div>
                         </div>
-                        <div class="photo-placeholder">4x6</div>
                     </div>
 
                     <div class="card-face back-face">
-                        <div class="face-title">الوجه الخلفي</div>
                         <div class="qr-box">
                             <div class="qr-code" data-membership="{{ member.membership_number }}"></div>
                         </div>
                         <div class="membership-text">{{ member.membership_number }}</div>
+                        <div class="back-note">هذه البطاقة خاصة بصاحبها وتُستخدم للتحقق السريع داخل النظام.</div>
                     </div>
                 </article>
             {% endfor %}

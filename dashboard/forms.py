@@ -130,7 +130,7 @@ class BookForm(forms.ModelForm):
         _validate_image_file(cover, "صورة الغلاف")
         return cover
 
-    def save(self, commit=True):
+    def save(self, commit=True, created_by=None):
         book = super().save(commit=False)
         is_new = self.instance.pk is None
 

@@ -3,70 +3,78 @@
 {% block title %}إدارة الأدمنز{% endblock %}
 
 {% block content %}
-<section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <article class="card">
-        <h1 class="text-xl font-black mb-4">إضافة أدمن جديد</h1>
-        <p class="text-xs text-slate-500 mb-3">سيتم إرسال كود تحقق مؤقت إلى بريد المدير: <span class="font-bold">{{ manager_email|default:"غير مضبوط" }}</span></p>
-        <form method="post" class="space-y-3">
-            {% csrf_token %}
-            {% for field in form %}
-                <div>
-                    <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
-                    {{ field }}
-                    {% for error in field.errors %}
-                        <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                    {% endfor %}
-                </div>
-            {% endfor %}
-            <button type="submit" class="btn-primary w-full">إنشاء الحساب</button>
-        </form>
-    </article>
-
-    <article class="card">
-        <h2 class="text-xl font-black mb-4">حسابات الأدمن الحالية</h2>
-        <div class="space-y-3 max-h-[560px] overflow-y-auto">
-            {% for admin_user in admins %}
-                <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-2">
-                    <div class="flex items-center justify-between gap-2">
-                        <div>
-                            <div class="font-bold">{{ admin_user.username }}</div>
-                            <div class="text-xs text-slate-500">{{ admin_user.email|default:"بدون بريد" }}</div>
-                        </div>
-                        <span class="text-xs px-2 py-1 rounded-full {% if admin_user.is_active %}bg-emerald-100 text-emerald-700{% else %}bg-red-100 text-red-700{% endif %}">
-                            {% if admin_user.is_active %}مفعل{% else %}معطل{% endif %}
-                        </span>
-                    </div>
-
-                    <div class="text-xs text-slate-500">
-                        {% if admin_user.can_manage_books %}إدارة الكتب {% endif %}
-                        {% if admin_user.can_manage_members %}| إدارة الأعضاء {% endif %}
-                        {% if admin_user.can_manage_categories %}| إدارة الفئات {% endif %}
-                        {% if admin_user.can_manage_circulation %}| إدارة الاستعارات {% endif %}
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <a href="{% url 'dashboard_admin_edit' admin_user.id %}" class="px-2 py-1 rounded border border-slate-300 text-xs text-center">تعديل</a>
-                        <form method="post" action="{% url 'dashboard_admin_send_reset_code' admin_user.id %}">
-                            {% csrf_token %}
-                            <button type="submit" class="w-full px-2 py-1 rounded border border-slate-300 text-xs">إرسال كود</button>
-                        </form>
-                        <a href="{% url 'dashboard_admin_reset_password' admin_user.id %}" class="px-2 py-1 rounded border border-slate-300 text-xs text-center">تعيين كلمة مرور</a>
-                        <form method="post" action="{% url 'dashboard_admin_toggle_active' admin_user.id %}">
-                            {% csrf_token %}
-                            <button type="submit" class="w-full px-2 py-1 rounded border border-slate-300 text-xs">
-                                {% if admin_user.is_active %}تعطيل{% else %}تفعيل{% endif %}
-                            </button>
-                        </form>
-                        <form method="post" action="{% url 'dashboard_admin_delete' admin_user.id %}" onsubmit="return confirm('تأكيد حذف هذا الحساب؟');" class="col-span-2">
-                            {% csrf_token %}
-                            <button type="submit" class="w-full px-2 py-1 rounded border border-red-300 text-red-700 text-xs">حذف</button>
-                        </form>
-                    </div>
-                </div>
-            {% empty %}
-                <p class="text-slate-500 text-sm">لا توجد حسابات أدمن.</p>
-            {% endfor %}
+<section class="space-y-6">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+            <h1 class="text-2xl font-black">إدارة الأدمنز</h1>
+            <p class="text-sm text-slate-500">{% if can_manage_all_admins %}يعرض هذا الجدول جميع حسابات الأدمنز.{% else %}يعرض هذا الجدول فقط الحسابات التي قمت بإنشائها.{% endif %}</p>
         </div>
-    </article>
+        <div class="text-xs text-slate-500">تتم إضافة كلمة المرور مباشرة عند إنشاء الحساب، ويمكن إعادة تعيينها من نفس الصفحة.</div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-6">
+        <article class="card space-y-4">
+            <div>
+                <h2 class="text-xl font-black">إضافة أدمن جديد</h2>
+                <p class="text-sm text-slate-500 mt-1">الأدمن الذي ينشئ الحساب يصبح مسؤولًا عن تعديله أو حذفه، ما عدا الـ superuser.</p>
+            </div>
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                {% for field in form %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
+                        <div class="{% if field.name|slice:':11' == 'can_manage_' or field.name == 'is_active' %}flex items-center gap-2{% endif %}">
+                            {{ field }}
+                            {% if field.name|slice:':11' == 'can_manage_' or field.name == 'is_active' %}<span class="text-sm text-slate-500">تفعيل</span>{% endif %}
+                        </div>
+                        {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn-primary w-full">إنشاء الحساب</button>
+            </form>
+        </article>
+
+        <article class="card space-y-4">
+            <div class="flex items-center justify-between gap-2">
+                <h2 class="text-xl font-black">حسابات الأدمن الحالية</h2>
+                <span class="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800">{{ admins|length }} حساب</span>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {% for admin_user in admins %}
+                    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-3 bg-slate-50/80 dark:bg-slate-900/50">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <div class="font-black text-lg">{{ admin_user.username }}</div>
+                                <div class="text-sm text-slate-500">{{ admin_user.first_name }} {{ admin_user.last_name }}</div>
+                                <div class="text-xs text-slate-500 mt-1">{{ admin_user.email|default:"بدون بريد" }}</div>
+                            </div>
+                            <span class="text-xs px-2 py-1 rounded-full {% if admin_user.is_active %}bg-emerald-100 text-emerald-700{% else %}bg-rose-100 text-rose-700{% endif %}">{% if admin_user.is_active %}مفعل{% else %}معطل{% endif %}</span>
+                        </div>
+
+                        <div class="text-xs text-slate-500 space-y-1">
+                            <div>المنشئ: <span class="font-bold">{{ admin_user.created_by.username|default:"غير محدد / قديم" }}</span></div>
+                            <div class="flex flex-wrap gap-2 pt-1">
+                                {% if admin_user.can_manage_admins %}<span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">إدارة الأدمنز</span>{% endif %}
+                                {% if admin_user.can_manage_books %}<span class="px-2 py-1 rounded-full bg-blue-100 text-blue-700">الكتب</span>{% endif %}
+                                {% if admin_user.can_manage_members %}<span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">الأعضاء</span>{% endif %}
+                                {% if admin_user.can_manage_circulation %}<span class="px-2 py-1 rounded-full bg-amber-100 text-amber-800">الاستعارات</span>{% endif %}
+                                {% if admin_user.can_manage_categories %}<span class="px-2 py-1 rounded-full bg-fuchsia-100 text-fuchsia-700">الفئات</span>{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <a href="{% url 'dashboard_admin_edit' admin_user.id %}" class="btn-secondary text-xs">تعديل</a>
+                            <form method="post" action="{% url 'dashboard_admin_toggle_active' admin_user.id %}">{% csrf_token %}<button type="submit" class="btn-secondary w-full text-xs">{% if admin_user.is_active %}تعطيل{% else %}تفعيل{% endif %}</button></form>
+                            <a href="{% url 'dashboard_admin_reset_password' admin_user.id %}" class="btn-secondary text-xs col-span-2">تعيين كلمة مرور</a>
+                            <form method="post" action="{% url 'dashboard_admin_delete' admin_user.id %}" onsubmit="return confirm('سيتم حذف الحساب وكل البيانات المرتبطة به. هل أنت متأكد؟');" class="col-span-2">{% csrf_token %}<button type="submit" class="btn-primary w-full text-xs bg-gradient-to-r from-rose-700 to-rose-600">حذف الحساب</button></form>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="lg:col-span-2 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">لا توجد حسابات مطابقة لمدى صلاحياتك الحالية.</div>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
 </section>
 {% endblock %}

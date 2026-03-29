@@ -3,13 +3,22 @@
 {% block title %}التقارير{% endblock %}
 
 {% block content %}
-<section class="space-y-5">
-    <div class="flex items-center justify-between">
+<section class="space-y-5 report-print-area">
+    <div class="flex items-center justify-between print-hidden">
         <h1 class="text-2xl font-black">التقارير</h1>
-        <a href="{% url 'dashboard_home' %}" class="btn-secondary">رجوع</a>
+        <div class="flex gap-2">
+            <button type="button" id="printReportBtn" class="btn-primary">طباعة</button>
+            <a href="{% url 'dashboard_reports' %}?table=overdue" class="btn-secondary">المتأخرات</a>
+            <a href="{% url 'dashboard_home' %}" class="btn-secondary">رجوع</a>
+        </div>
     </div>
 
-    <form method="get" class="card grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div class="print-only">
+        <h1 class="text-2xl font-black">{{ active_label }}</h1>
+        <p class="text-sm text-slate-500">تاريخ الطباعة: {% now "Y-m-d H:i" %}</p>
+    </div>
+
+    <form method="get" class="card grid grid-cols-1 md:grid-cols-4 gap-3 print-hidden">
         <select name="table" class="input-field" onchange="this.form.submit()">
             {% for key, config in report_tables.items %}
                 <option value="{{ key }}" {% if key == active_table %}selected{% endif %}>{{ config.label }}</option>
@@ -22,26 +31,50 @@
             {% endfor %}
         </select>
 
+        {% if active_table == 'fines' %}
+            <select name="paid_status" class="input-field">
+                <option value="all" {% if paid_status == 'all' %}selected{% endif %}>كل الغرامات</option>
+                <option value="paid" {% if paid_status == 'paid' %}selected{% endif %}>الغرامات المدفوعة</option>
+                <option value="unpaid" {% if paid_status == 'unpaid' %}selected{% endif %}>الغرامات غير المدفوعة</option>
+            </select>
+        {% endif %}
+
         <button type="submit" class="btn-primary">عرض</button>
     </form>
 
     <div class="card p-0 overflow-hidden">
         <div class="p-4 border-b border-slate-200 dark:border-slate-800 font-bold">جدول: {{ active_label }} ({{ rows|length }} صف)</div>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm report-table">
                 <thead class="bg-slate-50 dark:bg-slate-800">
                     <tr>
                         {% for header in headers %}
                             <th class="p-3 text-right">{{ header }}</th>
                         {% endfor %}
+                        {% if active_table == 'fines' %}
+                            <th class="p-3 text-right print-hidden">تحديث الدفع</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for row in rows %}
-                        <tr class="border-t border-slate-100 dark:border-slate-800">
+                        <tr class="border-t border-slate-100 dark:border-slate-800 align-top">
                             {% for cell in row %}
                                 <td class="p-3">{{ cell }}</td>
                             {% endfor %}
+                            {% if active_table == 'fines' %}
+                                <td class="p-3 min-w-[220px] print-hidden">
+                                    <form method="post" action="{% url 'dashboard_update_fine_payment' row.0 %}" class="flex gap-2 items-center">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <select name="paid_status" class="input-field">
+                                            <option value="paid" {% if row.5 == 'مدفوع' %}selected{% endif %}>مدفوع</option>
+                                            <option value="unpaid" {% if row.5 == 'غير مدفوع' %}selected{% endif %}>غير مدفوع</option>
+                                        </select>
+                                        <button type="submit" class="btn-secondary whitespace-nowrap">حفظ</button>
+                                    </form>
+                                </td>
+                            {% endif %}
                         </tr>
                     {% empty %}
                         <tr><td class="p-8 text-center text-slate-500" colspan="99">لا توجد بيانات.</td></tr>
@@ -53,3 +86,8 @@
 </section>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+    document.getElementById('printReportBtn')?.addEventListener('click', () => window.print());
+</script>
+{% endblock %}

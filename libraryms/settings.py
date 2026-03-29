@@ -11,22 +11,26 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-yc@w)wxjewtpn3fd9lla9o&ztq8gaoe4y#ny#extwei9$8)wkz'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-yc@w)wxjewtpn3fd9lla9o&ztq8gaoe4y#ny#extwei9$8)wkz')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', '1').lower() in {'1', 'true', 'yes'}
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [host.strip() for host in os.getenv('DJANGO_ALLOWED_HOSTS', '*').split(',') if host.strip()]
 
 
 # Application definition
@@ -63,13 +67,14 @@ ROOT_URLCONF = 'libraryms.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR,'templates')],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'dashboard.context_processors.admin_notifications',
             ],
         },
     },
@@ -125,9 +130,9 @@ USE_TZ = True
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 STATIC_URL = '/static/'
-STATICFILES_DIRS= [
+STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'libraryms/static')
-    ]
+]
 
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -143,15 +148,20 @@ MEDIA_ROOT = BASE_DIR / 'media'
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 
-# Email / Admin Reset Code Settings
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@libraryms.local')
-ADMIN_MANAGER_EMAIL = os.getenv('ADMIN_MANAGER_EMAIL', 'laptopkkh@gmail.com')
-ADMIN_RESET_CODE_TTL_SECONDS = int(os.getenv('ADMIN_RESET_CODE_TTL_SECONDS', '600'))
+# Email / OTP Settings
+# نعتمد فقط على متغيرات البيئة للقيم الحساسة الخاصة بالبريد.
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = os.getenv('EMAIL_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASS', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL') or EMAIL_HOST_USER
+ADMIN_MANAGER_EMAIL = os.getenv('ADMIN_MANAGER_EMAIL', '')
+EMAIL_OTP_TTL_SECONDS = int(os.getenv('EMAIL_OTP_TTL_SECONDS', '300'))
+ADMIN_RESET_CODE_TTL_SECONDS = int(os.getenv('ADMIN_RESET_CODE_TTL_SECONDS', str(EMAIL_OTP_TTL_SECONDS)))
 
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', '1').lower() in {'1', 'true', 'yes'}
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', '0').lower() in {'1', 'true', 'yes'}
+# Library timing configuration
+LIBRARY_DEMO_MODE = os.getenv('LIBRARY_DEMO_MODE', '1').lower() in {'1', 'true', 'yes'}
+LIBRARY_FINE_PER_UNIT = int(os.getenv('LIBRARY_FINE_PER_UNIT', '1000'))

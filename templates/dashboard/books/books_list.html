@@ -4,9 +4,10 @@
 
 {% block content %}
 <section class="space-y-5">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 class="text-2xl font-black">إدارة الكتب الورقية</h1>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
+            <a href="{% url 'dashboard_copy_qr_print' %}" class="btn-secondary"><i class="fa-solid fa-qrcode ml-2"></i>طباعة QR للنسخ</a>
             <a href="{% url 'dashboard_add_book' %}" target="_blank" rel="noopener" class="btn-primary">إضافة كتاب</a>
             <a href="{% url 'dashboard_digital_add' %}" class="btn-secondary">إضافة كتاب رقمي</a>
         </div>
@@ -22,6 +23,7 @@
                         <th class="p-3 text-right">النسخ</th>
                         <th class="p-3 text-right">الحالة</th>
                         <th class="p-3 text-right">رقمي</th>
+                        <th class="p-3 text-right">أضيف بواسطة</th>
                         <th class="p-3 text-right">إجراءات</th>
                     </tr>
                 </thead>
@@ -44,10 +46,12 @@
                                 {% endif %}
                             </td>
                             <td class="p-3">{% if book.has_digital %}نعم{% else %}لا{% endif %}</td>
+                            <td class="p-3">{{ book.created_by.username|default:"-" }}</td>
                             <td class="p-3">
                                 <div class="flex flex-wrap gap-1">
                                     <a href="{% url 'dashboard_edit_book' book.id %}" class="px-2 py-1 rounded border border-slate-300 text-xs">تعديل</a>
                                     <a href="{% url 'dashboard_book_copies' book.id %}" class="px-2 py-1 rounded text-xs text-white bg-sky-600 hover:bg-sky-700">النسخ</a>
+                                    <a href="{% url 'dashboard_copy_qr_print' %}?book={{ book.id }}" class="px-2 py-1 rounded border border-slate-300 text-xs">QR</a>
                                     {% if book.total_copies == 0 %}
                                         <form method="post" action="{% url 'dashboard_confirm_physical_book' book.id %}">
                                             {% csrf_token %}
@@ -59,7 +63,7 @@
                             </td>
                         </tr>
                     {% empty %}
-                        <tr><td colspan="6" class="p-8 text-center text-slate-500">لا توجد كتب مضافة.</td></tr>
+                        <tr><td colspan="7" class="p-8 text-center text-slate-500">لا توجد كتب مضافة.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -67,6 +71,3 @@
     </div>
 </section>
 {% endblock %}
-
-
-

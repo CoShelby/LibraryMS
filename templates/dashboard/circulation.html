@@ -6,24 +6,64 @@
 <section class="space-y-6">
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-black">إدارة الاستعارات</h1>
-        <a href="{% url 'dashboard_home' %}" class="btn-secondary">رجوع للوحة التحكم</a>
+        <div class="flex gap-2">
+            <a href="{% url 'dashboard_reports' %}?table=overdue" class="btn-secondary">المتأخرات</a>
+            <a href="{% url 'dashboard_home' %}" class="btn-secondary">رجوع للوحة التحكم</a>
+        </div>
     </div>
 
-    <article class="card">
-        <h2 class="text-xl font-black mb-3">استعارة يدوية بواسطة الأدمن</h2>
-        <form method="post" action="{% url 'dashboard_manual_borrow' %}" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+    <article class="card space-y-4">
+        <div>
+            <h2 class="text-xl font-black mb-2">استعارة يدوية بواسطة الأدمن</h2>
+            <p class="text-sm text-slate-500">الإدخال يتم برقم العضوية ورقم نسخة الكتاب فقط، مع إمكانية المسح عبر QR عند توفر الكاميرا.</p>
+        </div>
+
+        <form method="post" action="{% url 'dashboard_manual_borrow' %}" class="grid grid-cols-1 xl:grid-cols-6 gap-3 items-start">
             {% csrf_token %}
-            <input type="text" name="membership_number" class="input-field" placeholder="رقم العضوية" required>
-            <select name="book_id" class="input-field" required>
-                <option value="">اختر الكتاب</option>
-                {% for book in books %}
-                    <option value="{{ book.id }}">{{ book.title }}</option>
-                {% endfor %}
-            </select>
-            <input type="text" name="copy_barcode" class="input-field" placeholder="QR النسخة (اختياري)">
-            <button type="submit" class="btn-primary">تسجيل الاستعارة</button>
+            <div class="xl:col-span-2 space-y-2">
+                <input id="manualMembershipInput" type="text" name="membership_number" value="{{ manual_form.membership_number }}" class="input-field" placeholder="رقم العضوية" required>
+                <button type="button" class="btn-secondary w-full qr-scan-button" data-scan-target="manualMembershipInput">مسح QR العضوية</button>
+            </div>
+            <div class="xl:col-span-2 space-y-2">
+                <input id="manualCopyInput" type="text" name="copy_barcode" value="{{ manual_form.copy_barcode }}" class="input-field" placeholder="رقم النسخة / QR" required>
+                <button type="button" class="btn-secondary w-full qr-scan-button" data-scan-target="manualCopyInput">مسح QR النسخة</button>
+            </div>
+            <div class="xl:col-span-2">
+                <button type="submit" class="btn-primary w-full h-full min-h-[48px]">عرض بيانات الاستعارة</button>
+            </div>
         </form>
-        <p class="text-xs text-slate-500 mt-2">تظهر في القائمة الكتب الورقية فقط. الكتب الرقمية تحتاج أولاً لتأكيد ورقي من إدارة الكتب.</p>
+
+        {% if manual_preview %}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-2 bg-slate-50/80 dark:bg-slate-900/60">
+                    <h3 class="font-black">بيانات العضو</h3>
+                    <div class="text-sm"><span class="font-bold">الاسم:</span> {{ manual_preview.member.name }}</div>
+                    <div class="text-sm"><span class="font-bold">رقم العضوية:</span> {{ manual_preview.member.membership_number }}</div>
+                    <div class="text-sm"><span class="font-bold">النوع:</span> {{ manual_preview.member.get_member_type_display }}</div>
+                    <div class="text-sm"><span class="font-bold">الاستعارات النشطة:</span> {{ manual_preview.active_member_borrows }}</div>
+                </div>
+                <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-2 bg-slate-50/80 dark:bg-slate-900/60">
+                    <h3 class="font-black">بيانات النسخة</h3>
+                    <div class="text-sm"><span class="font-bold">الكتاب:</span> {{ manual_preview.book.title }}</div>
+                    <div class="text-sm"><span class="font-bold">كود النسخة:</span> {{ manual_preview.copy.barcode }}</div>
+                    <div class="text-sm"><span class="font-bold">رقم النسخة:</span> {{ manual_preview.copy.copy_number|default:'-' }}</div>
+                    <div class="text-sm"><span class="font-bold">حالة النسخة:</span> {{ manual_preview.copy.get_status_display }}</div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl p-4 border {% if manual_preview.status_tone == 'emerald' %}border-emerald-200 bg-emerald-50 text-emerald-800{% elif manual_preview.status_tone == 'rose' %}border-rose-200 bg-rose-50 text-rose-800{% else %}border-amber-200 bg-amber-50 text-amber-800{% endif %}">
+                <div class="font-black mb-1">الحالة: {{ manual_preview.status_label }}</div>
+                <p class="text-sm">{{ manual_preview.status_message }}</p>
+            </div>
+
+            <form method="post" action="{% url 'dashboard_manual_borrow' %}">
+                {% csrf_token %}
+                <input type="hidden" name="membership_number" value="{{ manual_form.membership_number }}">
+                <input type="hidden" name="copy_barcode" value="{{ manual_form.copy_barcode }}">
+                <input type="hidden" name="confirm_borrow" value="1">
+                <button type="submit" class="btn-primary w-full" {% if not manual_preview.can_confirm %}disabled style="opacity:.6;cursor:not-allowed"{% endif %}>تأكيد الاستعارة</button>
+            </form>
+        {% endif %}
     </article>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -36,14 +76,8 @@
                         <div class="text-xs text-slate-500">العضو: {{ reservation.member.name }} ({{ reservation.member.membership_number }})</div>
                         <div class="text-xs text-slate-500">تاريخ الطلب: {{ reservation.reservation_date|date:"Y-m-d H:i" }}</div>
                         <div class="flex gap-2">
-                            <form method="post" action="{% url 'dashboard_approve_reservation' reservation.id %}" class="flex-1">
-                                {% csrf_token %}
-                                <button type="submit" class="btn-primary w-full">اعتماد الحجز</button>
-                            </form>
-                            <form method="post" action="{% url 'dashboard_cancel_reservation' reservation.id %}" class="flex-1">
-                                {% csrf_token %}
-                                <button type="submit" class="btn-secondary w-full">رفض</button>
-                            </form>
+                            <form method="post" action="{% url 'dashboard_approve_reservation' reservation.id %}" class="flex-1">{% csrf_token %}<button type="submit" class="btn-primary w-full">اعتماد الحجز</button></form>
+                            <form method="post" action="{% url 'dashboard_cancel_reservation' reservation.id %}" class="flex-1">{% csrf_token %}<button type="submit" class="btn-secondary w-full">رفض</button></form>
                         </div>
                     </div>
                 {% empty %}
@@ -61,14 +95,8 @@
                         <div class="text-xs text-slate-500">العضو: {{ reservation.member.name }}</div>
                         <div class="text-xs text-slate-500">ينتهي: {{ reservation.cancel_date|date:"Y-m-d H:i"|default:"-" }}</div>
                         <div class="flex gap-2">
-                            <form method="post" action="{% url 'dashboard_complete_reservation' reservation.id %}" class="flex-1">
-                                {% csrf_token %}
-                                <button type="submit" class="btn-primary w-full">إتمام الاستعارة</button>
-                            </form>
-                            <form method="post" action="{% url 'dashboard_cancel_reservation' reservation.id %}" class="flex-1">
-                                {% csrf_token %}
-                                <button type="submit" class="btn-secondary w-full">إلغاء الحجز</button>
-                            </form>
+                            <form method="post" action="{% url 'dashboard_complete_reservation' reservation.id %}" class="flex-1">{% csrf_token %}<button type="submit" class="btn-primary w-full">إتمام الاستعارة</button></form>
+                            <form method="post" action="{% url 'dashboard_cancel_reservation' reservation.id %}" class="flex-1">{% csrf_token %}<button type="submit" class="btn-secondary w-full">إلغاء الحجز</button></form>
                         </div>
                     </div>
                 {% empty %}
@@ -84,16 +112,10 @@
                     <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-2">
                         <div class="font-bold">{{ borrowing.book_copy.book.title }}</div>
                         <div class="text-xs text-slate-500">العضو: {{ borrowing.member.name }}</div>
-                        <div class="text-xs text-slate-500">الاستحقاق الحالي: {{ borrowing.due_date|date:"Y-m-d" }}</div>
+                        <div class="text-xs text-slate-500">الاستحقاق الحالي: {{ borrowing.due_date|date:"Y-m-d H:i" }}</div>
                         <div class="flex gap-2">
-                            <form method="post" action="{% url 'dashboard_approve_renewal' borrowing.id %}" class="flex-1">
-                                {% csrf_token %}
-                                <button type="submit" class="btn-primary w-full">موافقة</button>
-                            </form>
-                            <form method="post" action="{% url 'dashboard_reject_renewal' borrowing.id %}" class="flex-1">
-                                {% csrf_token %}
-                                <button type="submit" class="btn-secondary w-full">رفض</button>
-                            </form>
+                            <form method="post" action="{% url 'dashboard_approve_renewal' borrowing.id %}" class="flex-1">{% csrf_token %}<button type="submit" class="btn-primary w-full">موافقة</button></form>
+                            <form method="post" action="{% url 'dashboard_reject_renewal' borrowing.id %}" class="flex-1">{% csrf_token %}<button type="submit" class="btn-secondary w-full">رفض</button></form>
                         </div>
                     </div>
                 {% empty %}
@@ -111,7 +133,8 @@
                     <div class="font-bold">{{ borrowing.book_copy.book.title }}</div>
                     <div class="text-xs text-slate-500">النسخة QR: {{ borrowing.book_copy.barcode }}</div>
                     <div class="text-xs text-slate-500">العضو: {{ borrowing.member.name }}</div>
-                    <div class="text-xs text-slate-500">الاستحقاق: {{ borrowing.due_date|date:"Y-m-d" }}</div>
+                    <div class="text-xs text-slate-500">أنشأ العملية: {{ borrowing.created_by.username|default:"-" }}</div>
+                    <div class="text-xs text-slate-500">الاستحقاق: {{ borrowing.due_date|date:"Y-m-d H:i" }}</div>
                     <form method="post" action="{% url 'dashboard_return_borrowing' borrowing.id %}">
                         {% csrf_token %}
                         <button type="submit" class="btn-primary w-full">تسجيل إرجاع الكتاب</button>
@@ -124,6 +147,3 @@
     </article>
 </section>
 {% endblock %}
-
-
-

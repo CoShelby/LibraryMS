@@ -15,6 +15,7 @@ class MemberForm(forms.ModelForm):
             "major",
             "level",
             "workplace",
+            "photo",
             "membership_expiry",
         ]
         labels = {
@@ -26,10 +27,12 @@ class MemberForm(forms.ModelForm):
             "major": "التخصص",
             "level": "المستوى الدراسي",
             "workplace": "جهة العمل",
+            "photo": "صورة العضو",
             "membership_expiry": "تاريخ انتهاء العضوية",
         }
         widgets = {
             "membership_expiry": forms.DateInput(attrs={"type": "date", "class": "input-field"}),
+            "photo": forms.ClearableFileInput(attrs={"class": "input-field", "accept": "image/*"}),
         }
 
     def __init__(self, *args, **kwargs):

@@ -1,15 +1,11 @@
-﻿from datetime import timedelta
-
-from django.utils import timezone
+﻿from django.utils import timezone
 
 from books.models import BookCopy
 
 from .models import Borrowing, Fine, Reservation
+from dashboard.notifications import create_reservation_created_notification, notify_reserved_book_available
 
 MAX_BORROW_LIMIT = 3
-BORROW_DAYS = 3
-RESERVATION_DAYS = 2
-FINE_PER_DAY = 1000
 
 
 def get_active_borrows_count(member):
@@ -85,13 +81,16 @@ def borrow_book(member, book, employee, preferred_copy=None):
     if not copy:
         raise ValueError("لا توجد نسخة صالحة للاستعارة.")
 
-    due_date = timezone.now().date() + timedelta(days=BORROW_DAYS)
+    now = timezone.now()
+    due_date = now + get_borrow_duration()
 
+    # نستخدم التاريخ والوقت معًا لدعم وضع العرض التجريبي بالدقائق.
     borrowing = Borrowing.objects.create(
         member=member,
         book_copy=copy,
         employee=employee,
-        borrow_date=timezone.now().date(),
+        created_by=employee,
+        borrow_date=now,
         due_date=due_date,
         renewed=False,
         renewal_requested=False,
@@ -114,7 +113,7 @@ def renew_borrowing(borrowing):
     if borrowing.renewed:
         raise ValueError("تم تجديد هذه الإعارة مسبقًا.")
 
-    borrowing.due_date = borrowing.due_date + timedelta(days=BORROW_DAYS)
+    borrowing.due_date = borrowing.due_date + get_borrow_duration()
     borrowing.renewed = True
     borrowing.renewal_requested = False
     borrowing.save(update_fields=["due_date", "renewed", "renewal_requested"])
@@ -149,20 +148,20 @@ def return_book(borrowing):
     if borrowing.return_date:
         raise ValueError("تم إرجاع هذا الكتاب مسبقًا.")
 
-    borrowing.return_date = timezone.now().date()
+    borrowing.return_date = timezone.now()
     borrowing.renewal_requested = False
     borrowing.save(update_fields=["return_date", "renewal_requested"])
 
     fine = None
-    if borrowing.return_date > borrowing.due_date:
-        days_late = (borrowing.return_date - borrowing.due_date).days
-        amount = days_late * FINE_PER_DAY
+    fine_snapshot = calculate_fine_snapshot(borrowing.due_date, reference_time=borrowing.return_date)
+    if fine_snapshot["has_fine"]:
         fine = Fine.objects.create(
             borrowing=borrowing,
-            days_late=days_late,
-            amount=amount,
+            days_late=fine_snapshot["units"],
+            amount=fine_snapshot["amount"],
         )
 
+    notify_reserved_book_available(borrowing.book_copy.book)
     return fine
 
 
@@ -184,8 +183,9 @@ def reserve_book(member, book):
         member=member,
         book=book,
         status="pending",
-        cancel_date=timezone.now() + timedelta(days=RESERVATION_DAYS),
+        cancel_date=timezone.now() + get_reservation_duration(),
     )
+    create_reservation_created_notification(reservation)
     return reservation
 
 
@@ -248,3 +248,7 @@ def get_member_borrowing_history(member):
 
 def get_member_reservation_history(member):
     return Reservation.objects.select_related("book").filter(member=member).order_by("-reservation_date", "-id")
+
+
+def describe_fine_units(units):
+    return f"{units} {fine_unit_label(units)}"
