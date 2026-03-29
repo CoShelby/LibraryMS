@@ -126,3 +126,13 @@ def edit_member(request, member_id):
         "members/edit_member.html",
         {"form": form, "member": member, "title": f"Edit Member: {member.name}"},
     )
+
+
+@admin_capability_required("can_manage_members")
+def delete_member(request, member_id):
+    if request.method == "POST":
+        member = get_object_or_404(Member, id=member_id)
+        name = member.name
+        member.delete()
+        messages.success(request, f"تم حذف العضو {name} بنجاح.")
+    return redirect("member_list")

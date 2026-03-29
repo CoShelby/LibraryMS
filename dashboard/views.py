@@ -1,4 +1,4 @@
-﻿import json
+import json
 import os
 
 from django.contrib import messages
@@ -297,6 +297,16 @@ def dashboard_book_copies(request, book_id):
             "copy_query": copy_query,
         },
     )
+
+@admin_capability_required("can_manage_books")
+def dashboard_delete_book_copy(request, copy_id):
+    if request.method == "POST":
+        copy = get_object_or_404(BookCopy, id=copy_id)
+        book_id = copy.book_id
+        copy.delete()
+        messages.success(request, "تم حذف النسخة بنجاح.")
+        return redirect("dashboard_book_copies", book_id=book_id)
+    return redirect("dashboard_books_list")
 
 
 @admin_capability_required("can_manage_books")
@@ -1287,6 +1297,13 @@ def dashboard_my_account(request):
 def dashboard_mark_notifications_read(request):
     if request.method == "POST":
         Notification.objects.filter(is_read=False).update(is_read=True)
+    return redirect(request.POST.get("next") or reverse("dashboard_home"))
+
+
+@admin_required
+def dashboard_mark_single_notification_read(request, notification_id):
+    if request.method == "POST":
+        Notification.objects.filter(id=notification_id, is_read=False).update(is_read=True)
     return redirect(request.POST.get("next") or reverse("dashboard_home"))
 
 

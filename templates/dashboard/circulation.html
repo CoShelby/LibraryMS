@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}إدارة الاستعارات{% endblock %}
 
@@ -7,8 +7,8 @@
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-black">إدارة الاستعارات</h1>
         <div class="flex gap-2">
-            <a href="{% url 'dashboard_reports' %}?table=overdue" class="btn-secondary">المتأخرات</a>
-            <a href="{% url 'dashboard_home' %}" class="btn-secondary">رجوع للوحة التحكم</a>
+            <a href="{% url 'dashboard_reports' %}?table=overdue" class="btn-secondary" title="المتأخرات"><i class="fa-solid fa-clock-rotate-left"></i></a>
+            <a href="{% url 'dashboard_home' %}" class="btn-secondary" title="رجوع للوحة التحكم"><i class="fa-solid fa-arrow-right"></i></a>
         </div>
     </div>
 

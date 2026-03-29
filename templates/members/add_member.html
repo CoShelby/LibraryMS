@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}LibraryMS | {{ title }}{% endblock %}
 
@@ -6,7 +6,7 @@
 <section class="max-w-4xl mx-auto space-y-5">
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-extrabold">{{ title }}</h1>
-        <a href="{% url 'member_list' %}" class="btn-secondary">رجوع</a>
+        <a href="{% url 'member_list' %}" class="btn-secondary" title="رجوع"><i class="fa-solid fa-arrow-right px-1"></i></a>
     </div>
 
     <form method="post" enctype="multipart/form-data" class="card space-y-4">
@@ -26,7 +26,10 @@
             {% endfor %}
         </div>
 
-        <button type="submit" class="btn-primary">حفظ العضو</button>
+        <div class="flex items-center gap-2">
+            <button type="submit" class="btn-primary">حفظ العضو</button>
+            {% block extra_actions %}{% endblock %}
+        </div>
     </form>
 </section>
 {% endblock %}

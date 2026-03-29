@@ -9,8 +9,8 @@
         <div class="flex flex-wrap items-center gap-2 justify-between">
             <h1 class="text-2xl font-black">البحث المتقدم</h1>
             <div class="flex gap-2">
-                <a href="{% url 'home' %}" class="btn-secondary">رجوع</a>
-                <button type="button" id="openFilterDrawer" class="btn-secondary"><i class="fa-solid fa-filter ml-2"></i>فلترة</button>
+                <a href="{% url 'home' %}" class="btn-secondary" title="الرئيسية"><i class="fa-solid fa-house"></i></a>
+                <button type="button" id="openFilterDrawer" class="btn-secondary" title="فلترة"><i class="fa-solid fa-filter"></i></button>
             </div>
         </div>
 
@@ -39,7 +39,7 @@
             {% endif %}
         </div>
 
-        <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
             {% for book in books %}
                 <article class="card flex flex-col p-3 md:p-4">
                     {% if book.cover_image %}

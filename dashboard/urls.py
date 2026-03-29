@@ -1,4 +1,4 @@
-﻿from django.urls import path
+from django.urls import path
 
 from . import views
 
@@ -10,6 +10,7 @@ urlpatterns = [
     path("books/<int:book_id>/copies/", views.dashboard_book_copies, name="dashboard_book_copies"),
     path("books/copies/qr-print/", views.dashboard_copy_qr_print, name="dashboard_copy_qr_print"),
     path("books/copies/qr-print/mark/", views.dashboard_mark_copies_printed, name="dashboard_mark_copies_printed"),
+    path("books/copies/<int:copy_id>/delete/", views.dashboard_delete_book_copy, name="dashboard_delete_book_copy"),
     path("books/<int:book_id>/confirm-physical/", views.dashboard_confirm_physical_book, name="dashboard_confirm_physical_book"),
     path("digital/", views.dashboard_digital_list, name="dashboard_digital_list"),
     path("digital/add/", views.dashboard_digital_add, name="dashboard_digital_add"),
@@ -34,6 +35,7 @@ urlpatterns = [
     path("admins/<int:admin_id>/delete/", views.dashboard_admin_delete, name="dashboard_admin_delete"),
     path("admins/<int:admin_id>/reset-password/", views.dashboard_admin_reset_password, name="dashboard_admin_reset_password"),
     path("notifications/mark-read/", views.dashboard_mark_notifications_read, name="dashboard_mark_notifications_read"),
+    path("notifications/<int:notification_id>/mark-read/", views.dashboard_mark_single_notification_read, name="dashboard_mark_single_notification_read"),
     path("api/check-entity/", views.api_check_entity, name="api_check_entity"),
     path("api/create-entity/", views.api_create_entity, name="api_create_entity"),
 ]

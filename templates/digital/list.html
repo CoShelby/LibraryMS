@@ -7,10 +7,10 @@
 <section class="space-y-6">
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-black">المكتبة الرقمية</h1>
-        <a href="{% url 'search_results' %}?search_scope=digital" class="btn-secondary">بحث داخل الرقمي</a>
+        <a href="{% url 'search_results' %}?search_scope=digital" class="btn-secondary" title="بحث داخل الرقمي"><i class="fa-solid fa-magnifying-glass"></i></a>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
         {% for dbook in digital_books %}
             <article class="card flex flex-col">
                 {% if dbook.book.cover_image %}
