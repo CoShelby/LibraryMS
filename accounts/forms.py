@@ -2,6 +2,8 @@
 from django.contrib.auth import password_validation
 from django.contrib.auth.forms import AuthenticationForm
 
+from libraryms.validation import normalize_contact_email
+
 from .models import User
 
 
@@ -51,6 +53,8 @@ class AdminUserCreationForm(forms.ModelForm):
         if not self.allow_admin_management:
             self.fields.pop("can_manage_admins")
 
+        self.fields["email"].required = True
+
         for field_name, field in self.fields.items():
             if field_name.startswith("can_manage_") or field_name == "is_active":
                 field.widget.attrs.update({"class": "h-4 w-4 rounded border-slate-300"})
@@ -66,10 +70,10 @@ class AdminUserCreationForm(forms.ModelForm):
         return username
 
     def clean_email(self):
-        email = (self.cleaned_data.get("email") or "").strip()
-        if email and User.objects.filter(email__iexact=email).exists():
+        normalized = normalize_contact_email(self.cleaned_data.get("email") or "")
+        if User.objects.filter(email__iexact=normalized).exists():
             raise forms.ValidationError("هذا البريد مستخدم مسبقًا.")
-        return email
+        return normalized
 
     def clean_password2(self):
         password1 = self.cleaned_data.get("password1") or ""
@@ -125,6 +129,8 @@ class AdminUserUpdateForm(forms.ModelForm):
         if not self.allow_admin_management:
             self.fields.pop("can_manage_admins")
 
+        self.fields["email"].required = True
+
         for field_name, field in self.fields.items():
             if field_name.startswith("can_manage_") or field_name == "is_active":
                 field.widget.attrs.update({"class": "h-4 w-4 rounded border-slate-300"})
@@ -143,13 +149,13 @@ class AdminUserUpdateForm(forms.ModelForm):
         return username
 
     def clean_email(self):
-        email = (self.cleaned_data.get("email") or "").strip()
-        query = User.objects.filter(email__iexact=email)
+        normalized = normalize_contact_email(self.cleaned_data.get("email") or "")
+        query = User.objects.filter(email__iexact=normalized)
         if self.instance_user and self.instance_user.pk:
             query = query.exclude(pk=self.instance_user.pk)
-        if email and query.exists():
+        if query.exists():
             raise forms.ValidationError("هذا البريد مستخدم مسبقًا.")
-        return email
+        return normalized
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -172,6 +178,7 @@ class AdminSelfProfileForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["email"].required = True
         for field in self.fields.values():
             field.widget.attrs.update({"class": "input-field"})
 
@@ -185,8 +192,9 @@ class AdminSelfProfileForm(forms.ModelForm):
         return username
 
     def clean_email(self):
-        email = (self.cleaned_data.get("email") or "").strip()
-        query = User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk)
-        if email and query.exists():
+        normalized = normalize_contact_email(self.cleaned_data.get("email") or "")
+        query = User.objects.filter(email__iexact=normalized).exclude(pk=self.instance.pk)
+        if query.exists():
             raise forms.ValidationError("هذا البريد مستخدم مسبقًا.")
-        return email
+        return normalized
+

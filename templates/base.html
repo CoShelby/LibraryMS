@@ -26,7 +26,7 @@
                         night: '#1f1b1b'
                     },
                     fontFamily: {
-                        sans: ['Cairo', 'sans-serif']
+                        sans: ['Cairo', 'Tahoma', 'Arial', 'sans-serif']
                     },
                     keyframes: {
                         floaty: {
@@ -52,7 +52,7 @@
                 <i class="fa-solid fa-bars"></i>
             </button>
             <div class="nav-brand min-w-0">
-                <img src="{% static 'images/logo.jpg' %}" alt="Library Logo" class="mobile-nav-logo">
+                <img src="{{ library_branding.logo_url }}" alt="Library Logo" class="mobile-nav-logo">
                 <h1 class="text-xs font-black text-brand dark:text-mint truncate">مكتبة كلية الحاسبات وتقنية المعلومات</h1>
             </div>
             <button id="theme-toggle-mobile" type="button" class="btn-secondary px-3 py-2">
@@ -66,7 +66,7 @@
     <aside id="app-drawer" class="fixed top-0 right-0 h-screen w-72 bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-50 transform translate-x-full md:translate-x-0 transition-transform duration-300 overflow-y-auto">
         <div class="p-5 border-b border-slate-200 dark:border-slate-800">
             <div class="nav-brand mb-2">
-                <img src="{% static 'images/logo.jpg' %}" alt="Library Logo" class="nav-logo">
+                <img src="{{ library_branding.logo_url }}" alt="Library Logo" class="nav-logo">
                 <h1 class="text-lg font-black text-brand dark:text-mint leading-7">مكتبة كلية الحاسبات<br>وتقنية المعلومات</h1>
             </div>
             <p class="text-xs text-slate-500 mt-2">نظام إدارة المكتبة الورقية والرقمية</p>
@@ -134,48 +134,13 @@
                     <div class="text-xs text-slate-500">{{ request.user.username }}</div>
                 </div>
                 <div class="notification-menu">
-                    <button id="adminNotificationsToggle" type="button" class="btn-secondary notification-button">
-                        <i class="fa-solid fa-bell"></i>
-                        {% if admin_notification_unread_count %}
-                            <span class="notification-badge">{{ admin_notification_unread_count }}</span>
-                        {% endif %}
-                    </button>
-                    <div id="adminNotificationsPanel" class="notification-panel hidden">
-                        <div class="notification-panel-header">
-                            <h3 class="font-black">أحدث الإشعارات</h3>
-                            {% if admin_notification_unread_count %}
-                                <form method="post" action="{% url 'dashboard_mark_notifications_read' %}" class="m-0">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                    <button type="submit" class="text-xs font-bold text-brand">تعليم الكل كمقروء</button>
-                                </form>
-                            {% endif %}
-                        </div>
-                        <div class="space-y-2">
-                            {% for notification in admin_notifications %}
-                                {% if not notification.is_read %}
-                                    <form method="post" action="{% url 'dashboard_mark_single_notification_read' notification.id %}" class="m-0">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                        <button type="submit" class="w-full text-right notification-item notification-item-unread hover:bg-slate-100 dark:hover:bg-slate-800 transition block">
-                                            <div class="text-sm font-bold">{{ notification.title }}</div>
-                                            <div class="text-xs text-slate-500 mt-1">{{ notification.message|linebreaksbr }}</div>
-                                            <div class="text-[11px] text-slate-400 mt-2">{{ notification.created_at|date:"Y-m-d H:i" }}</div>
-                                        </button>
-                                    </form>
-                                {% else %}
-                                    <article class="notification-item">
-                                        <div class="text-sm font-bold">{{ notification.title }}</div>
-                                        <div class="text-xs text-slate-500 mt-1">{{ notification.message|linebreaksbr }}</div>
-                                        <div class="text-[11px] text-slate-400 mt-2">{{ notification.created_at|date:"Y-m-d H:i" }}</div>
-                                    </article>
-                                {% endif %}
-                            {% empty %}
-                                <p class="text-sm text-slate-500">لا توجد إشعارات حاليًا.</p>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
+    <button id="adminNotificationsToggle" type="button" class="btn-secondary notification-button" aria-haspopup="dialog" aria-controls="adminNotificationsModal" aria-expanded="false">
+        <i class="fa-solid fa-bell"></i>
+        {% if admin_notification_unread_count %}
+            <span class="notification-badge">{{ admin_notification_unread_count }}</span>
+        {% endif %}
+    </button>
+</div>
             </div>
         {% endif %}
         {% if request.path != '/' and '/dashboard/' not in request.path and '/members/' not in request.path %}
@@ -196,7 +161,51 @@
 
         {% block content %}{% endblock %}
     </main>
-
+    <div id="adminNotificationsModal" class="notification-modal hidden" role="dialog" aria-modal="true" aria-labelledby="adminNotificationsTitle">
+        <div class="notification-modal-backdrop" id="adminNotificationsBackdrop"></div>
+        <div class="notification-modal-dialog card">
+            <div class="notification-panel-header p-4 border-b border-slate-200 dark:border-slate-800">
+                <h3 id="adminNotificationsTitle" class="font-black">أحدث الإشعارات</h3>
+                <div class="flex items-center gap-2">
+                    {% if admin_notification_unread_count %}
+                        <form method="post" action="{% url 'dashboard_mark_notifications_read' %}" class="m-0">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="text-xs font-bold text-brand">تعليم الكل كمقروء</button>
+                        </form>
+                    {% endif %}
+                    <button id="adminNotificationsClose" type="button" class="btn-secondary px-3 py-2" aria-label="إغلاق الإشعارات">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-4 space-y-2 max-h-[70vh] overflow-y-auto">
+                {% for notification in admin_notifications %}
+                    <article class="notification-item {% if notification.is_read %}notification-item-read{% else %}notification-item-unread{% endif %}">
+                        <a href="{% url 'dashboard_open_notification' notification.id %}" class="notification-link block text-right">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="text-sm font-bold">{{ notification.title }}</div>
+                                {% if notification.is_read %}
+                                    <span class="text-[11px] text-slate-400">مقروء</span>
+                                {% else %}
+                                    <span class="text-[11px] font-bold text-amber-700">غير مقروء</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-xs text-slate-500 mt-1">{{ notification.message|linebreaksbr }}</div>
+                            <div class="text-[11px] text-slate-400 mt-2">{{ notification.created_at|date:"Y-m-d H:i" }}</div>
+                        </a>
+                        <form method="post" action="{% url 'dashboard_send_notification_message' notification.id %}" class="mt-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn-secondary w-full">إرسال تذكير للعضو</button>
+                        </form>
+                    </article>
+                {% empty %}
+                    <p class="text-sm text-slate-500">لا توجد إشعارات حاليًا.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
     <div id="reserveModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/70">
         <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl">
             <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
@@ -291,19 +300,32 @@
         }
 
         const notificationsToggle = document.getElementById('adminNotificationsToggle');
-        const notificationsPanel = document.getElementById('adminNotificationsPanel');
+        const notificationsModal = document.getElementById('adminNotificationsModal');
+        const notificationsClose = document.getElementById('adminNotificationsClose');
+        const notificationsBackdrop = document.getElementById('adminNotificationsBackdrop');
 
-        if (notificationsToggle && notificationsPanel) {
-            notificationsToggle.addEventListener('click', () => {
-                notificationsPanel.classList.toggle('hidden');
-            });
-
-            document.addEventListener('click', (event) => {
-                if (!notificationsPanel.contains(event.target) && !notificationsToggle.contains(event.target)) {
-                    notificationsPanel.classList.add('hidden');
-                }
-            });
+        function openNotificationsModal() {
+            if (!notificationsModal) return;
+            notificationsModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            notificationsToggle?.setAttribute('aria-expanded', 'true');
         }
+
+        function closeNotificationsModal() {
+            if (!notificationsModal) return;
+            notificationsModal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+            notificationsToggle?.setAttribute('aria-expanded', 'false');
+        }
+
+        notificationsToggle?.addEventListener('click', openNotificationsModal);
+        notificationsClose?.addEventListener('click', closeNotificationsModal);
+        notificationsBackdrop?.addEventListener('click', closeNotificationsModal);
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeNotificationsModal();
+            }
+        });
 
         function openReserveModal(bookId, bookTitle) {
             const modal = document.getElementById('reserveModal');
@@ -453,5 +475,7 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
+
+
 
 

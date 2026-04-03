@@ -11,9 +11,11 @@ from django.db.models import (
     IntegerField,
     OuterRef,
     Q,
+    Sum,
     Value,
     When,
 )
+from django.db.models.functions import Coalesce
 
 from digital_library.models import DigitalLibrary
 
@@ -24,7 +26,7 @@ _ARABIC_VARIANTS = str.maketrans(
         "أ": "ا",
         "إ": "ا",
         "آ": "ا",
-        "ٱ": "ا",
+        "?": "ا",
         "ى": "ي",
         "ؤ": "و",
         "ئ": "ي",
@@ -382,7 +384,21 @@ def get_recent_books():
 
 
 def get_popular_categories(limit=8):
-    return Category.objects.annotate(book_count=Count("book")).order_by("-book_count", "name")[:limit]
+    return (
+        Category.objects.annotate(
+            book_count=Count("book", distinct=True),
+            view_score=Coalesce(Sum("book__view_count"), Value(0), output_field=IntegerField()),
+            search_score=Coalesce(F("search_stat__search_count"), Value(0), output_field=IntegerField()),
+        )
+        .annotate(
+            popularity_score=ExpressionWrapper(
+                (F("search_score") * Value(4)) + F("view_score"),
+                output_field=IntegerField(),
+            )
+        )
+        .filter(popularity_score__gt=0)
+        .order_by("-popularity_score", "-search_score", "-view_score", "-book_count", "name")[:limit]
+    )
 
 
 def get_homepage_data():
@@ -391,4 +407,7 @@ def get_homepage_data():
         "recent_books": get_recent_books(),
         "popular_categories": get_popular_categories(),
     }
+
+
+
 

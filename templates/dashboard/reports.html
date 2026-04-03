@@ -13,6 +13,109 @@
         </div>
     </div>
 
+    <article class="card space-y-4 print-hidden">
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+            <h2 class="text-lg font-black">بحث عضو سريع (اسم / ID)</h2>
+            {% if selected_member %}
+                <a href="{% url 'dashboard_reports' %}?table={{ active_table }}&sort={{ sort }}" class="text-xs font-bold text-brand">مسح النتيجة</a>
+            {% endif %}
+        </div>
+
+        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+            <input type="hidden" name="table" value="{{ active_table }}">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            {% if active_table == 'fines' %}<input type="hidden" name="paid_status" value="{{ paid_status }}">{% endif %}
+            <div class="md:col-span-3">
+                <input type="text" name="member_query" value="{{ member_query }}" class="input-field" placeholder="ادخل الاسم أو رقم العضوية أو رقم العضو">
+            </div>
+            <button type="submit" class="btn-primary">بحث</button>
+        </form>
+
+        {% if member_matches and not selected_member %}
+            <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                <div class="text-sm font-bold mb-2">نتائج مطابقة:</div>
+                <div class="flex flex-wrap gap-2">
+                    {% for member in member_matches %}
+                        <a href="{% url 'dashboard_reports' %}?table={{ active_table }}&sort={{ sort }}&member_query={{ member_query|urlencode }}&member_id={{ member.id }}{% if active_table == 'fines' %}&paid_status={{ paid_status }}{% endif %}" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm font-bold">
+                            {{ member.name }} ({{ member.membership_number }})
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if selected_member and member_snapshot %}
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                <article class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-1">
+                    <h3 class="font-black text-lg">{{ selected_member.name }}</h3>
+                    <p class="text-sm text-slate-500">ID: {{ selected_member.id }} | رقم العضوية: {{ selected_member.membership_number }}</p>
+                    <p class="text-sm text-slate-500">البريد: {{ selected_member.email|default:"-" }}</p>
+                    <p class="text-sm text-slate-500">الهاتف: {{ selected_member.phone|default:"-" }}</p>
+                    <p class="text-sm text-slate-500">الحالة: {% if selected_member.is_suspended %}<span class="text-rose-600 font-bold">موقوف</span>{% else %}<span class="text-emerald-600 font-bold">نشط</span>{% endif %}</p>
+                    <a href="{% url 'member_portal' %}?member_id={{ selected_member.id }}" class="btn-secondary mt-2">فتح بوابة العضو</a>
+                </article>
+
+                <article class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-2">
+                    <h3 class="font-black">الملخص</h3>
+                    <div class="text-sm">الكتب غير المرجعة: <span class="font-black">{{ member_snapshot.unreturned_count }}</span></div>
+                    <div class="text-sm">المتأخرات: <span class="font-black">{{ member_snapshot.overdue_count }}</span></div>
+                    <div class="text-sm">الغرامات غير المدفوعة: <span class="font-black">{{ member_snapshot.unpaid_fines_count }}</span></div>
+                    <div class="text-sm">إجمالي الغرامات: <span class="font-black">{{ member_snapshot.unpaid_fines_total }}</span></div>
+                </article>
+
+                <article class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-2">
+                    <h3 class="font-black">إرسال تذكير</h3>
+                    <form method="post" action="{% url 'dashboard_send_member_message' selected_member.id %}" class="space-y-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <select name="message_type" class="input-field">
+                            {% for value, label in message_types %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn-primary w-full">إرسال عبر البريد + تجهيز SMS</button>
+                    </form>
+                </article>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <article class="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                    <h3 class="font-black mb-3">الكتب غير المرجعة</h3>
+                    <div class="space-y-2 text-sm max-h-56 overflow-auto">
+                        {% for borrowing in member_snapshot.unreturned_borrowings %}
+                            <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                                <div class="font-bold">{{ borrowing.book_copy.book.title }}</div>
+                                <div class="text-xs text-slate-500">استحقاق: {{ borrowing.due_date|date:"Y-m-d H:i" }}</div>
+                            </div>
+                        {% empty %}
+                            <p class="text-slate-500">لا توجد كتب غير مرجعة.</p>
+                        {% endfor %}
+                    </div>
+                </article>
+
+                <article class="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                    <h3 class="font-black mb-3">الغرامات غير المدفوعة</h3>
+                    <div class="space-y-2 text-sm max-h-56 overflow-auto">
+                        {% for fine in member_snapshot.unpaid_fines %}
+                            <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-2">
+                                <div class="font-bold">{{ fine.borrowing.book_copy.book.title }}</div>
+                                <div class="text-xs text-slate-500">المبلغ: {{ fine.amount }} | أيام التأخير: {{ fine.days_late }}</div>
+                                <form method="post" action="{% url 'dashboard_update_fine_payment' fine.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <input type="hidden" name="paid_status" value="paid">
+                                    <button type="submit" class="btn-secondary w-full">تسديد هذه الغرامة</button>
+                                </form>
+                            </div>
+                        {% empty %}
+                            <p class="text-slate-500">لا توجد غرامات غير مدفوعة.</p>
+                        {% endfor %}
+                    </div>
+                </article>
+            </div>
+        {% endif %}
+    </article>
+
     <div class="print-only">
         <h1 class="text-2xl font-black">{{ active_label }}</h1>
         <p class="text-sm text-slate-500">تاريخ الطباعة: {% now "Y-m-d H:i" %}</p>
@@ -71,8 +174,8 @@
                                         {% csrf_token %}
                                         <input type="hidden" name="next" value="{{ request.get_full_path }}">
                                         <select name="paid_status" class="input-field">
-                                            <option value="paid" {% if row.5 == 'مدفوع' %}selected{% endif %}>مدفوع</option>
-                                            <option value="unpaid" {% if row.5 == 'غير مدفوع' %}selected{% endif %}>غير مدفوع</option>
+                                            <option value="paid" {% if row.5 == 'paid' %}selected{% endif %}>مدفوع</option>
+                                            <option value="unpaid" {% if row.5 == 'unpaid' %}selected{% endif %}>غير مدفوع</option>
                                         </select>
                                         <button type="submit" class="btn-secondary whitespace-nowrap">حفظ</button>
                                     </form>
@@ -94,3 +197,4 @@
     document.getElementById('printReportBtn')?.addEventListener('click', () => window.print());
 </script>
 {% endblock %}
+

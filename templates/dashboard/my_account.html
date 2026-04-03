@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}حسابي الإداري{% endblock %}
 
@@ -61,5 +61,32 @@
             </form>
         </article>
     </div>
+
+    {% if request.user.is_superuser and branding_form %}
+        <article class="card">
+            <h2 class="text-xl font-black mb-4">هوية المكتبة</h2>
+            <form method="post" enctype="multipart/form-data" class="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
+                {% csrf_token %}
+                <div>
+                    <label for="{{ branding_form.name.id_for_label }}" class="block text-sm font-bold mb-1">{{ branding_form.name.label }}</label>
+                    {{ branding_form.name }}
+                    {% for error in branding_form.name.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                </div>
+                <div>
+                    <label for="{{ branding_form.tagline.id_for_label }}" class="block text-sm font-bold mb-1">{{ branding_form.tagline.label }}</label>
+                    {{ branding_form.tagline }}
+                    {% for error in branding_form.tagline.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                </div>
+                <div>
+                    <label for="{{ branding_form.logo.id_for_label }}" class="block text-sm font-bold mb-1">{{ branding_form.logo.label }}</label>
+                    {{ branding_form.logo }}
+                    {% for error in branding_form.logo.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                </div>
+                <div class="xl:col-span-3">
+                    <button type="submit" name="save_branding" class="btn-primary">حفظ بيانات الهوية</button>
+                </div>
+            </form>
+        </article>
+    {% endif %}
 </section>
 {% endblock %}

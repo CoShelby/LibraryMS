@@ -1,6 +1,6 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
-{% block title %}مكتبة كلية الحاسبات وتقنية المعلومات | بوابة العضو{% endblock %}
+{% block title %}{{ library_branding.name }} | بوابة العضو{% endblock %}
 
 {% block content %}
 <section class="space-y-6">
@@ -17,10 +17,24 @@
     </div>
 
     {% if member %}
-        <div class="card">
-            <h2 class="text-xl font-bold">{{ member.name }}</h2>
-            <p class="text-sm text-slate-500">رقم العضوية: {{ member.membership_number }}</p>
-            <p class="text-sm text-slate-500">انتهاء العضوية: {{ member.membership_expiry|date:"Y-m-d" }}</p>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="card lg:col-span-2">
+                <h2 class="text-xl font-bold">{{ member.name }}</h2>
+                <p class="text-sm text-slate-500">رقم العضوية: {{ member.membership_number }}</p>
+                <p class="text-sm text-slate-500">البريد: {{ member.email|default:"-" }}</p>
+                <p class="text-sm text-slate-500">الهاتف: {{ member.phone|default:"-" }}</p>
+                <p class="text-sm text-slate-500">انتهاء العضوية: {{ member.membership_expiry|date:"Y-m-d" }}</p>
+                {% if member.is_suspended %}
+                    <p class="text-sm font-bold text-rose-600 mt-1">الحالة: العضوية موقوفة {% if member.suspension_reason %}({{ member.suspension_reason }}){% endif %}</p>
+                {% endif %}
+            </div>
+            <div class="card space-y-2">
+                <h3 class="font-black">ملخص الحالة</h3>
+                <div class="text-sm">الاستعارات النشطة: <span class="font-black">{{ borrowings|length }}</span></div>
+                <div class="text-sm">المتأخرات: <span class="font-black">{{ overdue_borrowings|length }}</span></div>
+                <div class="text-sm">الغرامات غير المدفوعة: <span class="font-black">{{ unpaid_fines|length }}</span></div>
+                <div class="text-sm">إجمالي الغرامات: <span class="font-black">{{ unpaid_fines_total }}</span></div>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -64,6 +78,37 @@
                         </div>
                     {% empty %}
                         <p class="text-sm text-slate-500">لا توجد طلبات حجز نشطة.</p>
+                    {% endfor %}
+                </div>
+            </article>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <article class="card">
+                <h3 class="text-lg font-extrabold mb-3">الغرامات غير المدفوعة</h3>
+                <div class="space-y-3">
+                    {% for fine in unpaid_fines %}
+                        <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                            <div class="font-bold">{{ fine.borrowing.book_copy.book.title }}</div>
+                            <div class="text-xs text-slate-500">أيام التأخير: {{ fine.days_late }}</div>
+                            <div class="text-xs text-slate-500">المبلغ: {{ fine.amount }}</div>
+                        </div>
+                    {% empty %}
+                        <p class="text-sm text-slate-500">لا توجد غرامات غير مدفوعة.</p>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <article class="card">
+                <h3 class="text-lg font-extrabold mb-3">الاستعارات المتأخرة</h3>
+                <div class="space-y-3">
+                    {% for borrowing in overdue_borrowings %}
+                        <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                            <div class="font-bold">{{ borrowing.book_copy.book.title }}</div>
+                            <div class="text-xs text-slate-500">تاريخ الاستحقاق: {{ borrowing.due_date|date:"Y-m-d H:i" }}</div>
+                        </div>
+                    {% empty %}
+                        <p class="text-sm text-slate-500">لا توجد استعارات متأخرة.</p>
                     {% endfor %}
                 </div>
             </article>

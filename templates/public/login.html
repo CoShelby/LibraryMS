@@ -1,6 +1,6 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
-{% block title %}تسجيل الدخول | مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}
+{% block title %}تسجيل الدخول | {{ library_branding.name }}{% endblock %}
 
 {% block content %}
 <div class="min-h-[70vh] flex items-center justify-center">
@@ -34,8 +34,8 @@
             {% endif %}
 
             <button type="submit" class="btn-primary w-full py-3">تسجيل الدخول</button>
+            <a href="{% url 'password_reset' %}" class="block text-center text-sm font-bold text-brand">نسيت كلمة المرور؟</a>
         </form>
     </div>
 </div>
 {% endblock %}
-

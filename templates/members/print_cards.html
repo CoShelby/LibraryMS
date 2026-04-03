@@ -13,7 +13,7 @@
 
         body {
             margin: 0;
-            font-family: "Cairo", sans-serif;
+            font-family: "Cairo", "Tahoma", "Arial", sans-serif;
             background: #f7f7f7;
             color: #1f2937;
         }
@@ -222,13 +222,13 @@
             {% for member in page_members %}
                 <article class="membership-card">
                     <div class="card-face front-face">
-                        <img src="{% static 'images/logo.jpg' %}" alt="" class="watermark-logo">
+                        <img src="{{ library_branding.logo_url }}" alt="" class="watermark-logo">
                         {% if member.is_reprint %}
                             <div class="reprint-label">بدل فاقد</div>
                         {% endif %}
                         <div class="front-header">
-                            <img src="{% static 'images/logo.jpg' %}" alt="Library Logo" class="front-logo">
-                            <div class="library-title">مكتبة كلية الحاسبات وتقنية المعلومات</div>
+                            <img src="{{ library_branding.logo_url }}" alt="Library Logo" class="front-logo">
+                            <div class="library-title">{{ library_branding.name }}</div>
                         </div>
                         <div class="front-body">
                             {% if member.photo %}
@@ -254,7 +254,7 @@
                     </div>
 
                     <div class="card-face back-face">
-                        <img src="{% static 'images/logo.jpg' %}" alt="" class="watermark-logo">
+                        <img src="{{ library_branding.logo_url }}" alt="" class="watermark-logo">
                         <div class="qr-box">
                             <div class="qr-code" data-membership="{{ member.membership_number }}"></div>
                         </div>
@@ -293,3 +293,7 @@
     </script>
 </body>
 </html>
+
+
+
+

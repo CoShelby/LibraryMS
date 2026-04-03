@@ -1,12 +1,18 @@
 ﻿from django.contrib import admin
 
-from .models import Author, Book, BookCopy, Category, Publisher
+from .models import Author, Book, BookCopy, Category, CategorySearchStat, Publisher
 
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ("name", "name_en", "category_id", "shelf_location")
     search_fields = ("name", "name_en", "category_id")
+
+
+@admin.register(CategorySearchStat)
+class CategorySearchStatAdmin(admin.ModelAdmin):
+    list_display = ("category", "search_count", "updated_at")
+    search_fields = ("category__name", "category__name_en")
 
 
 @admin.register(Author)
@@ -32,3 +38,4 @@ class BookCopyAdmin(admin.ModelAdmin):
     list_display = ("book", "barcode", "copy_number", "status", "is_printed", "created_at")
     search_fields = ("barcode", "copy_number", "book__title")
     list_filter = ("status", "is_printed")
+

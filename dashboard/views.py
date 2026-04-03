@@ -4,16 +4,17 @@ import os
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
-from django.core.paginator import Paginator
 from django.core.exceptions import PermissionDenied
 from django.core.files.base import ContentFile
-from django.db.models import Count, ExpressionWrapper, F, IntegerField, Q
+from django.core.paginator import Paginator
+from django.db.models import Count, ExpressionWrapper, F, IntegerField, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
+
 from accounts.forms import AdminSelfProfileForm, AdminUserCreationForm, AdminUserUpdateForm
 from accounts.models import User
 from accounts.services import admin_capability_required, admin_required, has_admin_capability
@@ -36,8 +37,19 @@ from digital_library.models import DigitalLibrary
 from logs.models import Log
 from members.models import Member
 
-from .forms import AuthorForm, BookCopyForm, BookForm, CategoryForm, DigitalLibraryForm, PublisherForm
-from .models import Notification
+from .branding import get_library_branding
+from .forms import (
+    AuthorForm,
+    BookCopyForm,
+    BookForm,
+    CategoryForm,
+    DigitalLibraryForm,
+    LibraryBrandingForm,
+    PublisherForm,
+)
+from .member_messages import message_type_from_notification, send_member_message
+from .models import LibraryBranding, Notification
+from .notifications import notification_target_url
 
 def _split_names(raw_value):
     prepared = (raw_value or "").replace("،", ",")
@@ -168,6 +180,59 @@ def _overdue_report_rows(queryset):
             ]
         )
     return rows
+
+def _find_member_for_reports(member_query, member_id):
+    members_qs = Member.objects.all().order_by("name")
+    selected_member = None
+    matches = members_qs.none()
+
+    if member_id:
+        try:
+            selected_member = members_qs.get(id=int(member_id))
+        except (TypeError, ValueError, Member.DoesNotExist):
+            selected_member = None
+
+    if member_query:
+        query_filter = (
+            Q(name__icontains=member_query)
+            | Q(membership_number__icontains=member_query)
+            | Q(university_id__icontains=member_query)
+        )
+        if member_query.isdigit():
+            query_filter |= Q(id=int(member_query))
+
+        matches = members_qs.filter(query_filter)
+        if not selected_member:
+            if member_query.isdigit():
+                selected_member = matches.filter(id=int(member_query)).first() or matches.first()
+            else:
+                selected_member = matches.first()
+
+    return selected_member, matches[:8]
+
+
+def _member_report_snapshot(member):
+    now = timezone.now()
+    unreturned_borrowings = Borrowing.objects.select_related("book_copy__book").filter(
+        member=member,
+        return_date__isnull=True,
+    )
+    overdue_borrowings = unreturned_borrowings.filter(due_date__lt=now)
+    unpaid_fines = Fine.objects.select_related("borrowing__book_copy__book").filter(
+        borrowing__member=member,
+        paid=False,
+    )
+    unpaid_total = unpaid_fines.aggregate(total=Sum("amount")).get("total") or 0
+
+    return {
+        "unreturned_borrowings": unreturned_borrowings,
+        "overdue_borrowings": overdue_borrowings,
+        "unpaid_fines": unpaid_fines,
+        "unreturned_count": unreturned_borrowings.count(),
+        "overdue_count": overdue_borrowings.count(),
+        "unpaid_fines_count": unpaid_fines.count(),
+        "unpaid_fines_total": unpaid_total,
+    }
 
 @admin_required
 def dashboard_home(request):
@@ -678,7 +743,16 @@ def _build_manual_borrow_preview(membership_number, copy_barcode):
     }
 
     # نعرض حالة العضو والنسخة قبل التأكيد دون تغيير شروط الاستعارة الفعلية.
-    if copy.status != "new":
+    if member.is_suspended:
+        preview.update(
+            {
+                "status_label": "العضوية موقوفة",
+                "status_tone": "rose",
+                "status_message": "هذا العضو موقوف عن الاستعارة ويجب معالجة سبب الإيقاف أولًا.",
+                "can_confirm": False,
+            }
+        )
+    elif copy.status != "new":
         preview.update(
             {
                 "status_label": "غير متاحة",
@@ -863,6 +937,11 @@ def dashboard_reject_renewal(request, borrowing_id):
 def dashboard_reports(request):
     table = request.GET.get("table", "books")
     paid_status = request.GET.get("paid_status", "all")
+    member_query = (request.GET.get("member_query") or "").strip()
+    member_id = (request.GET.get("member_id") or "").strip()
+
+    selected_member, member_matches = _find_member_for_reports(member_query, member_id)
+    member_snapshot = _member_report_snapshot(selected_member) if selected_member else None
 
     report_tables = {
         "books": {
@@ -1031,7 +1110,7 @@ def dashboard_reports(request):
                     item.borrowing.book_copy.book.title,
                     item.days_late,
                     item.amount,
-                    "مدفوع" if item.paid else "غير مدفوع",
+                    "paid" if item.paid else "unpaid",
                     item.payment.created_by.username if hasattr(item, "payment") and item.payment and item.payment.created_by else "-",
                     item.created_at,
                 ]
@@ -1073,6 +1152,17 @@ def dashboard_reports(request):
             "sort": sort,
             "sort_options": config["sort_options"],
             "paid_status": paid_status,
+            "member_query": member_query,
+            "member_matches": member_matches,
+            "selected_member": selected_member,
+            "member_snapshot": member_snapshot,
+            "message_types": [
+                ("overdue", "تذكير بالاستعارات المتأخرة"),
+                ("reservation_approved", "إشعار اعتماد الحجز"),
+                ("book_available", "إشعار توفر كتاب"),
+                ("pending_fines", "تنبيه الغرامات"),
+                ("suspension_warning", "تحذير قبل إيقاف العضوية"),
+            ],
         },
     )
 
@@ -1098,6 +1188,65 @@ def dashboard_update_fine_payment(request, fine_id):
         messages.success(request, "تم تحديث حالة دفع الغرامة.")
 
     return redirect(next_url)
+
+@admin_required
+def dashboard_send_member_message(request, member_id):
+    member = get_object_or_404(Member, id=member_id)
+    next_url = request.POST.get("next") or reverse("dashboard_reports")
+
+    if request.method == "POST":
+        message_type = (request.POST.get("message_type") or "general").strip()
+        result = send_member_message(member=member, message_type=message_type, sent_by=request.user)
+
+        if result["email_sent"] or result["sms_prepared"]:
+            messages.success(request, "تم إرسال التذكير للعضو بنجاح.")
+        else:
+            messages.error(request, "تعذر إرسال البريد/تجهيز الرسالة. تأكد من إعدادات الإرسال والبيانات.")
+
+    return redirect(next_url)
+
+
+@admin_required
+def dashboard_send_notification_message(request, notification_id):
+    notification = get_object_or_404(
+        Notification.objects.select_related("member", "borrowing__member", "reservation__member"),
+        id=notification_id,
+    )
+    next_url = request.POST.get("next") or reverse("dashboard_home")
+
+    if request.method == "POST":
+        member = notification.member or (notification.borrowing.member if notification.borrowing_id else None) or (
+            notification.reservation.member if notification.reservation_id else None
+        )
+        if not member:
+            messages.error(request, "تعذر تحديد عضو مرتبط بهذا الإشعار.")
+            return redirect(next_url)
+
+        result = send_member_message(
+            member=member,
+            message_type=message_type_from_notification(notification),
+            sent_by=request.user,
+            notification=notification,
+        )
+        if result["email_sent"] or result["sms_prepared"]:
+            messages.success(request, "تم إرسال رسالة مرتبطة بالإشعار.")
+        else:
+            messages.error(request, "تعذر إرسال رسالة مرتبطة بالإشعار.")
+
+    return redirect(next_url)
+
+
+@admin_required
+def dashboard_open_notification(request, notification_id):
+    notification = get_object_or_404(
+        Notification.objects.select_related("member", "borrowing", "reservation"),
+        id=notification_id,
+    )
+    if not notification.is_read:
+        notification.is_read = True
+        notification.save(update_fields=["is_read"])
+
+    return redirect(notification_target_url(notification, request.user))
 
 def _admin_manager_required(request):
     if not request.user.is_authenticated:
@@ -1248,6 +1397,11 @@ def dashboard_my_account(request):
     password_form = PasswordChangeForm(user=request.user, prefix="password")
     _apply_input_css(password_form)
 
+    branding_instance = get_library_branding()
+    branding_form = None
+    if request.user.is_superuser:
+        branding_form = LibraryBrandingForm(instance=branding_instance, prefix="branding")
+
     if request.method == "POST":
         if "save_profile" in request.POST:
             profile_form = AdminSelfProfileForm(request.POST, instance=request.user, prefix="profile")
@@ -1263,6 +1417,19 @@ def dashboard_my_account(request):
                 user = password_form.save()
                 update_session_auth_hash(request, user)
                 messages.success(request, "تم تغيير كلمة المرور بنجاح.")
+                return redirect("dashboard_my_account")
+
+        if request.user.is_superuser and "save_branding" in request.POST:
+            branding_db_obj = LibraryBranding.objects.order_by("id").first() or LibraryBranding()
+            branding_form = LibraryBrandingForm(
+                request.POST,
+                request.FILES,
+                instance=branding_db_obj,
+                prefix="branding",
+            )
+            if branding_form.is_valid():
+                branding_form.save()
+                messages.success(request, "تم تحديث بيانات هوية المكتبة.")
                 return redirect("dashboard_my_account")
 
     capability_labels = []
@@ -1289,6 +1456,7 @@ def dashboard_my_account(request):
             "password_form": password_form,
             "capability_labels": capability_labels,
             "managed_admins_count": managed_admins_count,
+            "branding_form": branding_form,
         },
     )
 

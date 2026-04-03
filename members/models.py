@@ -1,4 +1,4 @@
-from django.db import models
+﻿from django.db import models
 
 
 class Member(models.Model):
@@ -17,6 +17,7 @@ class Member(models.Model):
 
     name = models.CharField(max_length=200)
     membership_number = models.CharField(max_length=50, unique=True)
+    email = models.EmailField(blank=True, null=True, db_index=True)
     phone = models.CharField(max_length=20)
     member_type = models.CharField(max_length=20, choices=MEMBER_TYPE)
     university_id = models.CharField(max_length=50, blank=True, null=True)
@@ -29,6 +30,9 @@ class Member(models.Model):
     card_print_count = models.PositiveIntegerField(default=0)
     last_card_printed_at = models.DateTimeField(blank=True, null=True)
     is_printed = models.BooleanField(default=False)
+    is_suspended = models.BooleanField(default=False, db_index=True)
+    suspension_reason = models.CharField(max_length=255, blank=True, default="")
 
     def __str__(self):
         return self.name
+

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}المكتبة الرقمية | مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}
+{% block title %}المكتبة الرقمية | {{ library_branding.name }}{% endblock %}
 
 {% block content %}
 <section class="space-y-6">
@@ -10,24 +10,28 @@
         <a href="{% url 'search_results' %}?search_scope=digital" class="btn-secondary" title="بحث داخل الرقمي"><i class="fa-solid fa-magnifying-glass"></i></a>
     </div>
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+    <div class="books-grid">
         {% for dbook in digital_books %}
-            <article class="card flex flex-col">
+            <article class="card book-card">
+                <a href="{% url 'book_detail' dbook.book.id %}" class="book-card-link-overlay" aria-label="{{ dbook.book.title }}"></a>
+
                 {% if dbook.book.cover_image %}
-                    <img src="{{ dbook.book.cover_image.url }}" alt="{{ dbook.book.title }}" class="w-full aspect-[2/3] object-cover rounded-xl mb-3">
+                    <img src="{{ dbook.book.cover_image.url }}" alt="{{ dbook.book.title }}" class="book-card-media">
                 {% else %}
-                    <img src="{% static 'images/logo.jpg' %}" alt="{{ dbook.book.title }}" class="w-full aspect-[2/3] object-contain rounded-xl mb-3 bg-slate-100 dark:bg-slate-800 p-3">
+                    <img src="{{ library_branding.logo_url }}" alt="{{ dbook.book.title }}" class="book-card-media" style="object-fit: contain; padding: 1.3rem;">
                 {% endif %}
                 <h2 class="font-black text-lg">{{ dbook.book.title }}</h2>
                 <p class="text-sm text-slate-500 mt-1">{{ dbook.book.category.name|default:"-" }}</p>
-                <div class="mt-4 grid grid-cols-3 gap-2">
+                <div class="book-card-actions">
                     <a href="{% url 'book_detail' dbook.book.id %}" class="btn-secondary text-center">التفاصيل</a>
                     <a href="{% url 'read_digital_book' dbook.book.id %}" class="btn-primary text-center">قراءة</a>
-                    <a href="{% url 'download_digital_book' dbook.book.id %}" class="btn-secondary text-center">تحميل</a>
+                </div>
+                <div class="book-card-actions !mt-2">
+                    <a href="{% url 'download_digital_book' dbook.book.id %}" class="btn-secondary text-center col-span-2">تحميل</a>
                 </div>
             </article>
         {% empty %}
-            <div class="col-span-full card text-center py-10 text-slate-500">لا توجد كتب رقمية مضافة حالياً.</div>
+            <div class="col-span-full card text-center py-10 text-slate-500">لا توجد كتب رقمية مضافة حاليًا.</div>
         {% endfor %}
     </div>
 </section>

@@ -1,4 +1,4 @@
-from django.urls import path
+﻿from django.urls import path
 
 from . import views
 
@@ -28,6 +28,7 @@ urlpatterns = [
     path("circulation/borrowings/<int:borrowing_id>/reject-renewal/", views.dashboard_reject_renewal, name="dashboard_reject_renewal"),
     path("circulation/fines/<int:fine_id>/payment/", views.dashboard_update_fine_payment, name="dashboard_update_fine_payment"),
     path("reports/", views.dashboard_reports, name="dashboard_reports"),
+    path("reports/members/<int:member_id>/send-message/", views.dashboard_send_member_message, name="dashboard_send_member_message"),
     path("my-account/", views.dashboard_my_account, name="dashboard_my_account"),
     path("admins/", views.dashboard_admin_users, name="dashboard_admin_users"),
     path("admins/<int:admin_id>/edit/", views.dashboard_admin_edit, name="dashboard_admin_edit"),
@@ -36,6 +37,9 @@ urlpatterns = [
     path("admins/<int:admin_id>/reset-password/", views.dashboard_admin_reset_password, name="dashboard_admin_reset_password"),
     path("notifications/mark-read/", views.dashboard_mark_notifications_read, name="dashboard_mark_notifications_read"),
     path("notifications/<int:notification_id>/mark-read/", views.dashboard_mark_single_notification_read, name="dashboard_mark_single_notification_read"),
+    path("notifications/<int:notification_id>/open/", views.dashboard_open_notification, name="dashboard_open_notification"),
+    path("notifications/<int:notification_id>/send-message/", views.dashboard_send_notification_message, name="dashboard_send_notification_message"),
     path("api/check-entity/", views.api_check_entity, name="api_check_entity"),
     path("api/create-entity/", views.api_create_entity, name="api_create_entity"),
 ]
+

@@ -1,9 +1,14 @@
-﻿from django.http import JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import render
 
 from books.forms import BookSearchForm
-from books.services import get_homepage_data, search_books_service, search_suggestions_service
-
+from books.services import (
+    get_homepage_data,
+    record_categories_from_results,
+    record_category_search,
+    search_books_service,
+    search_suggestions_service,
+)
 
 SEARCH_TRIGGER_FIELDS = [
     "query",
@@ -68,7 +73,17 @@ def search_results_view(request):
             language=form.cleaned_data.get("language"),
             search_scope=form.cleaned_data.get("search_scope") or "all",
         )
-        _store_recent_search(request, form.cleaned_data.get("query"))
+        query_value = form.cleaned_data.get("query")
+        selected_category = form.cleaned_data.get("category")
+
+        _store_recent_search(request, query_value)
+
+        if selected_category:
+            # Explicit category searches are a stronger signal.
+            record_category_search(selected_category, weight=3)
+        elif query_value:
+            # For free-text searches, infer likely categories from top matches.
+            record_categories_from_results(books, max_items=20)
 
     return render(
         request,
@@ -86,3 +101,6 @@ def search_suggestions_view(request):
     query = (request.GET.get("q") or "").strip()
     suggestions = search_suggestions_service(query=query, limit=8) if query else []
     return JsonResponse({"results": suggestions})
+
+
+

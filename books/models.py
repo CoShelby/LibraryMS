@@ -121,3 +121,16 @@ class BookCopy(models.Model):
         return f"{self.book.title} - {self.barcode}"
 
 
+
+class CategorySearchStat(models.Model):
+    category = models.OneToOneField(Category, on_delete=models.CASCADE, related_name="search_stat")
+    search_count = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Category Search Stat"
+        verbose_name_plural = "Category Search Stats"
+
+    def __str__(self):
+        return f"{self.category.name}: {self.search_count}"
+

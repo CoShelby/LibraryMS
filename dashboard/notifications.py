@@ -1,8 +1,11 @@
+from django.db.models import Count, F, Q, Sum
+from django.urls import reverse
 from django.utils import timezone
 
 from books.models import BookCopy
-from circulations.models import Borrowing, Reservation
+from circulations.models import Borrowing, Fine, Reservation
 from circulations.timing import calculate_fine_snapshot
+from members.models import Member
 
 from .models import Notification
 
@@ -23,28 +26,36 @@ def _format_overdue_duration(delay):
     return " و ".join(parts)
 
 
-def _upsert_notification(notification_type, title, message, borrowing=None, reservation=None):
+def _upsert_notification(notification_type, title, message, borrowing=None, reservation=None, member=None):
     queryset = Notification.objects.filter(notification_type=notification_type)
     if borrowing is not None:
         queryset = queryset.filter(borrowing=borrowing)
     elif reservation is not None:
         queryset = queryset.filter(reservation=reservation)
+    elif member is not None:
+        queryset = queryset.filter(member=member)
+
     notification = queryset.order_by("-id").first()
+    defaults = {
+        "title": title,
+        "message": message,
+        "borrowing": borrowing,
+        "reservation": reservation,
+        "member": member,
+    }
 
     if notification:
-        if notification.title != title or notification.message != message:
-            notification.title = title
-            notification.message = message
-            notification.save(update_fields=["title", "message", "updated_at"])
+        updates = []
+        for key, value in defaults.items():
+            if getattr(notification, key) != value:
+                setattr(notification, key, value)
+                updates.append(key)
+        if updates:
+            updates.append("updated_at")
+            notification.save(update_fields=updates)
         return notification
 
-    return Notification.objects.create(
-        notification_type=notification_type,
-        title=title,
-        message=message,
-        borrowing=borrowing,
-        reservation=reservation,
-    )
+    return Notification.objects.create(notification_type=notification_type, **defaults)
 
 
 def create_reservation_created_notification(reservation):
@@ -53,6 +64,17 @@ def create_reservation_created_notification(reservation):
         "طلب حجز جديد",
         f"قام العضو {reservation.member.name} بطلب حجز الكتاب {reservation.book.title}.",
         reservation=reservation,
+        member=reservation.member,
+    )
+
+
+def create_reservation_approved_notification(reservation):
+    return _upsert_notification(
+        Notification.TYPE_RESERVATION_APPROVED,
+        "تمت الموافقة على الحجز",
+        f"تمت الموافقة على الحجز الخاص بالعضو {reservation.member.name} للكتاب {reservation.book.title}.",
+        reservation=reservation,
+        member=reservation.member,
     )
 
 
@@ -71,6 +93,7 @@ def sync_overdue_notifications():
             "انتهاء مدة الاستعارة",
             f"العضو {borrowing.member.name} تأخر في إعادة الكتاب {borrowing.book_copy.book.title} لمدة {delay_text}.",
             borrowing=borrowing,
+            member=borrowing.member,
         )
 
 
@@ -97,86 +120,135 @@ def notify_reserved_book_available(book):
             "كتاب محجوز أصبح متاحًا",
             f"الكتاب {reservation.book.title} أصبح متاحًا الآن للعضو {reservation.member.name}.",
             reservation=reservation,
+            member=reservation.member,
         )
 
 
 def sync_high_risk_members_notifications():
     now = timezone.now()
     thirty_days_ago = now - timezone.timedelta(days=30)
-    from django.db.models import Count, Q, F
-    from members.models import Member
-    
+
     members_with_stats = Member.objects.annotate(
         current_overdues=Count(
-            'borrowing',
-            filter=Q(borrowing__return_date__isnull=True, borrowing__due_date__lt=now)
+            "borrowing",
+            filter=Q(borrowing__return_date__isnull=True, borrowing__due_date__lt=now),
         ),
         recent_delays=Count(
-            'borrowing',
+            "borrowing",
             filter=Q(
                 borrowing__due_date__gte=thirty_days_ago,
                 borrowing__due_date__lt=now,
-            ) & (Q(borrowing__return_date__isnull=True) | Q(borrowing__return_date__gt=F('borrowing__due_date')))
-        )
-    ).filter(
-        Q(current_overdues__gt=2) | Q(recent_delays__gte=2)
-    )
+            )
+            & (Q(borrowing__return_date__isnull=True) | Q(borrowing__return_date__gt=F("borrowing__due_date"))),
+        ),
+    ).filter(Q(current_overdues__gt=2) | Q(recent_delays__gte=2))
 
-    current_high_risk_member_ids = set()
+    active_member_ids = set()
 
     for member in members_with_stats:
-        current_high_risk_member_ids.add(member.id)
-        
-        all_delays = Borrowing.objects.filter(
-            member=member,
-            due_date__lt=now
-        ).filter(
-            Q(return_date__isnull=True) | Q(return_date__gt=F('due_date'))
+        active_member_ids.add(member.id)
+
+        delayed_borrowings = Borrowing.objects.filter(member=member, due_date__lt=now).filter(
+            Q(return_date__isnull=True) | Q(return_date__gt=F("due_date"))
         )
-        total_delays = all_delays.count()
-        
+        total_delays = delayed_borrowings.count()
+
         total_overdue_seconds = 0
-        for b in all_delays:
-            end_date = b.return_date if b.return_date else now
-            delay = end_date - b.due_date
+        for borrowing in delayed_borrowings:
+            end_date = borrowing.return_date if borrowing.return_date else now
+            delay = end_date - borrowing.due_date
             if delay.total_seconds() > 0:
                 total_overdue_seconds += delay.total_seconds()
-        
-        total_overdue_days = int(total_overdue_seconds // 86400)
-        
-        message = (f"العضو: {member.name}\n"
-                   f"عدد التأخيرات: {total_delays}\n"
-                   f"إجمالي أيام التأخير: {total_overdue_days} يوم\n"
-                   f"معرف العضو: {member.id}")
-        
-        existing = Notification.objects.filter(
-            notification_type=Notification.TYPE_HIGH_RISK_MEMBER,
-            message__contains=f"معرف العضو: {member.id}"
-        ).first()
-        
-        if existing:
-            if existing.message != message:
-                existing.message = message
-                existing.save(update_fields=["message", "updated_at"])
-        else:
-            Notification.objects.create(
-                notification_type=Notification.TYPE_HIGH_RISK_MEMBER,
-                title="عضو غير ملتزم - تأخيرات متكررة",
-                message=message
-            )
 
-    all_high_risk = Notification.objects.filter(notification_type=Notification.TYPE_HIGH_RISK_MEMBER)
-    for notif in all_high_risk:
-        is_current = False
-        for m_id in current_high_risk_member_ids:
-            if f"معرف العضو: {m_id}" in notif.message:
-                is_current = True
-                break
-        if not is_current:
-            notif.delete()
+        total_overdue_days = int(total_overdue_seconds // 86400)
+
+        message = (
+            f"العضو: {member.name}\n"
+            f"عدد التأخيرات: {total_delays}\n"
+            f"إجمالي أيام التأخير: {total_overdue_days} يوم\n"
+            "تنبيه: يوصى بإرسال إنذار قبل إيقاف العضوية."
+        )
+
+        _upsert_notification(
+            Notification.TYPE_HIGH_RISK_MEMBER,
+            "عضو غير ملتزم - تأخيرات متكررة",
+            message,
+            member=member,
+        )
+
+    Notification.objects.filter(notification_type=Notification.TYPE_HIGH_RISK_MEMBER).exclude(
+        member_id__in=active_member_ids
+    ).delete()
+
+
+def sync_pending_fines_notifications():
+    members_with_fines = (
+        Member.objects.filter(borrowing__fine__paid=False)
+        .annotate(unpaid_count=Count("borrowing__fine", filter=Q(borrowing__fine__paid=False), distinct=True))
+        .annotate(unpaid_total=Sum("borrowing__fine__amount", filter=Q(borrowing__fine__paid=False)))
+        .distinct()
+    )
+
+    active_member_ids = set()
+    for member in members_with_fines:
+        active_member_ids.add(member.id)
+        _upsert_notification(
+            Notification.TYPE_PENDING_FINE,
+            "غرامات غير مدفوعة",
+            f"العضو {member.name} لديه {member.unpaid_count} غرامة غير مدفوعة بإجمالي {member.unpaid_total or 0}.",
+            member=member,
+        )
+
+    Notification.objects.filter(notification_type=Notification.TYPE_PENDING_FINE).exclude(
+        member_id__in=active_member_ids
+    ).delete()
+
+
+def sync_suspended_members_notifications():
+    suspended_members = Member.objects.filter(is_suspended=True)
+    active_member_ids = set()
+
+    for member in suspended_members:
+        active_member_ids.add(member.id)
+        reason = f" السبب: {member.suspension_reason}." if member.suspension_reason else ""
+        _upsert_notification(
+            Notification.TYPE_SUSPENDED_MEMBER,
+            "عضو موقوف",
+            f"العضو {member.name} موقوف عن الاستعارة.{reason}",
+            member=member,
+        )
+
+    Notification.objects.filter(notification_type=Notification.TYPE_SUSPENDED_MEMBER).exclude(
+        member_id__in=active_member_ids
+    ).delete()
+
+
+def notification_target_url(notification, user):
+    if notification.notification_type in {
+        Notification.TYPE_RESERVATION_CREATED,
+        Notification.TYPE_RESERVATION_APPROVED,
+        Notification.TYPE_RESERVATION_AVAILABLE,
+    }:
+        return f"{reverse('dashboard_circulation')}#reservations"
+
+    if notification.notification_type == Notification.TYPE_OVERDUE:
+        return f"{reverse('dashboard_reports')}?table=overdue"
+
+    if notification.notification_type == Notification.TYPE_SUSPENDED_MEMBER:
+        return f"{reverse('dashboard_circulation')}#manual-borrow"
+
+    if notification.member_id:
+        if user.is_superuser or getattr(user, "can_manage_members", False):
+            return reverse("edit_member", args=[notification.member_id])
+        return f"{reverse('member_portal')}?member_id={notification.member_id}"
+
+    return reverse("dashboard_home")
 
 
 def get_admin_notifications(limit=8):
     sync_overdue_notifications()
     sync_high_risk_members_notifications()
-    return Notification.objects.order_by("-updated_at", "-id")[:limit]
+    sync_pending_fines_notifications()
+    sync_suspended_members_notifications()
+    return Notification.objects.select_related("member", "borrowing", "reservation").order_by("-updated_at", "-id")[:limit]
+

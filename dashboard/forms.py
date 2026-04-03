@@ -5,6 +5,7 @@ from django.db.models import Q
 
 from books.models import Author, Book, BookCopy, Category, Publisher
 from digital_library.models import DigitalLibrary
+from .models import LibraryBranding
 
 
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -330,4 +331,21 @@ class DigitalLibraryForm(forms.ModelForm):
             self.add_error("book", "اختر كتابًا موجودًا أو فعّل إنشاء كتاب جديد.")
 
         return cleaned_data
+
+
+
+class LibraryBrandingForm(forms.ModelForm):
+    class Meta:
+        model = LibraryBranding
+        fields = ["name", "tagline", "logo"]
+        labels = {
+            "name": "اسم المكتبة",
+            "tagline": "الوصف المختصر",
+            "logo": "الشعار",
+        }
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "input-field", "placeholder": "اسم المكتبة"}),
+            "tagline": forms.TextInput(attrs={"class": "input-field", "placeholder": "اختياري"}),
+            "logo": forms.ClearableFileInput(attrs={"class": "input-field", "accept": "image/*"}),
+        }
 

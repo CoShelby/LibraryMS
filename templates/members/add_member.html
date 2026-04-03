@@ -1,6 +1,6 @@
-{% extends "base.html" %}
+?{% extends "base.html" %}
 
-{% block title %}LibraryMS | {{ title }}{% endblock %}
+{% block title %}{{ library_branding.name }} | {{ title }}{% endblock %}
 
 {% block content %}
 <section class="max-w-4xl mx-auto space-y-5">
@@ -37,6 +37,8 @@
 {% block extra_js %}
 <script>
     const memberTypeSelect = document.getElementById('{{ form.member_type.id_for_label }}');
+    const suspendedCheckbox = document.getElementById('{{ form.is_suspended.id_for_label }}');
+    const suspensionReasonField = document.querySelector('[data-member-field="suspension_reason"]');
     const workplaceField = document.querySelector('[data-member-field="workplace"]');
     const studentFields = [
         document.querySelector('[data-member-field="university_id"]'),
@@ -54,16 +56,26 @@
 
         studentFields.forEach((field) => {
             if (!field) return;
-            field.style.display = value === 'student' ? 'block' : 'block';
-            if (value !== 'student' && (field.dataset.memberField === 'major' || field.dataset.memberField === 'level' || field.dataset.memberField === 'university_id')) {
-                field.style.display = 'none';
-            }
+            field.style.display = value === 'student' ? 'block' : 'none';
         });
     }
 
+    function toggleSuspensionReason() {
+        if (!suspensionReasonField || !suspendedCheckbox) return;
+        suspensionReasonField.style.display = suspendedCheckbox.checked ? 'block' : 'none';
+    }
+
     toggleMemberFields();
+    toggleSuspensionReason();
+
     if (memberTypeSelect) {
         memberTypeSelect.addEventListener('change', toggleMemberFields);
     }
+
+    if (suspendedCheckbox) {
+        suspendedCheckbox.addEventListener('change', toggleSuspensionReason);
+    }
 </script>
 {% endblock %}
+
+

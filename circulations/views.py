@@ -1,11 +1,12 @@
 ﻿from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from accounts.services import admin_capability_required, is_library_admin
 from books.models import Book
 from members.models import Member
 
-from .models import Borrowing, Reservation
+from .models import Borrowing, Fine, Reservation
 from .services import (
     borrow_book,
     cancel_reservation,
@@ -68,6 +69,8 @@ def member_portal_view(request):
     reservations = []
     borrowing_history = []
     reservation_history = []
+    overdue_borrowings = []
+    unpaid_fines = []
 
     is_admin_view = is_library_admin(request.user)
 
@@ -88,6 +91,11 @@ def member_portal_view(request):
         reservations = get_member_active_reservations(member)
         borrowing_history = get_member_borrowing_history(member).filter(return_date__isnull=False)
         reservation_history = get_member_reservation_history(member).exclude(status__in=["pending", "approved"])
+        overdue_borrowings = borrowings.filter(due_date__lt=timezone.now())
+        unpaid_fines = Fine.objects.select_related("borrowing__book_copy__book").filter(
+            borrowing__member=member,
+            paid=False,
+        )
 
     return render(
         request,
@@ -100,6 +108,9 @@ def member_portal_view(request):
             "reservation_history": reservation_history,
             "membership": membership_number,
             "is_admin_view": is_admin_view,
+            "overdue_borrowings": overdue_borrowings,
+            "unpaid_fines": unpaid_fines,
+            "unpaid_fines_total": sum((fine.amount for fine in unpaid_fines), 0),
         },
     )
 
@@ -140,3 +151,4 @@ def cancel_reservation_view(request, reservation_id):
             messages.error(request, str(exc))
 
     return redirect(f"{request.META.get('HTTP_REFERER', '/')}")
+

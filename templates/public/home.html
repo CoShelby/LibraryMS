@@ -1,6 +1,6 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
-{% block title %}مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}
+{% block title %}{{ library_branding.name }}{% endblock %}
 
 {% block content %}
 <section class="space-y-8">
@@ -125,3 +125,4 @@
     setupSuggestions('homeSearchInput', 'homeSuggestions');
 </script>
 {% endblock %}
+

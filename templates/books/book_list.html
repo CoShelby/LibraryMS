@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}دليل الكتب الورقية | مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}
+{% block title %}دليل الكتب الورقية | {{ library_branding.name }}{% endblock %}
 
 {% block content %}
 <section class="space-y-6">
@@ -10,13 +10,15 @@
         <a href="{% url 'search_results' %}" class="btn-secondary" title="بحث متقدم"><i class="fa-solid fa-magnifying-glass-plus"></i></a>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+    <div class="books-grid">
         {% for book in books %}
             <article class="card book-card">
+                <a href="{% url 'book_detail' book.id %}" class="book-card-link-overlay" aria-label="{{ book.title }}"></a>
+
                 {% if book.cover_image %}
-                    <img src="{{ book.cover_image.url }}" alt="{{ book.title }}">
+                    <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="book-card-media">
                 {% else %}
-                    <img src="{% static 'images/logo.jpg' %}" alt="{{ book.title }}" style="object-fit: contain; padding: 1.5rem;">
+                    <img src="{{ library_branding.logo_url }}" alt="{{ book.title }}" class="book-card-media" style="object-fit: contain; padding: 1.5rem;">
                 {% endif %}
 
                 <h2 title="{{ book.title }}">{{ book.title }}</h2>
@@ -32,13 +34,13 @@
                     {% endif %}
                 </div>
 
-                <div class="book-card-buttons">
+                <div class="book-card-actions">
                     <a href="{% url 'book_detail' book.id %}" class="btn-primary">التفاصيل</a>
                     <button type="button" onclick="openReserveModal('{{ book.id }}', '{{ book.title|escapejs }}')" class="btn-secondary">حجز</button>
                 </div>
             </article>
         {% empty %}
-            <div class="col-span-full card text-center py-10 text-slate-500">لا توجد كتب ورقية حالياً.</div>
+            <div class="col-span-full card text-center py-10 text-slate-500">لا توجد كتب ورقية حاليًا.</div>
         {% endfor %}
     </div>
 </section>

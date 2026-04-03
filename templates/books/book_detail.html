@@ -1,12 +1,15 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}{{ book.title }} | مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}
+{% block title %}{{ book.title }} | {{ library_branding.name }}{% endblock %}
 
 {% block content %}
 <section class="space-y-8">
-    <div class="flex items-center justify-between">
-        <a href="javascript:history.back()" class="btn-secondary"><i class="fa-solid fa-arrow-right ml-2"></i>رجوع</a>
+    <div class="flex items-center justify-between gap-2 flex-wrap">
+        <a href="javascript:history.back()" class="btn-secondary"><i class="fa-solid fa-arrow-right ml-2"></i>العودة للصفحة السابقة</a>
+        {% if book.category %}
+            <a href="{% url 'search_results' %}?category={{ book.category.id }}" class="text-sm font-bold text-brand">تصفح كتب نفس الفئة</a>
+        {% endif %}
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -51,7 +54,7 @@
                 {% if book.cover_image %}
                     <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="w-full aspect-[2/3] object-cover">
                 {% else %}
-                    <img src="{% static 'images/logo.jpg' %}" alt="{{ book.title }}" class="w-full aspect-[2/3] object-contain bg-slate-100 dark:bg-slate-800 p-4">
+                    <img src="{{ library_branding.logo_url }}" alt="{{ book.title }}" class="w-full aspect-[2/3] object-contain bg-slate-100 dark:bg-slate-800 p-4">
                 {% endif %}
             </div>
 
@@ -85,14 +88,24 @@
                 <a href="{% url 'search_results' %}?category={{ book.category.id }}" class="text-sm font-bold text-brand">المزيد</a>
             {% endif %}
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="books-grid">
             {% for item in similar_books %}
-                <a href="{% url 'book_detail' item.id %}" class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-brand transition">
-                    <div class="font-bold">{{ item.title }}</div>
-                    <div class="text-xs text-slate-500 mt-1">{{ item.category.name|default:"-" }}</div>
-                </a>
+                <article class="card book-card">
+                    <a href="{% url 'book_detail' item.id %}" class="book-card-link-overlay" aria-label="{{ item.title }}"></a>
+                    {% if item.cover_image %}
+                        <img src="{{ item.cover_image.url }}" alt="{{ item.title }}" class="book-card-media">
+                    {% else %}
+                        <img src="{{ library_branding.logo_url }}" alt="{{ item.title }}" class="book-card-media" style="object-fit: contain; padding: 1.2rem;">
+                    {% endif %}
+                    <h3>{{ item.title }}</h3>
+                    <p>{{ item.category.name|default:"-" }}</p>
+                    <div class="book-card-actions">
+                        <a href="{% url 'book_detail' item.id %}" class="btn-primary">التفاصيل</a>
+                        <button type="button" onclick="openReserveModal('{{ item.id }}', '{{ item.title|escapejs }}')" class="btn-secondary">حجز</button>
+                    </div>
+                </article>
             {% empty %}
-                <p class="text-sm text-slate-500">لا توجد كتب مشابهة حالياً.</p>
+                <p class="text-sm text-slate-500">لا توجد كتب مشابهة حاليًا.</p>
             {% endfor %}
         </div>
     </section>

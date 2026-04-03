@@ -1,4 +1,4 @@
-from django.utils import timezone
+﻿from django.utils import timezone
 
 from books.models import BookCopy
 
@@ -9,7 +9,11 @@ from .timing import (
     get_borrow_duration,
     get_reservation_duration,
 )
-from dashboard.notifications import create_reservation_created_notification, notify_reserved_book_available
+from dashboard.notifications import (
+    create_reservation_approved_notification,
+    create_reservation_created_notification,
+    notify_reserved_book_available,
+)
 
 MAX_BORROW_LIMIT = 3
 
@@ -72,6 +76,9 @@ def _find_available_copy(book, preferred_copy=None):
 
 def borrow_book(member, book, employee, preferred_copy=None):
     _expire_pending_reservations()
+
+    if member.is_suspended:
+        raise ValueError("هذا العضو موقوف عن الاستعارة.")
 
     if not can_member_borrow(member):
         raise ValueError("لا يمكن استعارة أكثر من 3 كتب في نفس الوقت.")
@@ -206,6 +213,7 @@ def approve_reservation(reservation):
 
     reservation.status = "approved"
     reservation.save(update_fields=["status"])
+    create_reservation_approved_notification(reservation)
     return reservation
 
 
@@ -258,3 +266,4 @@ def get_member_reservation_history(member):
 
 def describe_fine_units(units):
     return f"{units} {fine_unit_label(units)}"
+
