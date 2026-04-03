@@ -39,45 +39,45 @@
             {% endif %}
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
             {% for book in books %}
-                <article class="card flex flex-col p-3 md:p-4">
+                <article class="card book-card">
                     {% if book.cover_image %}
-                        <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="w-full aspect-[2/3] object-cover rounded-xl mb-3">
+                        <img src="{{ book.cover_image.url }}" alt="{{ book.title }}">
                     {% else %}
-                        <img src="{% static 'images/logo.jpg' %}" alt="{{ book.title }}" class="w-full aspect-[2/3] object-contain rounded-xl mb-3 bg-slate-100 dark:bg-slate-800 p-3">
+                        <img src="{% static 'images/logo.jpg' %}" alt="{{ book.title }}" style="object-fit: contain; padding: 1.5rem;">
                     {% endif %}
 
-                    <h3 class="font-black text-sm md:text-lg leading-6">{{ book.title }}</h3>
-                    <p class="text-xs md:text-sm text-slate-500 mt-1">{{ book.category.name|default:"-" }}</p>
-                    <p class="text-xs text-slate-500 mt-2">{% for author in book.authors.all %}{{ author.name }}{% if not forloop.last %}، {% endif %}{% empty %}-{% endfor %}</p>
+                    <h3 title="{{ book.title }}">{{ book.title }}</h3>
+                    <p>الفئة: {{ book.category.name|default:"-" }}</p>
+                    <p>المؤلف: {% for author in book.authors.all %}{{ author.name }}{% if not forloop.last %}، {% endif %}{% empty %}-{% endfor %}</p>
 
-                    <div class="mt-3 text-xs space-y-1">
+                    <div class="mt-2 text-xs space-y-1">
                         <div>
                             {% if book.has_available_copies %}
-                                <span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">متوفر ورقيًا</span>
+                                <span class="badge bg-emerald-100 text-emerald-700">متوفر ورقيًا</span>
                             {% else %}
-                                <span class="px-2 py-1 rounded-full bg-amber-100 text-amber-800">غير متوفر ورقيًا</span>
+                                <span class="badge bg-amber-100 text-amber-800">غير متوفر ورقيًا</span>
                             {% endif %}
                         </div>
                         {% if book.has_digital %}
-                            <span class="px-2 py-1 rounded-full bg-cyan-100 text-cyan-700 inline-block">نسخة رقمية</span>
+                            <span class="badge bg-cyan-100 text-cyan-700">نسخة رقمية</span>
                         {% endif %}
                     </div>
 
-                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <a href="{% url 'book_detail' book.id %}" class="btn-primary text-center text-xs md:text-sm">التفاصيل</a>
+                    <div class="book-card-buttons">
+                        <a href="{% url 'book_detail' book.id %}" class="btn-primary">التفاصيل</a>
                         {% if book.has_physical_copy %}
-                            <button type="button" onclick="openReserveModal('{{ book.id }}', '{{ book.title|escapejs }}')" class="btn-secondary text-xs md:text-sm">حجز</button>
+                            <button type="button" onclick="openReserveModal('{{ book.id }}', '{{ book.title|escapejs }}')" class="btn-secondary">حجز</button>
                         {% else %}
-                            <span class="text-center text-xs px-2 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500">الحجز للورقي فقط</span>
+                            <span class="text-center text-[10px] px-1 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500">للمطالعة فقط</span>
                         {% endif %}
                     </div>
 
                     {% if book.has_digital %}
-                        <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <a href="{% url 'read_digital_book' book.id %}" class="btn-secondary text-center text-xs md:text-sm">قراءة</a>
-                            <a href="{% url 'download_digital_book' book.id %}" class="btn-secondary text-center text-xs md:text-sm">تحميل</a>
+                        <div class="book-card-buttons !mt-2">
+                            <a href="{% url 'read_digital_book' book.id %}" class="btn-secondary">قراءة</a>
+                            <a href="{% url 'download_digital_book' book.id %}" class="btn-secondary">تحميل</a>
                         </div>
                     {% endif %}
                 </article>

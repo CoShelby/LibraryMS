@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     color-scheme: light;
     --c1: #5d3e3f;
     --c2: #967462;
@@ -115,5 +115,76 @@ body {
 @media (max-width: 768px) {
     .sidebar-link {
         padding: 0.55rem 0.7rem;
+    }
+}
+
+/* Book Card Styles */
+.book-card {
+    display: flex;
+    flex-direction: column;
+    padding: 0.8rem !important;
+}
+
+.book-card img {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    border-radius: 0.9rem;
+    margin-bottom: 0.75rem;
+    background-color: var(--c3);
+}
+
+[data-theme="dark"] .book-card img {
+    background-color: #0b1220;
+}
+
+.book-card h2, .book-card h3 {
+    font-size: 0.95rem !important;
+    font-weight: 900;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0;
+}
+
+.book-card p {
+    font-size: 0.75rem !important;
+    color: #64748b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 0.2rem !important;
+}
+
+[data-theme="dark"] .book-card p {
+    color: #94a3b8;
+}
+
+.book-card .badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.book-card-buttons {
+    display: grid;
+    grid-template-cols: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.book-card-buttons .btn-primary,
+.book-card-buttons .btn-secondary {
+    padding: 0.45rem 0.6rem !important;
+    font-size: 0.75rem !important;
+    border-radius: 0.65rem !important;
+}
+
+@media (max-width: 640px) {
+    .book-card-buttons {
+        grid-template-cols: 1fr;
     }
 }

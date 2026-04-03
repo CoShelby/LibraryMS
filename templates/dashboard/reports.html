@@ -20,9 +20,10 @@
 
     <form method="get" class="card grid grid-cols-1 md:grid-cols-4 gap-3 print-hidden">
         <div class="md:col-span-full">
+            <input type="hidden" name="table" value="{{ active_table }}">
             <div class="flex flex-wrap gap-2">
                 {% for key, config in report_tables.items %}
-                    <button type="submit" name="table" value="{{ key }}" class="{% if key == active_table %}btn-primary{% else %}btn-secondary{% endif %}">{{ config.label }}</button>
+                    <button type="submit" onclick="this.form.table.value='{{ key }}'" class="{% if key == active_table %}btn-primary{% else %}btn-secondary{% endif %}">{{ config.label }}</button>
                 {% endfor %}
             </div>
         </div>
