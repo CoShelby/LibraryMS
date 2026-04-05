@@ -1,4 +1,4 @@
-﻿from django.conf import settings
+from django.conf import settings
 from django.core.mail import send_mail
 from django.db.models import Sum
 from django.utils import timezone
@@ -6,7 +6,8 @@ from django.utils import timezone
 from circulations.models import Borrowing, Fine
 from libraryms.validation import normalize_yemen_phone
 
-from .models import MemberMessageLog, Notification
+from emails.models import MemberMessageLog
+from notifications.models import Notification
 
 
 NOTIFICATION_MESSAGE_TYPE_MAP = {
@@ -133,25 +134,7 @@ def send_member_message(member, message_type, sent_by=None, notification=None):
             )
             results["errors"].append(str(exc))
 
-    phone_value = member.phone or ""
-    if phone_value:
-        try:
-            normalized_phone = normalize_yemen_phone(phone_value)
-            sms_text = f"{subject}: {body.replace(chr(10), ' ').strip()}"
-            MemberMessageLog.objects.create(
-                member=member,
-                notification=notification,
-                message_type=message_type,
-                channel=MemberMessageLog.CHANNEL_SMS,
-                recipient=normalized_phone,
-                subject=subject,
-                body=sms_text,
-                status=MemberMessageLog.STATUS_PREPARED,
-                sent_by=sent_by,
-            )
-            results["sms_prepared"] = True
-        except Exception as exc:
-            results["errors"].append(str(exc))
+
 
     return results
 

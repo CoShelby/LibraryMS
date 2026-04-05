@@ -47,8 +47,9 @@ from .forms import (
     LibraryBrandingForm,
     PublisherForm,
 )
-from .member_messages import message_type_from_notification, send_member_message
-from .models import LibraryBranding, Notification
+from emails.member_messages import message_type_from_notification, send_member_message
+from .models import LibraryBranding
+from notifications.models import Notification
 from .notifications import notification_target_url
 
 def _split_names(raw_value):
@@ -278,6 +279,55 @@ def dashboard_add_book(request):
     if request.method == "POST":
         form = BookForm(request.POST, request.FILES)
         if form.is_valid():
+            title = form.cleaned_data.get("title").strip()
+            dewey = form.cleaned_data.get("dewey_decimal_number") or ""
+            year = form.cleaned_data.get("publication_year")
+            edition = form.cleaned_data.get("edition") or ""
+            language = form.cleaned_data.get("language")
+            category_name = form.cleaned_data.get("category_name").strip()
+            publisher_name = form.cleaned_data.get("publisher_name").strip()
+            author_names = set(BookForm._split_names(form.cleaned_data.get("author_names")))
+
+            identical_books = Book.objects.filter(
+                title__iexact=title,
+                dewey_decimal_number__iexact=dewey,
+                publication_year=year,
+                edition__iexact=edition,
+                language=language,
+                category__name__iexact=category_name,
+                publisher__name__iexact=publisher_name
+            )
+
+            found_duplicate = None
+            for b in identical_books:
+                if set(b.authors.values_list('name', flat=True)) == author_names:
+                    found_duplicate = b
+                    break
+
+            if found_duplicate:
+                copies_to_add = form.cleaned_data.get("copies_count")
+                if copies_to_add is None:
+                    copies_to_add = 1
+                
+                existing_numbers = []
+                for val in found_duplicate.bookcopy_set.values_list("copy_number", flat=True):
+                    if val and str(val).isdigit():
+                        existing_numbers.append(int(val))
+                next_number = (max(existing_numbers) if existing_numbers else 0) + 1
+
+                for _ in range(copies_to_add):
+                    copy_number = str(next_number)
+                    BookCopy.objects.create(
+                        book=found_duplicate,
+                        copy_number=copy_number,
+                        barcode=f"{found_duplicate.id}-{copy_number}",
+                        status="new",
+                    )
+                    next_number += 1
+                
+                messages.warning(request, f"هذا الكتاب موجود مسبقاً! تمت إضافة {copies_to_add} نسخة جديدة للكتاب بدلاً من تكرار الإدخال.")
+                return redirect("dashboard_books_list")
+
             book = form.save(created_by=request.user)
             messages.success(request, f"تمت إضافة الكتاب: {book.title}")
             return redirect("dashboard_books_list")
@@ -336,12 +386,16 @@ def dashboard_book_copies(request, book_id):
         form = BookCopyForm(request.POST)
         if form.is_valid():
             copy = form.save(commit=False)
-            copy.book = book
-            # النسخة الجديدة تعتبر غير مطبوعة حتى تمر عبر صفحة الطباعة.
-            copy.is_printed = False
-            copy.save()
-            messages.success(request, "تمت إضافة النسخة بنجاح.")
-            return redirect("dashboard_book_copies", book_id=book.id)
+            if copy.copy_number and BookCopy.objects.filter(book=book, copy_number=copy.copy_number).exists():
+                messages.error(request, f"رقم النسخة '{copy.copy_number}' موجود مسبقاً لهذا الكتاب.")
+                form = BookCopyForm()
+            else:
+                copy.book = book
+                # النسخة الجديدة تعتبر غير مطبوعة حتى تمر عبر صفحة الطباعة.
+                copy.is_printed = False
+                copy.save()
+                messages.success(request, "تمت إضافة النسخة بنجاح.")
+                return redirect("dashboard_book_copies", book_id=book.id)
     else:
         form = BookCopyForm()
 

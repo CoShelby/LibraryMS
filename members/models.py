@@ -1,10 +1,9 @@
-﻿from django.db import models
+from django.db import models
 
 
 class Member(models.Model):
     MEMBER_TYPE = [
         ("student", "طالب"),
-        ("staff", "موظف"),
         ("faculty", "هيئة تدريس"),
     ]
 

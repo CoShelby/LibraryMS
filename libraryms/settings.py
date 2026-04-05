@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     'members.apps.MembersConfig',
     'public.apps.PublicConfig',
     'dashboard.apps.DashboardConfig',
+    'notifications.apps.NotificationsConfig',
+    'emails.apps.EmailsConfig',
     'logs.apps.LogsConfig',
     'django.contrib.admin',
     'django.contrib.auth',

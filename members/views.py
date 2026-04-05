@@ -1,4 +1,4 @@
-﻿from django.contrib import messages
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -80,4 +80,23 @@ def delete_member(request, member_id):
         member.delete()
         messages.success(request, f"تم حذف العضو {name} بنجاح.")
     return redirect("member_list")
+
+@admin_capability_required("can_manage_members")
+def print_cards(request):
+    member_ids = request.GET.getlist("members")
+    if member_ids:
+        members_list = Member.objects.filter(id__in=member_ids)
+    else:
+        members_list = Member.objects.filter(is_printed=False)
+
+    for m in members_list:
+        m.is_printed = True
+        m.card_print_count += 1
+        m.last_card_printed_at = timezone.now()
+        m.save(update_fields=['is_printed', 'card_print_count', 'last_card_printed_at'])
+
+    members_list = list(members_list)
+    pages = [members_list[i:i + 4] for i in range(0, len(members_list), 4)]
+
+    return render(request, "members/print_cards.html", {"pages": pages, "printed_at": timezone.now()})
 

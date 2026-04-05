@@ -24,6 +24,15 @@
                 <p class="text-sm text-slate-500">البريد: {{ member.email|default:"-" }}</p>
                 <p class="text-sm text-slate-500">الهاتف: {{ member.phone|default:"-" }}</p>
                 <p class="text-sm text-slate-500">انتهاء العضوية: {{ member.membership_expiry|date:"Y-m-d" }}</p>
+                {% now "Y-m-d" as today_str %}
+                {% if member.membership_expiry|date:"Y-m-d" < today_str %}
+                    <div class="mt-2 p-3 bg-red-100 text-red-800 rounded-md border border-red-200 text-sm">
+                        <p class="font-bold mb-2">تنبيه: لقد انتهت صلاحية العضوية.</p>
+                        {% if is_admin_view or request.user.is_staff %}
+                        <a href="{% url 'edit_member' member.id %}" class="btn-secondary text-xs inline-block">تجديد العضوية / استعراض التفاصيل</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
                 {% if member.is_suspended %}
                     <p class="text-sm font-bold text-rose-600 mt-1">الحالة: العضوية موقوفة {% if member.suspension_reason %}({{ member.suspension_reason }}){% endif %}</p>
                 {% endif %}

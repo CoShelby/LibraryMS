@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}مكتبة كلية الحاسبات وتقنية المعلومات{% endblock %}</title>
+    <title>{% block title %}{{ library_branding.name }}{% endblock %}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,7 +53,7 @@
             </button>
             <div class="nav-brand min-w-0">
                 <img src="{{ library_branding.logo_url }}" alt="Library Logo" class="mobile-nav-logo">
-                <h1 class="text-xs font-black text-brand dark:text-mint truncate">مكتبة كلية الحاسبات وتقنية المعلومات</h1>
+                <h1 class="text-xs font-black text-brand dark:text-mint truncate">{{ library_branding.name }}</h1>
             </div>
             <button id="theme-toggle-mobile" type="button" class="btn-secondary px-3 py-2">
                 <i class="fa-solid fa-moon"></i>
@@ -67,9 +67,9 @@
         <div class="p-5 border-b border-slate-200 dark:border-slate-800">
             <div class="nav-brand mb-2">
                 <img src="{{ library_branding.logo_url }}" alt="Library Logo" class="nav-logo">
-                <h1 class="text-lg font-black text-brand dark:text-mint leading-7">مكتبة كلية الحاسبات<br>وتقنية المعلومات</h1>
+                <h1 class="text-lg font-black text-brand dark:text-mint leading-7">{{ library_branding.name }}</h1>
             </div>
-            <p class="text-xs text-slate-500 mt-2">نظام إدارة المكتبة الورقية والرقمية</p>
+            <p class="text-xs text-slate-500 mt-2">{{ library_branding.tagline|default:"نظام إدارة المكتبة الورقية والرقمية" }}</p>
         </div>
 
         {% with path=request.path %}

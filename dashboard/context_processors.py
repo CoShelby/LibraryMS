@@ -1,7 +1,7 @@
-﻿from accounts.services import is_library_admin
+from accounts.services import is_library_admin
 
 from .branding import get_library_branding
-from .models import Notification
+from notifications.models import Notification
 from .notifications import get_admin_notifications
 
 

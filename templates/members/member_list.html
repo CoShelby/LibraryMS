@@ -11,6 +11,7 @@
                 <input type="text" name="query" value="{{ query }}" placeholder="بحث بالاسم أو الرقم أو البريد" class="input-field">
                 <button type="submit" class="btn-secondary">بحث</button>
             </form>
+            <a href="{% url 'print_cards' %}" target="_blank" class="btn-secondary">طباعة بطاقات للعضاء الجدد</a>
             <a href="{% url 'add_member' %}" class="btn-primary">إضافة عضو</a>
         </div>
     </div>

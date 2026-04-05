@@ -1,4 +1,4 @@
-﻿from django.utils import timezone
+from django.utils import timezone
 
 from books.models import BookCopy
 
@@ -126,6 +126,9 @@ def renew_borrowing(borrowing):
     if borrowing.renewed:
         raise ValueError("تم تجديد هذه الإعارة مسبقًا.")
 
+    if Reservation.objects.filter(book=borrowing.book_copy.book, status__in=["pending", "approved"]).exists():
+        raise ValueError("لا يمكن تجديد الإعارة لوجود طلبات حجز على هذا الكتاب.")
+
     borrowing.due_date = borrowing.due_date + get_borrow_duration()
     borrowing.renewed = True
     borrowing.renewal_requested = False
@@ -184,6 +187,11 @@ def reserve_book(member, book):
     # الحجز مسموح فقط للكتب الورقية التي لديها نسخة واحدة على الأقل.
     if not BookCopy.objects.filter(book=book).exists():
         raise ValueError("لا يمكن حجز كتاب رقمي فقط بدون نسخة ورقية.")
+
+    usable_copies = BookCopy.objects.filter(book=book, status="new").count()
+    active_borrowings = Borrowing.objects.filter(book_copy__book=book, return_date__isnull=True).count()
+    if (usable_copies - active_borrowings) > 0:
+        raise ValueError("يوجد نسخ متاحة حالياً للاستعارة. الأولوية للحضور الشخصي ولا يُسمح بالحجز إذا كان الكتاب متوفراً.")
 
     if Reservation.objects.filter(member=member, book=book, status__in=["pending", "approved"]).exists():
         raise ValueError("لديك طلب حجز نشط مسبقًا لنفس الكتاب.")

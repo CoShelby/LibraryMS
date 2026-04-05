@@ -7,7 +7,7 @@ from circulations.models import Borrowing, Fine, Reservation
 from circulations.timing import calculate_fine_snapshot
 from members.models import Member
 
-from .models import Notification
+from notifications.models import Notification
 
 
 def _format_overdue_duration(delay):
@@ -100,8 +100,7 @@ def sync_overdue_notifications():
 def _available_copies_for_book(book):
     usable_copies = BookCopy.objects.filter(book=book, status="new").count()
     active_borrowings = Borrowing.objects.filter(book_copy__book=book, return_date__isnull=True).count()
-    approved_reservations = Reservation.objects.filter(book=book, status="approved").count()
-    return max(usable_copies - active_borrowings - approved_reservations, 0)
+    return max(usable_copies - active_borrowings, 0)
 
 
 def notify_reserved_book_available(book):

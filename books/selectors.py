@@ -1,4 +1,4 @@
-﻿import re
+import re
 
 from django.core.cache import cache
 from django.db.models import (
@@ -152,7 +152,7 @@ def _base_books_queryset():
         )
         .annotate(
             available_copies_raw=ExpressionWrapper(
-                F("usable_copies") - F("active_borrowings") - F("approved_reservations"),
+                F("usable_copies") - F("active_borrowings"),
                 output_field=IntegerField(),
             )
         )
@@ -210,20 +210,33 @@ def _book_similarity(query, book):
     dewey = _normalize_search_text(book.dewey_decimal_number)
     description = _normalize_search_text(book.description)
 
+    edition = _normalize_search_text(book.edition)
+    language_display = _normalize_search_text(dict(Book.LANGUAGE_CHOICES).get(book.language, ""))
+    year = _normalize_search_text(str(book.publication_year) if book.publication_year else "")
+    pages = _normalize_search_text(str(book.pages) if book.pages else "")
+
     title_score = _text_similarity_score(query, title)
     author_score = _text_similarity_score(query, author_names)
     category_score = _text_similarity_score(query, category_name)
     publisher_score = _text_similarity_score(query, publisher_name)
     dewey_score = _text_similarity_score(query, dewey)
     description_score = _text_similarity_score(query, description)
+    edition_score = _text_similarity_score(query, edition)
+    language_score = _text_similarity_score(query, language_display)
+    year_score = _text_similarity_score(query, year)
+    pages_score = _text_similarity_score(query, pages)
 
     weighted_score = (
-        (title_score * 0.52)
-        + (author_score * 0.18)
-        + (category_score * 0.11)
-        + (publisher_score * 0.09)
-        + (dewey_score * 0.06)
-        + (description_score * 0.04)
+        (title_score * 0.42)
+        + (author_score * 0.15)
+        + (category_score * 0.08)
+        + (publisher_score * 0.08)
+        + (edition_score * 0.06)
+        + (year_score * 0.06)
+        + (language_score * 0.05)
+        + (dewey_score * 0.04)
+        + (pages_score * 0.03)
+        + (description_score * 0.03)
     )
 
     query_normalized = _normalize_search_text(query)
