@@ -129,17 +129,38 @@
         <h2 class="text-xl font-black mb-4">الاستعارات النشطة</h2>
         <div class="space-y-3 max-h-[560px] overflow-y-auto">
             {% for borrowing in active_borrowings %}
+                {% with book_id=borrowing.book_copy.book_id %}
+                {% with has_approved_reservation=book_id|stringformat:"s" %}
                 <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-2">
                     <div class="font-bold">{{ borrowing.book_copy.book.title }}</div>
                     <div class="text-xs text-slate-500">النسخة QR: {{ borrowing.book_copy.barcode }}</div>
                     <div class="text-xs text-slate-500">العضو: {{ borrowing.member.name }}</div>
                     <div class="text-xs text-slate-500">أنشأ العملية: {{ borrowing.created_by.username|default:"-" }}</div>
                     <div class="text-xs text-slate-500">الاستحقاق: {{ borrowing.due_date|date:"Y-m-d H:i" }}</div>
-                    <form method="post" action="{% url 'dashboard_return_borrowing' borrowing.id %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-primary w-full">تسجيل إرجاع الكتاب</button>
-                    </form>
+                    {% if borrowing.book_copy.book_id in approved_reserved_book_ids %}
+                        <div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                            ⚠️ هذا الكتاب عليه حجز معتمد — التجديد ممنوع
+                        </div>
+                    {% endif %}
+                    <div class="flex gap-2">
+                        <form method="post" action="{% url 'dashboard_return_borrowing' borrowing.id %}" class="flex-1">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-primary w-full">تسجيل إرجاع الكتاب</button>
+                        </form>
+                        {% if not borrowing.renewed and not borrowing.book_copy.book_id in approved_reserved_book_ids %}
+                            <form method="post" action="{% url 'dashboard_direct_renew' borrowing.id %}" class="flex-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-secondary w-full">تجديد الاستعارة</button>
+                            </form>
+                        {% else %}
+                            <button disabled class="btn-secondary w-full opacity-50 cursor-not-allowed flex-1">
+                                {% if borrowing.renewed %}تم التجديد{% else %}التجديد ممنوع{% endif %}
+                            </button>
+                        {% endif %}
+                    </div>
                 </div>
+                {% endwith %}
+                {% endwith %}
             {% empty %}
                 <p class="text-sm text-slate-500">لا توجد استعارات نشطة.</p>
             {% endfor %}

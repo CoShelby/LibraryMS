@@ -1,4 +1,4 @@
-﻿from django.urls import path
+from django.urls import path
 
 from . import views
 
@@ -25,6 +25,7 @@ urlpatterns = [
     path("circulation/reservations/<int:reservation_id>/cancel/", views.dashboard_cancel_reservation, name="dashboard_cancel_reservation"),
     path("circulation/borrowings/<int:borrowing_id>/return/", views.dashboard_return_borrowing, name="dashboard_return_borrowing"),
     path("circulation/borrowings/<int:borrowing_id>/approve-renewal/", views.dashboard_approve_renewal, name="dashboard_approve_renewal"),
+    path("circulation/borrowings/<int:borrowing_id>/direct-renew/", views.dashboard_direct_renew, name="dashboard_direct_renew"),
     path("circulation/borrowings/<int:borrowing_id>/reject-renewal/", views.dashboard_reject_renewal, name="dashboard_reject_renewal"),
     path("circulation/fines/<int:fine_id>/payment/", views.dashboard_update_fine_payment, name="dashboard_update_fine_payment"),
     path("reports/", views.dashboard_reports, name="dashboard_reports"),

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}{{ library_branding.name }} | طباعة بطاقات العضوية{% endblock %}
+
+{% block content %}
+<section class="space-y-5">
+    <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+        <h1 class="text-2xl font-extrabold">طباعة بطاقات العضوية</h1>
+        <a href="{% url 'member_list' %}" class="btn-secondary">← رجوع لقائمة الأعضاء</a>
+    </div>
+
+    <div class="card">
+        <form method="get" action="{% url 'print_cards' %}" target="_blank" id="printForm">
+            <div class="flex flex-wrap gap-3 mb-4 items-center justify-between">
+                <div class="flex gap-2 flex-wrap">
+                    <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                        <input type="radio" name="scope" value="unprinted" {% if scope == "unprinted" or not scope %}checked{% endif %} onchange="updateScope(this.value)">
+                        الأعضاء الجدد فقط (لم تُطبع بطاقاتهم)
+                    </label>
+                    <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                        <input type="radio" name="scope" value="all" {% if scope == "all" %}checked{% endif %} onchange="updateScope(this.value)">
+                        جميع الأعضاء
+                    </label>
+                    <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                        <input type="radio" name="scope" value="selected" {% if scope == "selected" %}checked{% endif %} onchange="updateScope(this.value)">
+                        أعضاء محددون يدوياً
+                    </label>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <i class="fa-solid fa-print ml-1"></i> طباعة البطاقات المحددة
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 dark:bg-slate-800">
+                        <tr>
+                            <th class="p-3 text-right w-8">
+                                <input type="checkbox" id="selectAll" class="cursor-pointer" title="تحديد الكل">
+                            </th>
+                            <th class="p-3 text-right">الاسم</th>
+                            <th class="p-3 text-right">رقم العضوية</th>
+                            <th class="p-3 text-right">النوع</th>
+                            <th class="p-3 text-right">تاريخ الانتهاء</th>
+                            <th class="p-3 text-right">حالة طباعة البطاقة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member in members %}
+                            <tr class="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                <td class="p-3">
+                                    <input type="checkbox" name="members" value="{{ member.id }}"
+                                           class="member-check cursor-pointer"
+                                           {% if scope != "selected" %}checked{% endif %}>
+                                </td>
+                                <td class="p-3 font-semibold">{{ member.name }}</td>
+                                <td class="p-3 font-mono">{{ member.membership_number }}</td>
+                                <td class="p-3">{{ member.get_member_type_display }}</td>
+                                <td class="p-3">{{ member.membership_expiry|date:"Y-m-d" }}</td>
+                                <td class="p-3">
+                                    {% if member.card_print_count > 0 %}
+                                        <span class="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-700 font-medium">
+                                            بدل فاقد — طُبعت {{ member.card_print_count }} مرة
+                                        </span>
+                                    {% else %}
+                                        <span class="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700 font-medium">
+                                            جديد (لم تُطبع)
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="6" class="p-8 text-center text-slate-500">لا يوجد أعضاء لعرضهم.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </div>
+</section>
+
+<script>
+function updateScope(val) {
+    // لا شيء — قيمة scope من الـ radio مباشرة في الـ form
+}
+
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checked = this.checked;
+    document.querySelectorAll('.member-check').forEach(cb => cb.checked = checked);
+    document.querySelector('input[name="scope"][value="selected"]').checked = true;
+});
+
+document.querySelectorAll('.member-check').forEach(cb => {
+    cb.addEventListener('change', function() {
+        document.querySelector('input[name="scope"][value="selected"]').checked = true;
+        const all = [...document.querySelectorAll('.member-check')].every(c => c.checked);
+        document.getElementById('selectAll').checked = all;
+    });
+});
+</script>
+{% endblock %}

@@ -126,8 +126,10 @@ def renew_borrowing(borrowing):
     if borrowing.renewed:
         raise ValueError("تم تجديد هذه الإعارة مسبقًا.")
 
-    if Reservation.objects.filter(book=borrowing.book_copy.book, status__in=["pending", "approved"]).exists():
-        raise ValueError("لا يمكن تجديد الإعارة لوجود طلبات حجز على هذا الكتاب.")
+    # تمنع تجديد الاستعارة فقط إذا كان هناك حجز معتمد (approved) على هذا الكتاب
+    # الحجز المعلق (pending) وحده لا يمنع التجديد
+    if Reservation.objects.filter(book=borrowing.book_copy.book, status="approved").exists():
+        raise ValueError("لا يمكن تجديد الإعارة لوجود حجز معتمد على هذا الكتاب بانتظار عضو آخر.")
 
     borrowing.due_date = borrowing.due_date + get_borrow_duration()
     borrowing.renewed = True
@@ -216,9 +218,7 @@ def approve_reservation(reservation):
     if reservation.status != "pending":
         raise ValueError("لا يمكن اعتماد هذا الحجز.")
 
-    if get_book_available_copies(reservation.book) <= 0:
-        raise ValueError("لا توجد نسخة متاحة لاعتماد الحجز حاليًا.")
-
+    # الاعتماد لا يتطلب وجود نسخة متاحة - الحجز هو طابور انتظار حتى يتم إرجاع نسخة
     reservation.status = "approved"
     reservation.save(update_fields=["status"])
     create_reservation_approved_notification(reservation)

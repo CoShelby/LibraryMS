@@ -1,41 +1,83 @@
 {% extends "base.html" %}
 
-{% block title %}{{ library_branding.name }} | Members{% endblock %}
+{% block title %}{{ library_branding.name }} | إدارة الأعضاء{% endblock %}
 
 {% block content %}
 <section class="space-y-5">
+
+    {# ===== شريط الطباعة ===== #}
+    <div id="printBar" class="hidden card border-2 border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/40">
+        <div class="flex flex-wrap gap-3 items-center justify-between">
+            <div class="flex items-center gap-3 text-sm font-medium">
+                <i class="fa-solid fa-print text-indigo-600 text-lg"></i>
+                <span id="selectedCount" class="text-indigo-700 dark:text-indigo-300 font-bold">0 عضو محدد</span>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+                <button type="button" onclick="printSelected()"
+                        class="btn-primary text-sm">
+                    <i class="fa-solid fa-print ml-1"></i> طباعة المحدد
+                </button>
+                <button type="button" onclick="printScope('unprinted')"
+                        class="btn-secondary text-sm">
+                    طباعة الجدد فقط
+                </button>
+                <button type="button" onclick="printScope('all')"
+                        class="btn-secondary text-sm">
+                    طباعة الكل
+                </button>
+                <button type="button" onclick="cancelPrint()"
+                        class="text-sm px-3 py-1.5 rounded border border-slate-300 text-slate-600 hover:bg-slate-100">
+                    إلغاء التحديد
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {# ===== رأس الصفحة ===== #}
     <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
         <h1 class="text-2xl font-extrabold">إدارة الأعضاء</h1>
         <div class="flex gap-2 flex-wrap">
             <form method="get" action="{% url 'member_list' %}" class="flex flex-wrap gap-2 items-center">
-                <input type="text" name="query" value="{{ query }}" placeholder="بحث بالاسم أو الرقم أو البريد" class="input-field">
+                <input type="text" name="query" value="{{ query }}"
+                       placeholder="بحث بالاسم أو الرقم أو البريد" class="input-field">
                 <button type="submit" class="btn-secondary">بحث</button>
             </form>
-            <a href="{% url 'print_cards' %}" target="_blank" class="btn-secondary">طباعة بطاقات للعضاء الجدد</a>
+            <button type="button" onclick="togglePrintMode()" id="printModeBtn" class="btn-secondary">
+                <i class="fa-solid fa-id-card ml-1"></i> طباعة بطاقات
+            </button>
             <a href="{% url 'add_member' %}" class="btn-primary">إضافة عضو</a>
         </div>
     </div>
 
+    {# ===== الجدول ===== #}
     <div class="card p-0 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 dark:bg-slate-800">
                     <tr>
+                        <th class="p-3 text-right w-8 print-col hidden">
+                            <input type="checkbox" id="selectAll" class="cursor-pointer" title="تحديد الكل">
+                        </th>
                         <th class="p-3 text-right">الاسم</th>
-                        <th class="p-3 text-right">رقم العضوية (QR)</th>
+                        <th class="p-3 text-right">رقم العضوية</th>
                         <th class="p-3 text-right">البريد</th>
                         <th class="p-3 text-right">الهاتف</th>
-                        <th class="p-3 text-right">الحالة</th>
+                        <th class="p-3 text-right">حالة العضوية</th>
+                        <th class="p-3 text-right">حالة البطاقة</th>
                         <th class="p-3 text-right">الإيقاف</th>
                         <th class="p-3 text-right">إجراء</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for member in members %}
-                        <tr class="border-t border-slate-100 dark:border-slate-800">
+                        <tr class="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                            <td class="p-3 print-col hidden">
+                                <input type="checkbox" class="member-check cursor-pointer"
+                                       data-id="{{ member.id }}" name="members" value="{{ member.id }}">
+                            </td>
                             <td class="p-3 font-semibold">{{ member.name }}</td>
-                            <td class="p-3">{{ member.membership_number }}</td>
-                            <td class="p-3">{{ member.email|default:"-" }}</td>
+                            <td class="p-3 font-mono text-xs">{{ member.membership_number }}</td>
+                            <td class="p-3 text-slate-500">{{ member.email|default:"-" }}</td>
                             <td class="p-3">{{ member.phone }}</td>
                             <td class="p-3">
                                 {% if member.membership_expiry >= today %}
@@ -45,19 +87,30 @@
                                 {% endif %}
                             </td>
                             <td class="p-3">
-                                {% if member.is_suspended %}
-                                    <span class="px-2 py-1 rounded-full text-xs bg-rose-100 text-rose-700">موقوف</span>
+                                {% if member.card_print_count > 0 %}
+                                    <span class="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-700" title="طُبعت {{ member.card_print_count }} مرة">بدل فاقد</span>
                                 {% else %}
-                                    <span class="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-600">غير موقوف</span>
+                                    <span class="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-500">لم تُطبع</span>
                                 {% endif %}
                             </td>
                             <td class="p-3">
-                                <a href="{% url 'edit_member' member.id %}" class="px-3 py-1 rounded border border-slate-300 text-xs">تعديل</a>
-                                <a href="{% url 'member_portal' %}?membership={{ member.membership_number|urlencode }}" class="px-3 py-1 rounded border border-slate-300 text-xs">بوابة العضو</a>
+                                {% if member.is_suspended %}
+                                    <span class="px-2 py-1 rounded-full text-xs bg-rose-100 text-rose-700">موقوف</span>
+                                {% else %}
+                                    <span class="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-600">نشط</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-3 whitespace-nowrap">
+                                <a href="{% url 'edit_member' member.id %}"
+                                   class="px-3 py-1 rounded border border-slate-300 text-xs hover:bg-slate-100">تعديل</a>
+                                <a href="{% url 'member_portal' %}?membership={{ member.membership_number|urlencode }}"
+                                   class="px-3 py-1 rounded border border-slate-300 text-xs hover:bg-slate-100">بوابة العضو</a>
                             </td>
                         </tr>
                     {% empty %}
-                        <tr><td colspan="7" class="p-8 text-center text-slate-500">لا يوجد أعضاء.</td></tr>
+                        <tr>
+                            <td colspan="9" class="p-8 text-center text-slate-500">لا يوجد أعضاء.</td>
+                        </tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -66,17 +119,99 @@
         {% if members.has_other_pages %}
             <div class="p-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-2 text-sm">
                 {% if members.has_previous %}
-                    <a href="?page={{ members.previous_page_number }}{% if query %}&query={{ query }}{% endif %}" class="px-3 py-1 rounded border border-slate-300">السابق</a>
+                    <a href="?page={{ members.previous_page_number }}{% if query %}&query={{ query }}{% endif %}"
+                       class="px-3 py-1 rounded border border-slate-300">السابق</a>
                 {% endif %}
-
-                <span class="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800">{{ members.number }} / {{ members.paginator.num_pages }}</span>
-
+                <span class="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800">
+                    {{ members.number }} / {{ members.paginator.num_pages }}
+                </span>
                 {% if members.has_next %}
-                    <a href="?page={{ members.next_page_number }}{% if query %}&query={{ query }}{% endif %}" class="px-3 py-1 rounded border border-slate-300">التالي</a>
+                    <a href="?page={{ members.next_page_number }}{% if query %}&query={{ query }}{% endif %}"
+                       class="px-3 py-1 rounded border border-slate-300">التالي</a>
                 {% endif %}
             </div>
         {% endif %}
     </div>
 </section>
-{% endblock %}
 
+{# نموذج مخفي يُرسل لصفحة الطباعة #}
+<form id="hiddenPrintForm" method="get" action="{% url 'print_cards' %}" target="_blank" style="display:none">
+    <div id="hiddenMemberInputs"></div>
+    <input type="hidden" name="scope" id="hiddenScope" value="selected">
+</form>
+
+<script>
+let printMode = false;
+
+function togglePrintMode() {
+    printMode = !printMode;
+    const printBar = document.getElementById('printBar');
+    const printCols = document.querySelectorAll('.print-col');
+    const btn = document.getElementById('printModeBtn');
+
+    if (printMode) {
+        printBar.classList.remove('hidden');
+        printCols.forEach(el => el.classList.remove('hidden'));
+        btn.innerHTML = '<i class="fa-solid fa-xmark ml-1"></i> إغلاق وضع الطباعة';
+    } else {
+        cancelPrint();
+    }
+    updateCount();
+}
+
+function cancelPrint() {
+    printMode = false;
+    document.getElementById('printBar').classList.add('hidden');
+    document.querySelectorAll('.print-col').forEach(el => el.classList.add('hidden'));
+    document.getElementById('printModeBtn').innerHTML = '<i class="fa-solid fa-id-card ml-1"></i> طباعة بطاقات';
+    document.querySelectorAll('.member-check').forEach(cb => cb.checked = false);
+    document.getElementById('selectAll').checked = false;
+    updateCount();
+}
+
+function updateCount() {
+    const checked = document.querySelectorAll('.member-check:checked').length;
+    document.getElementById('selectedCount').textContent = checked + ' عضو محدد';
+}
+
+function printSelected() {
+    const ids = [...document.querySelectorAll('.member-check:checked')].map(cb => cb.value);
+    if (ids.length === 0) {
+        alert('الرجاء تحديد عضو واحد على الأقل للطباعة.');
+        return;
+    }
+    submitPrint(ids, 'selected');
+}
+
+function printScope(scope) {
+    submitPrint([], scope);
+}
+
+function submitPrint(ids, scope) {
+    const container = document.getElementById('hiddenMemberInputs');
+    container.innerHTML = '';
+    ids.forEach(id => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = 'members';
+        inp.value = id;
+        container.appendChild(inp);
+    });
+    document.getElementById('hiddenScope').value = scope;
+    document.getElementById('hiddenPrintForm').submit();
+}
+
+document.getElementById('selectAll').addEventListener('change', function() {
+    document.querySelectorAll('.member-check').forEach(cb => cb.checked = this.checked);
+    updateCount();
+});
+
+document.querySelectorAll('.member-check').forEach(cb => {
+    cb.addEventListener('change', function() {
+        const allChecked = [...document.querySelectorAll('.member-check')].every(c => c.checked);
+        document.getElementById('selectAll').checked = allChecked;
+        updateCount();
+    });
+});
+</script>
+{% endblock %}

@@ -82,21 +82,44 @@ def delete_member(request, member_id):
     return redirect("member_list")
 
 @admin_capability_required("can_manage_members")
+def print_cards_select(request):
+    """صفحة تحديد الأعضاء قبل الطباعة"""
+    scope = request.GET.get("scope", "unprinted")
+
+    if scope == "all":
+        members_qs = Member.objects.all().order_by("-created_at")
+    elif scope == "selected":
+        # عرض كل الأعضاء للتحديد اليدوي
+        members_qs = Member.objects.all().order_by("-created_at")
+    else:  # unprinted
+        members_qs = Member.objects.filter(is_printed=False).order_by("-created_at")
+
+    return render(request, "members/print_cards_select.html", {
+        "members": members_qs,
+        "scope": scope,
+    })
+
+
+@admin_capability_required("can_manage_members")
 def print_cards(request):
     member_ids = request.GET.getlist("members")
-    if member_ids:
-        members_list = Member.objects.filter(id__in=member_ids)
-    else:
-        members_list = Member.objects.filter(is_printed=False)
+    scope = request.GET.get("scope", "unprinted")
 
+    if member_ids:
+        members_list = list(Member.objects.filter(id__in=member_ids))
+    elif scope == "all":
+        members_list = list(Member.objects.all().order_by("-created_at"))
+    else:  # unprinted default
+        members_list = list(Member.objects.filter(is_printed=False).order_by("-created_at"))
+
+    now = timezone.now()
     for m in members_list:
+        m.is_reprint = m.card_print_count > 0  # تحديد إذا كانت بدل فاقد
         m.is_printed = True
         m.card_print_count += 1
-        m.last_card_printed_at = timezone.now()
+        m.last_card_printed_at = now
         m.save(update_fields=['is_printed', 'card_print_count', 'last_card_printed_at'])
 
-    members_list = list(members_list)
     pages = [members_list[i:i + 4] for i in range(0, len(members_list), 4)]
-
-    return render(request, "members/print_cards.html", {"pages": pages, "printed_at": timezone.now()})
+    return render(request, "members/print_cards.html", {"pages": pages, "printed_at": now})
 

@@ -379,7 +379,10 @@ def dashboard_edit_book(request, book_id):
 
 @admin_capability_required("can_manage_books")
 def dashboard_book_copies(request, book_id):
-    book = get_object_or_404(Book, id=book_id)
+    book = Book.objects.filter(id=book_id).first()
+    if not book:
+        messages.warning(request, "تم حذف الكتاب تلقائياً بعد حذف جميع نسخه المادية.")
+        return redirect("dashboard_books_list")
     copy_query = (request.GET.get("q") or "").strip()
 
     if request.method == "POST":
@@ -858,11 +861,17 @@ def _circulation_context(manual_preview=None, manual_form=None):
         return_date__isnull=True
     ).order_by("due_date")
 
+    # مجموعة معرفات الكتب التي عليها حجوزات معتمدة الآن (تمنع التجديد)
+    approved_reserved_book_ids = set(
+        Reservation.objects.filter(status="approved").values_list("book_id", flat=True)
+    )
+
     return {
         "pending_reservations": pending_reservations,
         "approved_reservations": approved_reservations,
         "active_borrowings": active_borrowings,
         "renewal_requests": active_borrowings.filter(renewal_requested=True),
+        "approved_reserved_book_ids": approved_reserved_book_ids,
         "manual_preview": manual_preview,
         "manual_form": manual_form or {"membership_number": "", "copy_barcode": ""},
     }
@@ -970,6 +979,19 @@ def dashboard_approve_renewal(request, borrowing_id):
         try:
             renew_borrowing(borrowing)
             messages.success(request, "تمت الموافقة على طلب التجديد.")
+        except ValueError as exc:
+            messages.error(request, str(exc))
+    return redirect("dashboard_circulation")
+
+
+@admin_capability_required("can_manage_circulation")
+def dashboard_direct_renew(request, borrowing_id):
+    """تجديد مباشر من قبل الإداري من قائمة الاستعارات النشطة"""
+    borrowing = get_object_or_404(Borrowing, id=borrowing_id)
+    if request.method == "POST":
+        try:
+            renew_borrowing(borrowing)
+            messages.success(request, f"تم تجديد استعارة {borrowing.member.name} بنجاح.")
         except ValueError as exc:
             messages.error(request, str(exc))
     return redirect("dashboard_circulation")
