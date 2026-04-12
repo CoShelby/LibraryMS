@@ -1,4 +1,4 @@
-﻿from django.contrib import messages
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -78,12 +78,12 @@ def delete_member(request, member_id):
         member = get_object_or_404(Member, id=member_id)
         name = member.name
         member.delete()
-        messages.success(request, f"طھظ… ط­ط°ظپ ط§ظ„ط¹ط¶ظˆ {name} ط¨ظ†ط¬ط§ط­.")
+        messages.success(request, f"تم حذف العضو {name} بنجاح.")
     return redirect("member_list")
 
 @admin_capability_required("can_manage_members")
 def print_cards_select(request):
-    """طµظپط­ط© طھط­ط¯ظٹط¯ ط§ظ„ط£ط¹ط¶ط§ط، ظ‚ط¨ظ„ ط§ظ„ط·ط¨ط§ط¹ط©"""
+    """صفحة تحديد الأعضاء قبل الطباعة"""
     scope = request.GET.get("scope", "unprinted")
 
     if scope == "all":
