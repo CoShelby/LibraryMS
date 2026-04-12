@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}البحث | {{ library_branding.name }}{% endblock %}
 
@@ -58,6 +58,7 @@
             <a href="{% url 'search_results' %}" class="btn-secondary">بحث جديد</a>
         </div>
 
+        {% if books %}
         <div class="books-grid">
             {% for book in books %}
                 <article class="card book-card">
@@ -104,10 +105,11 @@
                         </div>
                     {% endif %}
                 </article>
-            {% empty %}
-                <div class="col-span-full card text-center py-10 text-slate-500">لا توجد نتائج مطابقة.</div>
             {% endfor %}
         </div>
+        {% else %}
+        <section class="card text-center py-10 text-slate-500">لا توجد نتائج مطابقة.</section>
+        {% endif %}
     {% endif %}
 </section>
 
@@ -167,6 +169,16 @@
     const suggestionsBox = document.getElementById('searchSuggestions');
     const searchForm = document.getElementById('searchForm');
     let searchTimer = null;
+
+    const suggestionKindLabels = {
+        'title': 'العنوان',
+        'author': 'المؤلف',
+        'category': 'الفئة',
+        'publisher': 'الناشر',
+        'isbn': 'ISBN',
+        'doi': 'DOI',
+        'dewey': 'ديوي'
+    };
 
     function clearSuggestions() {
         if (!suggestionsBox) return;

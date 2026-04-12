@@ -28,8 +28,7 @@
         <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
             <input type="hidden" name="table" value="{{ active_table }}">
             <input type="hidden" name="sort" value="{{ sort }}">
-            {% if active_table == 'fines' %}<input type="hidden" name="paid_status" value="{{ paid_status }}">{% endif
-            %}
+            {% if active_table == 'fines' %}<input type="hidden" name="paid_status" value="{{ paid_status }}">{% endif %}
             <div class="md:col-span-3">
                 <input type="text" name="member_query" value="{{ member_query }}" class="input-field"
                     placeholder="ادخل الاسم أو رقم العضوية أو رقم العضو">
@@ -152,15 +151,15 @@
 
         <select name="sort" class="input-field">
             {% for value, label in sort_options %}
-            <option value="{{ value }}" {% if value==sort %}selected{% endif %}>{{ label }}</option>
+            <option value="{{ value }}" {% if value == sort %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
         </select>
 
         {% if active_table == 'fines' %}
         <select name="paid_status" class="input-field">
-            <option value="all" {% if paid_status=='all' %}selected{% endif %}>كل الغرامات</option>
-            <option value="paid" {% if paid_status=='paid' %}selected{% endif %}>الغرامات المدفوعة</option>
-            <option value="unpaid" {% if paid_status=='unpaid' %}selected{% endif %}>الغرامات غير المدفوعة</option>
+            <option value="all" {% if paid_status == 'all' %}selected{% endif %}>كل الغرامات</option>
+            <option value="paid" {% if paid_status == 'paid' %}selected{% endif %}>الغرامات المدفوعة</option>
+            <option value="unpaid" {% if paid_status == 'unpaid' %}selected{% endif %}>الغرامات غير المدفوعة</option>
         </select>
         {% endif %}
 
@@ -195,8 +194,8 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
                                 <select name="paid_status" class="input-field">
-                                    <option value="paid" {% if row.5=='paid' %}selected{% endif %}>مدفوع</option>
-                                    <option value="unpaid" {% if row.5=='unpaid' %}selected{% endif %}>غير مدفوع
+                                    <option value="paid" {% if row.5 == 'paid' %}selected{% endif %}>مدفوع</option>
+                                    <option value="unpaid" {% if row.5 == 'unpaid' %}selected{% endif %}>غير مدفوع
                                     </option>
                                 </select>
                                 <button type="submit" class="btn-secondary whitespace-nowrap">حفظ</button>
