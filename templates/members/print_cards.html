@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -6,236 +6,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>طباعة بطاقات العضوية</title>
     <style>
-        @page {
-            size: A4;
-            margin: 8mm;
-        }
-
-        body {
-            margin: 0;
-            font-family: "Cairo", "Tahoma", "Arial", sans-serif;
-            background: #f7f7f7;
-            color: #1f2937;
-        }
-
-        .page {
-            width: 210mm;
-            min-height: 297mm;
-            margin: 0 auto;
-            padding: 8mm;
-            box-sizing: border-box;
-            display: grid;
-            grid-template-rows: repeat(4, minmax(0, 1fr));
-            gap: 6mm;
-            page-break-after: always;
-        }
-
-        .page:last-child {
-            page-break-after: auto;
-        }
-
-        .membership-card {
-            display: flex;
-            border: 1px solid #0f172a;
-            border-radius: 10px;
-            overflow: hidden;
-            background: #fff;
-            min-height: 64mm;
-        }
-
-        .card-face {
-            width: 50%;
-            padding: 10px;
-            box-sizing: border-box;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .watermark-logo {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 70%;
-            max-height: 80%;
-            object-fit: contain;
-            opacity: 0.06;
-            pointer-events: none;
-            z-index: 0;
-            filter: grayscale(100%);
-        }
-
-        .front-face {
-            border-left: 1px dashed #64748b;
-        }
-
-        .front-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
-            position: relative;
-            z-index: 10;
-        }
-
-        .front-logo {
-            width: 20px;
-            height: 20px;
-            object-fit: contain;
-        }
-
-        .library-title {
-            font-size: 11px;
-            font-weight: 800;
-            line-height: 1.5;
-        }
-
-        .front-body {
-            display: grid;
-            grid-template-columns: 64px 1fr;
-            gap: 10px;
-            align-items: start;
-            position: relative;
-            z-index: 10;
-        }
-
-        .member-photo,
-        .photo-placeholder {
-            width: 60px;
-            aspect-ratio: 3 / 4;
-            border-radius: 8px;
-            object-fit: cover;
-            border: 1px solid #cbd5e1;
-            background: #f8fafc;
-        }
-
-        .photo-placeholder {
-            display: grid;
-            place-items: center;
-            font-size: 10px;
-            font-weight: 700;
-            color: #64748b;
-        }
-
-        .front-lines {
-            font-size: 11px;
-            line-height: 1.75;
-        }
-
-        .front-lines strong {
-            font-weight: 800;
-        }
-
-        .type-badge {
-            display: inline-block;
-            margin-top: 4px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            background: #e2e8f0;
-            font-size: 10px;
-            font-weight: 800;
-        }
-
-        .reprint-label {
-            position: absolute;
-            left: 10px;
-            top: 10px;
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #ef4444;
-            border-radius: 4px;
-            padding: 2px 8px;
-            font-size: 11px;
-            font-weight: 800;
-        }
-
-        .back-face {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            z-index: 10;
-        }
-
-        .qr-box {
-            width: 100%;
-            min-height: 130px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            display: grid;
-            place-content: center;
-            background: #fff;
-        }
-
-        .qr-code {
-            width: 110px;
-            height: 110px;
-        }
-
-        .membership-text {
-            margin-top: 8px;
-            text-align: center;
-            font-size: 12px;
-            font-weight: 800;
-        }
-
-        .back-note {
-            margin-top: 4px;
-            text-align: center;
-            font-size: 10px;
-            color: #64748b;
-            line-height: 1.6;
-        }
-
-        .print-meta {
-            text-align: center;
-            font-size: 11px;
-            color: #475569;
-            margin: 8px 0 4px;
-        }
-
-        @media screen {
-            .page {
-                background: #fff;
-                box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
-                margin-top: 8px;
-                margin-bottom: 8px;
-            }
-        }
-
-        @media print {
-            body {
-                background: #fff;
-            }
-
-            .page {
-                box-shadow: none;
-                margin: 0;
-            }
-        }
+        @page { size: A4; margin: 8mm; }
+        body { margin: 0; font-family: "Cairo", "Tahoma", sans-serif; background: #f3f4f6; color: #0f172a; }
+        .toolbar { text-align: center; padding: 14px; }
+        .toolbar button { border: 0; border-radius: 10px; background: #0f172a; color: #fff; padding: 10px 18px; font-weight: 700; cursor: pointer; }
+        .page { width: 210mm; min-height: 297mm; margin: 0 auto 8px; padding: 8mm; box-sizing: border-box; display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 6mm; page-break-after: always; background: #fff; }
+        .page:last-child { page-break-after: auto; }
+        .print-meta { text-align: center; font-size: 11px; color: #64748b; margin-bottom: 4mm; }
+        .membership-card { display: flex; border: 1px solid #0f172a; border-radius: 12px; overflow: hidden; min-height: 64mm; }
+        .card-face { width: 50%; padding: 10px; box-sizing: border-box; position: relative; }
+        .front-face { border-left: 1px dashed #94a3b8; }
+        .watermark-logo { position: absolute; inset: 0; margin: auto; width: 70%; max-height: 80%; object-fit: contain; opacity: 0.05; pointer-events: none; }
+        .front-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; position: relative; z-index: 1; }
+        .front-logo { width: 24px; height: 24px; object-fit: contain; }
+        .library-title { font-size: 11px; font-weight: 800; line-height: 1.4; }
+        .front-body { display: grid; grid-template-columns: 64px 1fr; gap: 10px; position: relative; z-index: 1; }
+        .member-photo, .photo-placeholder { width: 60px; aspect-ratio: 3/4; border-radius: 8px; border: 1px solid #cbd5e1; object-fit: cover; background: #f8fafc; }
+        .photo-placeholder { display: grid; place-items: center; font-size: 10px; color: #64748b; }
+        .front-lines { font-size: 11px; line-height: 1.7; }
+        .type-badge { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 999px; background: #e2e8f0; font-size: 10px; font-weight: 800; }
+        .reprint-label { position: absolute; left: 10px; top: 10px; background: #fee2e2; color: #991b1b; border: 1px solid #ef4444; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 800; z-index: 1; }
+        .back-face { display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .qr-box { width: 100%; min-height: 130px; border: 1px solid #cbd5e1; border-radius: 8px; display: grid; place-content: center; background: #fff; position: relative; z-index: 1; }
+        .qr-code { width: 110px; height: 110px; }
+        .membership-text { margin-top: 8px; text-align: center; font-size: 12px; font-weight: 800; }
+        .back-note { margin-top: 4px; text-align: center; font-size: 10px; color: #64748b; line-height: 1.6; }
+        @media print { body { background: #fff; } .toolbar { display: none; } .page { margin: 0; } }
     </style>
 </head>
 <body>
+    <div class="toolbar"><button type="button" onclick="window.print()">طباعة الآن</button></div>
     {% for page_members in pages %}
         <section class="page">
+            <div class="print-meta">تاريخ الطباعة: {{ printed_at|date:"Y-m-d H:i" }}</div>
             {% for member in page_members %}
                 <article class="membership-card">
                     <div class="card-face front-face">
                         <img src="{{ library_branding.logo_url }}" alt="" class="watermark-logo">
-                        {% if member.is_reprint %}
-                            <div class="reprint-label">بدل فاقد</div>
-                        {% endif %}
+                        {% if member.is_reprint %}<div class="reprint-label">بدل فاقد</div>{% endif %}
                         <div class="front-header">
                             <img src="{{ library_branding.logo_url }}" alt="Library Logo" class="front-logo">
                             <div class="library-title">{{ library_branding.name }}</div>
                         </div>
                         <div class="front-body">
-                            {% if member.photo %}
-                                <img src="{{ member.photo.url }}" alt="{{ member.name }}" class="member-photo">
-                            {% else %}
-                                <div class="photo-placeholder">بدون صورة</div>
-                            {% endif %}
+                            {% if member.photo %}<img src="{{ member.photo.url }}" alt="{{ member.name }}" class="member-photo">{% else %}<div class="photo-placeholder">بدون صورة</div>{% endif %}
                             <div class="front-lines">
                                 <div><strong>رقم العضوية:</strong> {{ member.membership_number }}</div>
                                 <div><strong>اسم العضو:</strong> {{ member.name }}</div>
@@ -252,18 +66,14 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="card-face back-face">
                         <img src="{{ library_branding.logo_url }}" alt="" class="watermark-logo">
-                        <div class="qr-box">
-                            <div class="qr-code" data-membership="{{ member.membership_number }}"></div>
-                        </div>
+                        <div class="qr-box"><div class="qr-code" data-membership="{{ member.membership_number }}"></div></div>
                         <div class="membership-text">{{ member.membership_number }}</div>
-                        <div class="back-note">هذه البطاقة خاصة بصاحبها وتُستخدم للتحقق السريع داخل النظام.</div>
+                        <div class="back-note">هذه البطاقة مخصصة لصاحبها وتستخدم للتحقق السريع داخل النظام.</div>
                     </div>
                 </article>
             {% endfor %}
-            <div class="print-meta">تاريخ الطباعة: {{ printed_at|date:"Y-m-d H:i" }}</div>
         </section>
     {% endfor %}
 
@@ -271,29 +81,14 @@
     <script>
         document.querySelectorAll('.qr-code').forEach((item) => {
             const membership = item.dataset.membership;
-            if (!membership) {
-                return;
-            }
-
+            if (!membership) return;
             if (typeof QRCode === 'function') {
-                new QRCode(item, {
-                    text: membership,
-                    width: 110,
-                    height: 110,
-                    correctLevel: QRCode.CorrectLevel.M,
-                });
+                new QRCode(item, { text: membership, width: 110, height: 110, correctLevel: QRCode.CorrectLevel.M });
             } else {
                 item.textContent = membership;
             }
         });
-
-        window.onload = function () {
-            window.print();
-        };
+        window.onload = function () { window.print(); };
     </script>
 </body>
 </html>
-
-
-
-

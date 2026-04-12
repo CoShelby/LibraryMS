@@ -1,16 +1,21 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}{{ title }} | {{ library_branding.name }}{% endblock %}
 
 {% block content %}
 <section class="max-w-6xl mx-auto space-y-5">
-    <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-black">{{ title }}</h1>
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+            <h1 class="text-2xl font-black">{{ title }}</h1>
+            <p class="text-sm text-slate-500 mt-1">{% if book %}يمكن تعديل البيانات وإضافة نسخ جديدة من نفس النموذج.{% else %}يتم فحص ISBN والتشابه في العنوان قبل الإضافة لتجنب تكرار السجل نفسه.{% endif %}</p>
+        </div>
         <a href="{% url 'dashboard_books_list' %}" class="btn-secondary">العودة للقائمة</a>
     </div>
 
-    <form method="post" enctype="multipart/form-data" class="card space-y-5">
+    <form method="post" enctype="multipart/form-data" class="card space-y-5" id="bookCreateForm">
         {% csrf_token %}
+        {{ form.duplicate_action }}
+        {{ form.matched_book_id }}
 
         {% if form.non_field_errors %}
             <div class="p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">{{ form.non_field_errors }}</div>
@@ -18,41 +23,147 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {% for field in form %}
-                <div class="{% if field.name == 'description' or field.name == 'cover_image' %}md:col-span-2{% endif %}">
-                    <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}
-                        <p class="text-xs text-slate-500 mt-1">{{ field.help_text }}</p>
-                    {% endif %}
-                    {% for error in field.errors %}
-                        <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                    {% endfor %}
-                </div>
+                {% if field.name != 'duplicate_action' and field.name != 'matched_book_id' %}
+                    <div class="{% if field.name == 'description' or field.name == 'cover_image' %}md:col-span-2{% endif %}">
+                        <label for="{{ field.id_for_label }}" class="block text-sm font-bold mb-1">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<p class="text-xs text-slate-500 mt-1">{{ field.help_text }}</p>{% endif %}
+                        {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                    </div>
+                {% endif %}
             {% endfor %}
         </div>
 
-        <datalist id="authors-options">
-            {% for name in authors_options %}
-                <option value="{{ name }}"></option>
-            {% endfor %}
-        </datalist>
-        <datalist id="categories-options">
-            {% for name in categories_options %}
-                <option value="{{ name }}"></option>
-            {% endfor %}
-        </datalist>
-        <datalist id="publishers-options">
-            {% for name in publishers_options %}
-                <option value="{{ name }}"></option>
-            {% endfor %}
-        </datalist>
+        <datalist id="authors-options">{% for name in authors_options %}<option value="{{ name }}"></option>{% endfor %}</datalist>
+        <datalist id="categories-options">{% for name in categories_options %}<option value="{{ name }}"></option>{% endfor %}</datalist>
+        <datalist id="publishers-options">{% for name in publishers_options %}<option value="{{ name }}"></option>{% endfor %}</datalist>
 
         <div class="flex justify-end gap-2">
             <a href="{% url 'dashboard_books_list' %}" class="px-4 py-2 rounded-lg border border-slate-300">إلغاء</a>
-            <button type="submit" class="btn-primary">{{ submit_label|default:"حفظ" }}</button>
+            <button type="submit" class="btn-primary" id="bookSubmitButton">{{ submit_label|default:"حفظ" }}</button>
         </div>
     </form>
 </section>
+
+{% if not book %}
+<div id="duplicateModal" class="fixed inset-0 z-[120] hidden items-center justify-center p-4 bg-black/60">
+    <div class="w-full max-w-lg card !p-0 overflow-hidden">
+        <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <h3 class="font-black" id="duplicateModalTitle">فحص الكتاب</h3>
+            <button type="button" class="btn-secondary px-3 py-2" id="duplicateModalClose"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-5 space-y-4">
+            <p class="text-sm leading-7 text-slate-600 dark:text-slate-300" id="duplicateModalMessage"></p>
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-900/60 p-4 space-y-2" id="duplicateBookInfo">
+                <div class="font-black text-lg" id="duplicateBookTitle"></div>
+                <div class="text-sm text-slate-500" id="duplicateBookMeta"></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="duplicateModalActions">
+                <button type="button" class="btn-primary" id="duplicatePrimaryAction"></button>
+                <button type="button" class="btn-secondary hidden" id="duplicateSecondaryAction"></button>
+                <button type="button" class="btn-secondary" id="duplicateCancelAction">إلغاء</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
+{% block extra_js %}
+{% if not book %}
+<script>
+    const bookCreateForm = document.getElementById('bookCreateForm');
+    const duplicateActionInput = document.getElementById('id_duplicate_action');
+    const matchedBookInput = document.getElementById('id_matched_book_id');
+    const duplicateModal = document.getElementById('duplicateModal');
+    const duplicateModalClose = document.getElementById('duplicateModalClose');
+    const duplicateCancelAction = document.getElementById('duplicateCancelAction');
+    const duplicatePrimaryAction = document.getElementById('duplicatePrimaryAction');
+    const duplicateSecondaryAction = document.getElementById('duplicateSecondaryAction');
+    const duplicateModalTitle = document.getElementById('duplicateModalTitle');
+    const duplicateModalMessage = document.getElementById('duplicateModalMessage');
+    const duplicateBookTitle = document.getElementById('duplicateBookTitle');
+    const duplicateBookMeta = document.getElementById('duplicateBookMeta');
+    let allowDirectSubmit = false;
 
+    function closeDuplicateModal() {
+        duplicateModal.classList.add('hidden');
+        duplicateModal.classList.remove('flex');
+        document.body.style.overflow = 'auto';
+    }
+
+    function openDuplicateModal() {
+        duplicateModal.classList.remove('hidden');
+        duplicateModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function setConfirmedAction(action, bookId) {
+        duplicateActionInput.value = action;
+        matchedBookInput.value = bookId || '';
+        allowDirectSubmit = true;
+        closeDuplicateModal();
+        bookCreateForm.submit();
+    }
+
+    function renderConflictModal(payload) {
+        const book = payload.book || {};
+        const authors = Array.isArray(book.authors) ? book.authors.join('، ') : '';
+        const metaParts = [authors, book.category, book.publisher].filter(Boolean);
+        duplicateBookTitle.textContent = book.title || '';
+        duplicateBookMeta.textContent = metaParts.join(' - ');
+        duplicateSecondaryAction.classList.add('hidden');
+
+        if (payload.type === 'exact') {
+            duplicateModalTitle.textContent = 'الكتاب موجود بالفعل';
+            duplicateModalMessage.textContent = 'تم العثور على سجل مطابق بنفس ISBN. هل تريد إضافة نسخة جديدة بدل إنشاء كتاب جديد؟';
+            duplicatePrimaryAction.textContent = 'إضافة نسخة';
+            duplicatePrimaryAction.onclick = () => setConfirmedAction('add_copy', book.id);
+        } else {
+            duplicateModalTitle.textContent = 'تم العثور على كتاب مشابه';
+            duplicateModalMessage.textContent = 'تم العثور على عنوان مشابه بنسبة عالية. هل هذا هو نفس الكتاب؟';
+            duplicatePrimaryAction.textContent = 'نعم، أضف نسخة';
+            duplicatePrimaryAction.onclick = () => setConfirmedAction('add_copy', book.id);
+            duplicateSecondaryAction.textContent = 'لا، أضفه كتابًا جديدًا';
+            duplicateSecondaryAction.classList.remove('hidden');
+            duplicateSecondaryAction.onclick = () => setConfirmedAction('create_new', book.id);
+        }
+
+        openDuplicateModal();
+    }
+
+    duplicateModalClose?.addEventListener('click', closeDuplicateModal);
+    duplicateCancelAction?.addEventListener('click', closeDuplicateModal);
+    duplicateModal?.addEventListener('click', (event) => {
+        if (event.target === duplicateModal) closeDuplicateModal();
+    });
+
+    bookCreateForm?.addEventListener('submit', async (event) => {
+        if (allowDirectSubmit) return;
+
+        event.preventDefault();
+        duplicateActionInput.value = '';
+        matchedBookInput.value = '';
+
+        const formData = new FormData(bookCreateForm);
+        try {
+            const response = await fetch('{% url "dashboard_book_conflict_check" %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') },
+                body: formData,
+            });
+            const payload = await response.json();
+            if (!response.ok || payload.type === 'none') {
+                allowDirectSubmit = true;
+                bookCreateForm.submit();
+                return;
+            }
+            renderConflictModal(payload);
+        } catch (error) {
+            allowDirectSubmit = true;
+            bookCreateForm.submit();
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

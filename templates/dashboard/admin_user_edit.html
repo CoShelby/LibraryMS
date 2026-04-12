@@ -1,15 +1,15 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
-{% block title %}تعديل الأدمن{% endblock %}
+{% block title %}تعديل المشرف{% endblock %}
 
 {% block content %}
 <section class="max-w-4xl mx-auto space-y-5">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-            <h1 class="text-2xl font-black">تعديل الأدمن: {{ admin_user.username }}</h1>
-            <p class="text-sm text-slate-500">{% if can_manage_all_admins %}لديك صلاحية تعديل جميع حسابات الأدمنز.{% else %}يمكنك تعديل هذا الحساب لأنه من الحسابات التي أنشأتها.{% endif %}</p>
+            <h1 class="text-2xl font-black">تعديل المشرف: {{ admin_user.username }}</h1>
+            <p class="text-sm text-slate-500">{% if can_manage_all_admins %}لديك صلاحية تعديل جميع حسابات المشرفين.{% else %}يمكنك تعديل هذا الحساب لأنه من الحسابات التي أنشأتها.{% endif %}</p>
         </div>
-        <a href="{% url 'dashboard_admin_users' %}" class="btn-secondary">رجوع</a>
+        <a href="{% url 'dashboard_supervisor_users' %}" class="btn-secondary">رجوع</a>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-6">

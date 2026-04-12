@@ -13,6 +13,22 @@
         </div>
     </div>
 
+    <div class="card p-4 space-y-4">
+        <form method="get" class="flex flex-col sm:flex-row gap-2">
+            <div class="relative flex-1">
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-search"></i>
+                </div>
+                <input type="text" name="q" id="dashboardBookSearch" value="{{ query }}" placeholder="ابحث باستخدام أي حقل (ذكاء بنسبة التشابه)..." class="input-field w-full pr-10" autocomplete="off">
+                <div id="searchSuggestionsBox" class="absolute z-50 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg mt-1 hidden max-h-60 overflow-y-auto"></div>
+            </div>
+            <button type="submit" class="btn-primary sm:w-auto">بحث ذكي</button>
+            {% if query %}
+                <a href="{% url 'dashboard_books_list' %}" class="btn-secondary text-center text-rose-600 sm:w-auto"><i class="fa-solid fa-xmark"></i></a>
+            {% endif %}
+        </form>
+    </div>
+
     <div class="card p-0 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -70,5 +86,75 @@
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const searchInput = document.getElementById('dashboardBookSearch');
+    const suggestionsBox = document.getElementById('searchSuggestionsBox');
+    let debounceTimer;
+
+    function buildSuggestionOption(item) {
+        const div = document.createElement('div');
+        div.className = 'px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer text-sm flex flex-col';
+        
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'font-bold';
+        titleSpan.textContent = item.label;
+        div.appendChild(titleSpan);
+
+        if (item.meta) {
+            const metaSpan = document.createElement('span');
+            metaSpan.className = 'text-xs text-slate-500';
+            metaSpan.textContent = item.kind === 'author' || item.kind === 'category' ? `في كتاب: ${item.meta}` : item.meta;
+            div.appendChild(metaSpan);
+        }
+
+        div.addEventListener('click', () => {
+            searchInput.value = item.value;
+            suggestionsBox.classList.add('hidden');
+            searchInput.closest('form').submit();
+        });
+        return div;
+    }
+
+    searchInput?.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        const query = e.target.value.trim();
+
+        if (query.length < 2) {
+            suggestionsBox.classList.add('hidden');
+            suggestionsBox.innerHTML = '';
+            return;
+        }
+
+        debounceTimer = setTimeout(async () => {
+            try {
+                const response = await fetch(`{% url 'search_suggestions' %}?q=${encodeURIComponent(query)}`);
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                suggestionsBox.innerHTML = '';
+
+                if (data.results && data.results.length > 0) {
+                    data.results.forEach(item => {
+                        suggestionsBox.appendChild(buildSuggestionOption(item));
+                    });
+                    suggestionsBox.classList.remove('hidden');
+                } else {
+                    suggestionsBox.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Error fetching suggestions:', error);
+            }
+        }, 300);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!searchInput?.contains(e.target) && !suggestionsBox?.contains(e.target)) {
+            suggestionsBox?.classList.add('hidden');
+        }
+    });
+</script>
 {% endblock %}
 

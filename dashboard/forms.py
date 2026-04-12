@@ -4,7 +4,9 @@ from django import forms
 from django.db.models import Q
 
 from books.models import Author, Book, BookCopy, Category, Publisher
+from books.selectors import normalize_doi, normalize_isbn
 from digital_library.models import DigitalLibrary
+
 from .models import LibraryBranding
 
 
@@ -28,11 +30,15 @@ class BookForm(forms.ModelForm):
     category_name = forms.CharField(required=True, label="الفئة")
     publisher_name = forms.CharField(required=True, label="الناشر")
     copies_count = forms.IntegerField(required=False, min_value=0, initial=1, label="عدد النسخ")
+    duplicate_action = forms.CharField(required=False, widget=forms.HiddenInput())
+    matched_book_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
 
     class Meta:
         model = Book
         fields = [
             "title",
+            "isbn",
+            "doi",
             "dewey_decimal_number",
             "publication_year",
             "edition",
@@ -43,6 +49,8 @@ class BookForm(forms.ModelForm):
         ]
         labels = {
             "title": "عنوان الكتاب",
+            "isbn": "ISBN",
+            "doi": "DOI",
             "dewey_decimal_number": "رقم ديوي",
             "publication_year": "سنة النشر",
             "edition": "الطبعة",
@@ -53,6 +61,8 @@ class BookForm(forms.ModelForm):
         }
         widgets = {
             "title": forms.TextInput(attrs={"class": "input-field", "placeholder": "عنوان الكتاب"}),
+            "isbn": forms.TextInput(attrs={"class": "input-field", "dir": "ltr", "placeholder": "اختياري"}),
+            "doi": forms.TextInput(attrs={"class": "input-field", "dir": "ltr", "placeholder": "اختياري"}),
             "dewey_decimal_number": forms.TextInput(attrs={"class": "input-field", "dir": "ltr", "placeholder": "مثال: 005.133"}),
             "publication_year": forms.NumberInput(attrs={"class": "input-field", "placeholder": "مثال: 2024"}),
             "edition": forms.TextInput(attrs={"class": "input-field", "placeholder": "اختياري"}),
@@ -126,6 +136,12 @@ class BookForm(forms.ModelForm):
             raise forms.ValidationError("اسم الناشر مطلوب.")
         return value
 
+    def clean_isbn(self):
+        return normalize_isbn(self.cleaned_data.get("isbn"))
+
+    def clean_doi(self):
+        return normalize_doi(self.cleaned_data.get("doi"))
+
     def clean_cover_image(self):
         cover = self.cleaned_data.get("cover_image")
         _validate_image_file(cover, "صورة الغلاف")
@@ -142,6 +158,8 @@ class BookForm(forms.ModelForm):
         book.category = self._get_or_create_category(category_name)
         publisher, _ = Publisher.objects.get_or_create(name=publisher_name)
         book.publisher = publisher
+        if created_by and is_new:
+            book.created_by = created_by
 
         if commit:
             book.save()
@@ -155,21 +173,8 @@ class BookForm(forms.ModelForm):
             if copies_to_add is None:
                 copies_to_add = 1 if is_new else 0
 
-            existing_numbers = []
-            for value in book.bookcopy_set.values_list("copy_number", flat=True):
-                if value and str(value).isdigit():
-                    existing_numbers.append(int(value))
-            next_number = (max(existing_numbers) if existing_numbers else 0) + 1
-
-            for _ in range(copies_to_add):
-                copy_number = str(next_number)
-                BookCopy.objects.create(
-                    book=book,
-                    copy_number=copy_number,
-                    barcode=f"{book.id}-{copy_number}",
-                    status="new",
-                )
-                next_number += 1
+            for _ in range(max(int(copies_to_add or 0), 0)):
+                BookCopy.objects.create(book=book, status="new")
 
         return book
 
@@ -184,8 +189,8 @@ class CategoryForm(forms.ModelForm):
             "shelf_location": "موقع الرف",
         }
         widgets = {
-            "name": forms.TextInput(attrs={"class": "input-field", "placeholder": "مثال: الذكاء الاصطناعي"}),
-            "name_en": forms.TextInput(attrs={"class": "input-field", "placeholder": "Artificial Intelligence"}),
+            "name": forms.TextInput(attrs={"class": "input-field", "placeholder": "مثال: الأدب العربي"}),
+            "name_en": forms.TextInput(attrs={"class": "input-field", "placeholder": "Arabic Literature"}),
             "shelf_location": forms.TextInput(attrs={"class": "input-field", "placeholder": "مثال: A-12"}),
         }
 
@@ -233,11 +238,13 @@ class BookCopyForm(forms.ModelForm):
 
 
 class DigitalLibraryForm(forms.ModelForm):
-    create_new_book = forms.BooleanField(required=False, label="إضافة كتاب جديد مع الملف")
+    create_new_book = forms.BooleanField(required=False, label="إضافة كتاب جديد مع المورد الرقمي")
     new_title = forms.CharField(required=False, label="عنوان الكتاب")
     new_author_names = forms.CharField(required=False, label="المؤلف/المؤلفون")
     new_category_name = forms.CharField(required=False, label="الفئة")
     new_publisher_name = forms.CharField(required=False, label="الناشر")
+    new_isbn = forms.CharField(required=False, label="ISBN")
+    new_doi = forms.CharField(required=False, label="DOI")
     new_dewey_decimal_number = forms.CharField(required=False, label="رقم ديوي")
     new_publication_year = forms.IntegerField(required=False, label="سنة النشر")
     new_language = forms.ChoiceField(required=False, choices=Book.LANGUAGE_CHOICES, label="لغة الكتاب")
@@ -249,7 +256,7 @@ class DigitalLibraryForm(forms.ModelForm):
         model = DigitalLibrary
         fields = ["book", "pdf_file"]
         labels = {
-            "book": "اختيار كتاب ورقي موجود",
+            "book": "اختيار كتاب موجود",
             "pdf_file": "ملف PDF",
         }
         widgets = {
@@ -265,6 +272,8 @@ class DigitalLibraryForm(forms.ModelForm):
             "new_author_names",
             "new_category_name",
             "new_publisher_name",
+            "new_isbn",
+            "new_doi",
             "new_dewey_decimal_number",
             "new_publication_year",
             "new_language",
@@ -274,21 +283,20 @@ class DigitalLibraryForm(forms.ModelForm):
         ]:
             self.fields[name].widget.attrs.update({"class": "input-field"})
 
-        self.fields["new_title"].widget.attrs.update({"placeholder": "عنوان الكتاب (يفضل إدخاله)"})
-        self.fields["create_new_book"].widget.attrs.update({"class": "h-4 w-4"})
+        self.fields["new_title"].widget.attrs.update({"placeholder": "عنوان الكتاب"})
         self.fields["new_author_names"].widget.attrs.update({"list": "authors-options"})
         self.fields["new_category_name"].widget.attrs.update({"list": "categories-options"})
         self.fields["new_publisher_name"].widget.attrs.update({"list": "publishers-options"})
         self.fields["new_language"].initial = "arabic"
+        self.fields["create_new_book"].widget.attrs.update({"class": "h-4 w-4"})
 
         if self.instance and self.instance.pk:
-            self.fields["book"].queryset = Book.objects.filter(
-                Q(digitallibrary__isnull=True) | Q(pk=self.instance.book_id)
-            )
+            self.fields["book"].queryset = Book.objects.filter(Q(digitallibrary__isnull=True) | Q(pk=self.instance.book_id))
         else:
             self.fields["book"].queryset = Book.objects.filter(digitallibrary__isnull=True)
 
         self.fields["book"].required = False
+        self.fields["pdf_file"].required = False
 
     def clean_pdf_file(self):
         pdf_file = self.cleaned_data.get("pdf_file")
@@ -297,7 +305,7 @@ class DigitalLibraryForm(forms.ModelForm):
 
         extension = os.path.splitext((pdf_file.name or "").lower())[1]
         if extension != ".pdf":
-            raise forms.ValidationError("ملف الكتاب الرقمي يجب أن يكون PDF.")
+            raise forms.ValidationError("ملف المورد الرقمي يجب أن يكون PDF.")
 
         content_type = getattr(pdf_file, "content_type", "") or ""
         if content_type and "pdf" not in content_type.lower():
@@ -310,9 +318,16 @@ class DigitalLibraryForm(forms.ModelForm):
         _validate_image_file(cover, "صورة الغلاف")
         return cover
 
+    def clean_new_isbn(self):
+        return normalize_isbn(self.cleaned_data.get("new_isbn"))
+
+    def clean_new_doi(self):
+        return normalize_doi(self.cleaned_data.get("new_doi"))
+
     def clean(self):
         cleaned_data = super().clean()
         create_new = cleaned_data.get("create_new_book")
+        pdf_file = cleaned_data.get("pdf_file")
 
         if create_new:
             required_new_fields = [
@@ -327,11 +342,17 @@ class DigitalLibraryForm(forms.ModelForm):
                     value = value.strip()
                 if not value:
                     self.add_error(field_name, "هذا الحقل مطلوب عند إنشاء كتاب جديد.")
-        elif not cleaned_data.get("book"):
-            self.add_error("book", "اختر كتابًا موجودًا أو فعّل إنشاء كتاب جديد.")
+
+            if not pdf_file and not cleaned_data.get("new_doi"):
+                self.add_error("pdf_file", "أرفق PDF أو أدخل DOI للمورد الرقمي.")
+        else:
+            selected_book = cleaned_data.get("book")
+            if not selected_book:
+                self.add_error("book", "اختر كتابًا موجودًا أو فعّل إنشاء كتاب جديد.")
+            elif not pdf_file and not normalize_doi(getattr(selected_book, "doi", "")):
+                self.add_error("pdf_file", "أرفق PDF أو أضف DOI إلى الكتاب قبل ربطه كمورد رقمي.")
 
         return cleaned_data
-
 
 
 class LibraryBrandingForm(forms.ModelForm):
@@ -348,4 +369,3 @@ class LibraryBrandingForm(forms.ModelForm):
             "tagline": forms.TextInput(attrs={"class": "input-field", "placeholder": "اختياري"}),
             "logo": forms.ClearableFileInput(attrs={"class": "input-field", "accept": "image/*"}),
         }
-

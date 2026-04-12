@@ -7,7 +7,7 @@ class BookSearchForm(forms.Form):
     SEARCH_SCOPE = [
         ("all", "الكل"),
         ("physical", "كتب ورقية فقط"),
-        ("digital", "كتب رقمية فقط"),
+        ("digital", "محتوى رقمي فقط"),
     ]
 
     LANGUAGE_CHOICES = [
@@ -42,7 +42,7 @@ class BookSearchForm(forms.Form):
         for field in self.fields.values():
             field.widget.attrs.update({"class": "input-field"})
 
-        self.fields["query"].widget.attrs.update({"placeholder": "ابحث بعنوان كتاب، مؤلف، فئة، ديوي..."})
+        self.fields["query"].widget.attrs.update({"placeholder": "ابحث في جميع بيانات الكتاب: عنوان، مؤلف، فئة، ناشر، ISBN، DOI..."})
         self.fields["min_pages"].widget.attrs.update({"placeholder": "من"})
         self.fields["max_pages"].widget.attrs.update({"placeholder": "إلى"})
         self.fields["year"].widget.attrs.update({"placeholder": "مثال: 2024"})

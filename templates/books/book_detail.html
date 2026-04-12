@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% load static %}
 
 {% block title %}{{ book.title }} | {{ library_branding.name }}{% endblock %}
@@ -26,10 +26,8 @@
                     </p>
                 </div>
 
-                {% if request.user.is_authenticated %}
-                    {% if request.user.is_superuser or request.user.can_manage_books %}
-                        <a href="{% url 'dashboard_edit_book' book.id %}" class="btn-secondary">تعديل</a>
-                    {% endif %}
+                {% if request.user.is_authenticated and request.user.is_superuser or request.user.is_authenticated and request.user.can_manage_books %}
+                    <a href="{% url 'dashboard_edit_book' book.id %}" class="btn-secondary">تعديل</a>
                 {% endif %}
             </div>
 
@@ -41,6 +39,8 @@
                 <div><span class="font-bold">عدد الصفحات:</span> {{ book.pages|default:"-" }}</div>
                 <div><span class="font-bold">الموقع:</span> {{ book.category.shelf_location|default:"غير محدد" }}</div>
                 <div><span class="font-bold">ديوي:</span> <span dir="ltr">{{ book.dewey_decimal_number }}</span></div>
+                <div><span class="font-bold">ISBN:</span> <span dir="ltr">{{ book.isbn|default:"-" }}</span></div>
+                <div class="sm:col-span-2"><span class="font-bold">DOI:</span> <span dir="ltr">{{ book.doi|default:"-" }}</span></div>
             </div>
 
             <div>
@@ -64,19 +64,25 @@
                 {% if has_physical_copies %}
                     <p class="text-sm">إجمالي النسخ: <span class="font-black">{{ total_copies_count }}</span> | المتاح فعليًا: <span class="font-black">{{ available_copies_count }}</span></p>
                 {% else %}
-                    <p class="text-sm text-amber-700 font-bold">هذا الكتاب رقمي فقط حاليًا (غير مدرج ضمن الكتب الورقية).</p>
+                    <p class="text-sm text-amber-700 font-bold">هذا العنوان رقمي فقط حاليًا.</p>
                 {% endif %}
 
                 {% if digital_copy %}
-                    <a href="{% url 'read_digital_book' book.id %}" class="btn-primary w-full">قراءة النسخة الرقمية</a>
-                    <a href="{% url 'download_digital_book' book.id %}" class="btn-secondary w-full">تحميل النسخة الرقمية</a>
+                    <a href="{% url 'read_digital_book' book.id %}" class="btn-primary w-full">قراءة المورد الرقمي</a>
+                    {% if digital_copy.pdf_file %}
+                        <a href="{% url 'download_digital_book' book.id %}" class="btn-secondary w-full">تحميل الملف</a>
+                    {% elif book.doi %}
+                        <a href="https://doi.org/{{ book.doi }}" target="_blank" rel="noopener" class="btn-secondary w-full">فتح DOI</a>
+                    {% endif %}
+                {% elif book.doi %}
+                    <a href="https://doi.org/{{ book.doi }}" target="_blank" rel="noopener" class="btn-secondary w-full">فتح DOI</a>
                 {% endif %}
 
                 {% if has_physical_copies %}
                     <button type="button" onclick="openReserveModal('{{ book.id }}', '{{ book.title|escapejs }}')" class="btn-secondary w-full">طلب حجز الكتاب الورقي</button>
                 {% endif %}
 
-                <a href="{% url 'member_portal' %}" class="btn-primary w-full">بوابة العضو (طلب تجديد / متابعة)</a>
+                <a href="{% url 'member_portal' %}" class="btn-primary w-full">بوابة العضو</a>
             </div>
         </aside>
     </div>
@@ -84,9 +90,7 @@
     <section class="card">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-black">كتب مشابهة</h2>
-            {% if book.category %}
-                <a href="{% url 'search_results' %}?category={{ book.category.id }}" class="text-sm font-bold text-brand">المزيد</a>
-            {% endif %}
+            {% if book.category %}<a href="{% url 'search_results' %}?category={{ book.category.id }}" class="text-sm font-bold text-brand">المزيد</a>{% endif %}
         </div>
         <div class="books-grid">
             {% for item in similar_books %}

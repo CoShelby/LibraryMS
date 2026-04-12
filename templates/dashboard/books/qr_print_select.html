@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}طباعة QR للنسخ{% endblock %}
 
@@ -7,13 +7,9 @@
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
             <h1 class="text-2xl font-black">طباعة QR للنسخ</h1>
-            {% if selected_book %}
-                <p class="text-sm text-slate-500">الكتاب المحدد: {{ selected_book.title }}</p>
-            {% else %}
-                <p class="text-sm text-slate-500">يمكنك طباعة النسخ غير المطبوعة أو تحديد نسخ بعينها أو طباعة كل النسخ.</p>
-            {% endif %}
+            <p class="text-sm text-slate-500 mt-1">اختر النسخ المطلوب طباعتها ثم افتح ورقة الطباعة مباشرة.</p>
         </div>
-        <a href="{% if selected_book %}{% url 'dashboard_book_copies' selected_book.id %}{% else %}{% url 'dashboard_books_list' %}{% endif %}" class="btn-secondary" title="رجوع"><i class="fa-solid fa-arrow-right"></i></a>
+        <a href="{% if selected_book %}{% url 'dashboard_book_copies' selected_book.id %}{% else %}{% url 'dashboard_books_list' %}{% endif %}" class="btn-secondary">رجوع</a>
     </div>
 
     <form method="get" class="card grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
@@ -40,15 +36,15 @@
         {% if selected_book %}<input type="hidden" name="book" value="{{ selected_book.id }}">{% endif %}
         <input type="hidden" name="q" value="{{ query }}">
 
-        <div class="card flex flex-wrap items-center justify-between gap-2">
+        <div class="card flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             <div class="flex items-center gap-2">
                 <input id="selectAllCopies" type="checkbox" class="h-4 w-4">
-                <label for="selectAllCopies" class="text-sm font-bold">تحديد كل نسخ الصفحة</label>
+                <label for="selectAllCopies" class="text-sm font-bold">تحديد جميع النسخ المعروضة</label>
             </div>
             <div class="flex flex-wrap gap-2">
-                <button type="submit" name="print_mode" value="selected" class="btn-primary" title="طباعة المحدد"><i class="fa-solid fa-square-check ml-1"></i>طباعة</button>
-                <button type="submit" name="print_mode" value="unprinted" class="btn-secondary" title="طباعة غير المطبوعة"><i class="fa-solid fa-file-circle-minus ml-1"></i>جديد</button>
-                <button type="submit" name="print_mode" value="all" class="btn-secondary" title="طباعة الكل"><i class="fa-solid fa-print ml-1"></i>الكل</button>
+                <button type="submit" name="print_mode" value="selected" class="btn-primary">طباعة المحدد</button>
+                <button type="submit" name="print_mode" value="unprinted" class="btn-secondary">طباعة غير المطبوعة</button>
+                <button type="submit" name="print_mode" value="all" class="btn-secondary">طباعة الكل</button>
             </div>
         </div>
 
@@ -67,18 +63,12 @@
                     </thead>
                     <tbody>
                         {% for copy in copies %}
-                            <tr class="border-t border-slate-100 dark:border-slate-800">
+                            <tr class="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                 <td class="p-3"><input type="checkbox" name="copy_ids" value="{{ copy.id }}" class="copy-checkbox h-4 w-4"></td>
                                 <td class="p-3 font-semibold">{{ copy.book.title }}</td>
                                 <td class="p-3" dir="ltr">{{ copy.barcode }}</td>
                                 <td class="p-3">{{ copy.get_status_display }}</td>
-                                <td class="p-3">
-                                    {% if copy.is_printed %}
-                                        <span class="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">مطبوعة</span>
-                                    {% else %}
-                                        <span class="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">غير مطبوعة</span>
-                                    {% endif %}
-                                </td>
+                                <td class="p-3">{% if copy.is_printed %}<span class="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">مطبوعة</span>{% else %}<span class="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">غير مطبوعة</span>{% endif %}</td>
                                 <td class="p-3">{{ copy.created_at|date:"Y-m-d H:i" }}</td>
                             </tr>
                         {% empty %}
@@ -109,12 +99,10 @@
     const selectAllCopies = document.getElementById('selectAllCopies');
     const copyChecks = document.querySelectorAll('.copy-checkbox');
 
-    if (selectAllCopies) {
-        selectAllCopies.addEventListener('change', function () {
-            copyChecks.forEach((checkbox) => {
-                checkbox.checked = this.checked;
-            });
+    selectAllCopies?.addEventListener('change', function () {
+        copyChecks.forEach((checkbox) => {
+            checkbox.checked = this.checked;
         });
-    }
+    });
 </script>
 {% endblock %}

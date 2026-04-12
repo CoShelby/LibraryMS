@@ -2,10 +2,11 @@ from django.db.models import Count, ExpressionWrapper, F, IntegerField, Q
 from django.shortcuts import get_object_or_404, render
 
 from .models import Book
+from .selectors import get_similar_books
 
 
-def book_list_view(request):
-    books = (
+def _books_queryset(ordering=("title",), physical_only=True):
+    qs = (
         Book.objects.select_related("category", "publisher")
         .prefetch_related("authors")
         .annotate(
@@ -24,10 +25,37 @@ def book_list_view(request):
                 output_field=IntegerField(),
             )
         )
-        .filter(total_copies_count__gt=0)
-        .order_by("title")
     )
-    return render(request, "books/book_list.html", {"books": books})
+    if physical_only:
+        qs = qs.filter(total_copies_count__gt=0)
+    return qs.order_by(*ordering)
+
+
+def book_list_view(request):
+    books = _books_queryset(ordering=("title",), physical_only=True)
+    return render(
+        request,
+        "books/book_list.html",
+        {
+            "books": books,
+            "page_title": "دليل الكتب الورقية",
+            "page_description": "استعراض جميع الكتب الورقية المتاحة داخل المكتبة.",
+        },
+    )
+
+
+def most_viewed_books_view(request):
+    books = _books_queryset(ordering=("-view_count", "title"), physical_only=False)
+    return render(
+        request,
+        "books/book_list.html",
+        {
+            "books": books,
+            "page_title": "الأكثر مشاهدة",
+            "page_description": "الكتب الأعلى مشاهدة مرتبة من الأكثر إلى الأقل.",
+            "show_view_count": True,
+        },
+    )
 
 
 def book_detail_view(request, book_id):
@@ -50,8 +78,6 @@ def book_detail_view(request, book_id):
 
     has_physical_copies = total_copies_count > 0
     digital_copy = getattr(book, "digitallibrary", None)
-
-    from .services import get_similar_books
     similar_books = get_similar_books(book, limit=6)
 
     context = {

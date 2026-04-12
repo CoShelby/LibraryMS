@@ -8,7 +8,7 @@ from .models import User
 class LibraryUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
         (
-            "Library Access",
+            "Supervisor Access",
             {
                 "fields": (
                     "is_admin",
@@ -33,3 +33,4 @@ class LibraryUserAdmin(UserAdmin):
         "can_manage_circulation",
         "can_manage_categories",
     )
+

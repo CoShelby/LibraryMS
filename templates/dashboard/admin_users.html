@@ -1,22 +1,22 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
-{% block title %}إدارة الأدمنز{% endblock %}
+{% block title %}إدارة المشرفين{% endblock %}
 
 {% block content %}
 <section class="space-y-6">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-            <h1 class="text-2xl font-black">إدارة الأدمنز</h1>
-            <p class="text-sm text-slate-500">{% if can_manage_all_admins %}يعرض هذا الجدول جميع حسابات الأدمنز.{% else %}يعرض هذا الجدول فقط الحسابات التي قمت بإنشائها.{% endif %}</p>
+            <h1 class="text-2xl font-black">إدارة المشرفين</h1>
+            <p class="text-sm text-slate-500">{% if can_manage_all_admins %}يعرض هذا الجدول جميع حسابات المشرفين.{% else %}يعرض هذا الجدول فقط الحسابات التي أنشأتها.{% endif %}</p>
         </div>
-        <div class="text-xs text-slate-500">تتم إضافة كلمة المرور مباشرة عند إنشاء الحساب، ويمكن إعادة تعيينها من نفس الصفحة.</div>
+        <div class="text-xs text-slate-500">يمكن تعيين كلمة المرور عند الإنشاء أو إعادة ضبطها لاحقًا من نفس الصفحة.</div>
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-6">
         <article class="card space-y-4">
             <div>
-                <h2 class="text-xl font-black">إضافة أدمن جديد</h2>
-                <p class="text-sm text-slate-500 mt-1">الأدمن الذي ينشئ الحساب يصبح مسؤولًا عن تعديله أو حذفه، ما عدا الـ superuser.</p>
+                <h2 class="text-xl font-black">إضافة مشرف جديد</h2>
+                <p class="text-sm text-slate-500 mt-1">المشرف الذي ينشئ الحساب يصبح مسؤولًا عن تعديله أو حذفه، ما عدا المستخدم الأعلى.</p>
             </div>
             <form method="post" class="space-y-3">
                 {% csrf_token %}
@@ -36,7 +36,7 @@
 
         <article class="card space-y-4">
             <div class="flex items-center justify-between gap-2">
-                <h2 class="text-xl font-black">حسابات الأدمن الحالية</h2>
+                <h2 class="text-xl font-black">حسابات المشرفين الحالية</h2>
                 <span class="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800">{{ admins|length }} حساب</span>
             </div>
 
@@ -55,7 +55,7 @@
                         <div class="text-xs text-slate-500 space-y-1">
                             <div>المنشئ: <span class="font-bold">{{ admin_user.created_by.username|default:"غير محدد / قديم" }}</span></div>
                             <div class="flex flex-wrap gap-2 pt-1">
-                                {% if admin_user.can_manage_admins %}<span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">إدارة الأدمنز</span>{% endif %}
+                                {% if admin_user.can_manage_admins %}<span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">إدارة المشرفين</span>{% endif %}
                                 {% if admin_user.can_manage_books %}<span class="px-2 py-1 rounded-full bg-blue-100 text-blue-700">الكتب</span>{% endif %}
                                 {% if admin_user.can_manage_members %}<span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">الأعضاء</span>{% endif %}
                                 {% if admin_user.can_manage_circulation %}<span class="px-2 py-1 rounded-full bg-amber-100 text-amber-800">الاستعارات</span>{% endif %}
@@ -64,14 +64,14 @@
                         </div>
 
                         <div class="grid grid-cols-2 gap-2">
-                            <a href="{% url 'dashboard_admin_edit' admin_user.id %}" class="btn-secondary text-xs">تعديل</a>
-                            <form method="post" action="{% url 'dashboard_admin_toggle_active' admin_user.id %}">{% csrf_token %}<button type="submit" class="btn-secondary w-full text-xs">{% if admin_user.is_active %}تعطيل{% else %}تفعيل{% endif %}</button></form>
-                            <a href="{% url 'dashboard_admin_reset_password' admin_user.id %}" class="btn-secondary text-xs col-span-2">تعيين كلمة مرور</a>
-                            <form method="post" action="{% url 'dashboard_admin_delete' admin_user.id %}" onsubmit="return confirm('سيتم حذف الحساب وكل البيانات المرتبطة به. هل أنت متأكد؟');" class="col-span-2">{% csrf_token %}<button type="submit" class="btn-primary w-full text-xs bg-gradient-to-r from-rose-700 to-rose-600">حذف الحساب</button></form>
+                            <a href="{% url 'dashboard_supervisor_edit' admin_user.id %}" class="btn-secondary text-xs">تعديل</a>
+                            <form method="post" action="{% url 'dashboard_supervisor_toggle_active' admin_user.id %}">{% csrf_token %}<button type="submit" class="btn-secondary w-full text-xs">{% if admin_user.is_active %}تعطيل{% else %}تفعيل{% endif %}</button></form>
+                            <a href="{% url 'dashboard_supervisor_reset_password' admin_user.id %}" class="btn-secondary text-xs col-span-2">إعادة ضبط كلمة المرور</a>
+                            <form method="post" action="{% url 'dashboard_supervisor_delete' admin_user.id %}" onsubmit="return confirm('سيتم حذف حساب المشرف والبيانات المرتبطة به. هل أنت متأكد؟');" class="col-span-2">{% csrf_token %}<button type="submit" class="btn-primary w-full text-xs bg-gradient-to-r from-rose-700 to-rose-600">حذف الحساب</button></form>
                         </div>
                     </div>
                 {% empty %}
-                    <div class="lg:col-span-2 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">لا توجد حسابات مطابقة لمدى صلاحياتك الحالية.</div>
+                    <div class="lg:col-span-2 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">لا توجد حسابات مطابقة لصلاحياتك الحالية.</div>
                 {% endfor %}
             </div>
         </article>

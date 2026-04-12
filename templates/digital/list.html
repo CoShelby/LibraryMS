@@ -1,12 +1,15 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% load static %}
 
 {% block title %}المكتبة الرقمية | {{ library_branding.name }}{% endblock %}
 
 {% block content %}
 <section class="space-y-6">
-    <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-black">المكتبة الرقمية</h1>
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+            <h1 class="text-2xl font-black">المكتبة الرقمية</h1>
+            <p class="text-sm text-slate-500 mt-1">موارد رقمية بملفات PDF أو بروابط DOI.</p>
+        </div>
         <a href="{% url 'search_results' %}?search_scope=digital" class="btn-secondary" title="بحث داخل الرقمي"><i class="fa-solid fa-magnifying-glass"></i></a>
     </div>
 
@@ -22,16 +25,23 @@
                 {% endif %}
                 <h2 class="font-black text-lg">{{ dbook.book.title }}</h2>
                 <p class="text-sm text-slate-500 mt-1">{{ dbook.book.category.name|default:"-" }}</p>
+                {% if dbook.book.doi %}<p dir="ltr">DOI: {{ dbook.book.doi }}</p>{% endif %}
                 <div class="book-card-actions">
                     <a href="{% url 'book_detail' dbook.book.id %}" class="btn-secondary text-center">التفاصيل</a>
                     <a href="{% url 'read_digital_book' dbook.book.id %}" class="btn-primary text-center">قراءة</a>
                 </div>
                 <div class="book-card-actions !mt-2">
-                    <a href="{% url 'download_digital_book' dbook.book.id %}" class="btn-secondary text-center col-span-2">تحميل</a>
+                    {% if dbook.pdf_file %}
+                        <a href="{% url 'download_digital_book' dbook.book.id %}" class="btn-secondary text-center col-span-2">تحميل</a>
+                    {% elif dbook.book.doi %}
+                        <a href="https://doi.org/{{ dbook.book.doi }}" target="_blank" rel="noopener" class="btn-secondary text-center col-span-2">فتح DOI</a>
+                    {% else %}
+                        <span class="text-center text-[10px] px-1 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 col-span-2">لا يوجد ملف أو DOI</span>
+                    {% endif %}
                 </div>
             </article>
         {% empty %}
-            <div class="col-span-full card text-center py-10 text-slate-500">لا توجد كتب رقمية مضافة حاليًا.</div>
+            <div class="col-span-full card text-center py-10 text-slate-500">لا توجد موارد رقمية مضافة حاليًا.</div>
         {% endfor %}
     </div>
 </section>

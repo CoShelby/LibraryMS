@@ -49,6 +49,8 @@ class Book(models.Model):
 
     dewey_decimal_number = models.CharField(max_length=100, db_index=True)
     title = models.CharField(max_length=300, db_index=True)
+    isbn = models.CharField(max_length=32, blank=True, default="", db_index=True)
+    doi = models.CharField(max_length=255, blank=True, default="", db_index=True)
     authors = models.ManyToManyField(Author)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     publisher = models.ForeignKey(Publisher, on_delete=models.SET_NULL, null=True)
@@ -59,7 +61,7 @@ class Book(models.Model):
     pages = models.IntegerField(blank=True, null=True)
     cover_image = models.ImageField(upload_to="books/covers/", blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_books')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_books")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     view_count = models.PositiveIntegerField(default=0, db_index=True)
 
@@ -67,6 +69,8 @@ class Book(models.Model):
         indexes = [
             models.Index(fields=["title", "view_count"]),
             models.Index(fields=["language", "publication_year"]),
+            models.Index(fields=["isbn"]),
+            models.Index(fields=["doi"]),
         ]
 
     def __str__(self):
@@ -119,7 +123,6 @@ class BookCopy(models.Model):
 
     def __str__(self):
         return f"{self.book.title} - {self.barcode}"
-
 
 
 class CategorySearchStat(models.Model):

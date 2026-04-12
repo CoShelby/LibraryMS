@@ -19,6 +19,7 @@ from accounts.forms import AdminSelfProfileForm, AdminUserCreationForm, AdminUse
 from accounts.models import User
 from accounts.services import admin_capability_required, admin_required, has_admin_capability
 from books.models import Author, Book, BookCopy, Category, Publisher
+from books.selectors import add_copies_to_book, find_duplicate_book_conflict
 from circulations.models import Borrowing, Fine, FinePayment, Loan, Reservation
 from circulations.services import (
     approve_reservation,
@@ -53,7 +54,7 @@ from notifications.models import Notification
 from .notifications import notification_target_url
 
 def _split_names(raw_value):
-    prepared = (raw_value or "").replace("،", ",")
+    prepared = (raw_value or "").replace("طŒ", ",")
     values = [name.strip() for name in prepared.split(",") if name.strip()]
     return list(dict.fromkeys(values))
 
@@ -156,12 +157,12 @@ def _format_overdue_duration(delay):
 
     parts = []
     if days:
-        parts.append(f"{days} يوم")
+        parts.append(f"{days} ظٹظˆظ…")
     if hours:
-        parts.append(f"{hours} ساعة")
+        parts.append(f"{hours} ط³ط§ط¹ط©")
     if minutes or not parts:
-        parts.append(f"{minutes} دقيقة")
-    return " و ".join(parts)
+        parts.append(f"{minutes} ط¯ظ‚ظٹظ‚ط©")
+    return " ظˆ ".join(parts)
 
 
 def _overdue_report_rows(queryset):
@@ -256,8 +257,20 @@ def dashboard_home(request):
 
 @admin_capability_required("can_manage_books")
 def dashboard_books_list(request):
-    books = _books_dashboard_queryset()
-    return render(request, "dashboard/books/books_list.html", {"books": books})
+    query = (request.GET.get("q") or "").strip()
+    if query:
+        from books.selectors import search_books
+        books_list = search_books(query=query, search_scope="all")
+        # search_books returns objects with `total_copies`, `usable_copies`, `active_borrowings`, `has_digital` etc.
+        # dashboard template expects: `borrowed_copies` instead of `active_borrowings`
+        for b in books_list:
+            if not hasattr(b, 'borrowed_copies') and hasattr(b, 'active_borrowings'):
+                b.borrowed_copies = b.active_borrowings
+        books = books_list
+    else:
+        books = _books_dashboard_queryset()
+
+    return render(request, "dashboard/books/books_list.html", {"books": books, "query": query})
 
 
 
@@ -267,9 +280,9 @@ def dashboard_confirm_physical_book(request, book_id):
     if request.method == "POST":
         if not book.bookcopy_set.exists():
             BookCopy.objects.create(book=book, status="new")
-            messages.success(request, "تم تأكيد إدراج الكتاب ضمن الكتب الورقية بإضافة أول نسخة.")
+            messages.success(request, "طھظ… طھط£ظƒظٹط¯ ط¥ط¯ط±ط§ط¬ ط§ظ„ظƒطھط§ط¨ ط¶ظ…ظ† ط§ظ„ظƒطھط¨ ط§ظ„ظˆط±ظ‚ظٹط© ط¨ط¥ط¶ط§ظپط© ط£ظˆظ„ ظ†ط³ط®ط©.")
         else:
-            messages.info(request, "الكتاب لديه نسخ بالفعل.")
+            messages.info(request, "ط§ظ„ظƒطھط§ط¨ ظ„ط¯ظٹظ‡ ظ†ط³ط® ط¨ط§ظ„ظپط¹ظ„.")
     return redirect("dashboard_books_list")
 
 
@@ -279,58 +292,36 @@ def dashboard_add_book(request):
     if request.method == "POST":
         form = BookForm(request.POST, request.FILES)
         if form.is_valid():
-            title = form.cleaned_data.get("title").strip()
-            dewey = form.cleaned_data.get("dewey_decimal_number") or ""
-            year = form.cleaned_data.get("publication_year")
-            edition = form.cleaned_data.get("edition") or ""
-            language = form.cleaned_data.get("language")
-            category_name = form.cleaned_data.get("category_name").strip()
-            publisher_name = form.cleaned_data.get("publisher_name").strip()
-            author_names = set(BookForm._split_names(form.cleaned_data.get("author_names")))
-
-            identical_books = Book.objects.filter(
-                title__iexact=title,
-                dewey_decimal_number__iexact=dewey,
-                publication_year=year,
-                edition__iexact=edition,
-                language=language,
-                category__name__iexact=category_name,
-                publisher__name__iexact=publisher_name
+            conflict = find_duplicate_book_conflict(
+                title=form.cleaned_data.get("title"),
+                isbn=form.cleaned_data.get("isbn"),
             )
+            duplicate_action = (form.cleaned_data.get("duplicate_action") or "").strip()
+            matched_book_id = form.cleaned_data.get("matched_book_id")
+            copies_to_add = form.cleaned_data.get("copies_count") or 1
 
-            found_duplicate = None
-            for b in identical_books:
-                if set(b.authors.values_list('name', flat=True)) == author_names:
-                    found_duplicate = b
-                    break
-
-            if found_duplicate:
-                copies_to_add = form.cleaned_data.get("copies_count")
-                if copies_to_add is None:
-                    copies_to_add = 1
-                
-                existing_numbers = []
-                for val in found_duplicate.bookcopy_set.values_list("copy_number", flat=True):
-                    if val and str(val).isdigit():
-                        existing_numbers.append(int(val))
-                next_number = (max(existing_numbers) if existing_numbers else 0) + 1
-
-                for _ in range(copies_to_add):
-                    copy_number = str(next_number)
-                    BookCopy.objects.create(
-                        book=found_duplicate,
-                        copy_number=copy_number,
-                        barcode=f"{found_duplicate.id}-{copy_number}",
-                        status="new",
-                    )
-                    next_number += 1
-                
-                messages.warning(request, f"هذا الكتاب موجود مسبقاً! تمت إضافة {copies_to_add} نسخة جديدة للكتاب بدلاً من تكرار الإدخال.")
+            if conflict["type"] == "exact":
+                matched_book = conflict["book"]
+                if duplicate_action == "add_copy" and matched_book_id == matched_book.id:
+                    add_copies_to_book(matched_book, copies_to_add)
+                    messages.success(request, "الكتاب موجود مسبقًا، وتمت إضافة نسخة جديدة إليه.")
+                    return redirect("dashboard_books_list")
+                form.add_error(None, "تم العثور على كتاب مطابق بنفس ISBN. اختر إضافة نسخة من النافذة المنبثقة للمتابعة.")
+            elif conflict["type"] == "similar":
+                matched_book = conflict["book"]
+                if duplicate_action == "add_copy" and matched_book_id == matched_book.id:
+                    add_copies_to_book(matched_book, copies_to_add)
+                    messages.success(request, "تم اعتماد الكتاب المشابه كعنوان موجود، وتمت إضافة نسخة جديدة.")
+                    return redirect("dashboard_books_list")
+                if duplicate_action == "create_new":
+                    book = form.save(created_by=request.user)
+                    messages.success(request, f"تمت إضافة الكتاب: {book.title}")
+                    return redirect("dashboard_books_list")
+                form.add_error(None, "تم العثور على كتاب مشابه. اختر من النافذة المنبثقة ما إذا كان نفس الكتاب أو كتابًا جديدًا.")
+            else:
+                book = form.save(created_by=request.user)
+                messages.success(request, f"تمت إضافة الكتاب: {book.title}")
                 return redirect("dashboard_books_list")
-
-            book = form.save(created_by=request.user)
-            messages.success(request, f"تمت إضافة الكتاب: {book.title}")
-            return redirect("dashboard_books_list")
     else:
         form = BookForm()
 
@@ -346,7 +337,6 @@ def dashboard_add_book(request):
             "publishers_options": Publisher.objects.order_by("name").values_list("name", flat=True),
         },
     )
-
 
 
 @admin_capability_required("can_manage_books")
@@ -376,12 +366,11 @@ def dashboard_edit_book(request, book_id):
     )
 
 
-
 @admin_capability_required("can_manage_books")
 def dashboard_book_copies(request, book_id):
     book = Book.objects.filter(id=book_id).first()
     if not book:
-        messages.warning(request, "تم حذف الكتاب تلقائياً بعد حذف جميع نسخه المادية.")
+        messages.warning(request, "طھظ… ط­ط°ظپ ط§ظ„ظƒطھط§ط¨ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¨ط¹ط¯ ط­ط°ظپ ط¬ظ…ظٹط¹ ظ†ط³ط®ظ‡ ط§ظ„ظ…ط§ط¯ظٹط©.")
         return redirect("dashboard_books_list")
     copy_query = (request.GET.get("q") or "").strip()
 
@@ -390,14 +379,14 @@ def dashboard_book_copies(request, book_id):
         if form.is_valid():
             copy = form.save(commit=False)
             if copy.copy_number and BookCopy.objects.filter(book=book, copy_number=copy.copy_number).exists():
-                messages.error(request, f"رقم النسخة '{copy.copy_number}' موجود مسبقاً لهذا الكتاب.")
+                messages.error(request, f"ط±ظ‚ظ… ط§ظ„ظ†ط³ط®ط© '{copy.copy_number}' ظ…ظˆط¬ظˆط¯ ظ…ط³ط¨ظ‚ط§ظ‹ ظ„ظ‡ط°ط§ ط§ظ„ظƒطھط§ط¨.")
                 form = BookCopyForm()
             else:
                 copy.book = book
-                # النسخة الجديدة تعتبر غير مطبوعة حتى تمر عبر صفحة الطباعة.
+                # ط§ظ„ظ†ط³ط®ط© ط§ظ„ط¬ط¯ظٹط¯ط© طھط¹طھط¨ط± ط؛ظٹط± ظ…ط·ط¨ظˆط¹ط© ط­طھظ‰ طھظ…ط± ط¹ط¨ط± طµظپط­ط© ط§ظ„ط·ط¨ط§ط¹ط©.
                 copy.is_printed = False
                 copy.save()
-                messages.success(request, "تمت إضافة النسخة بنجاح.")
+                messages.success(request, "طھظ…طھ ط¥ط¶ط§ظپط© ط§ظ„ظ†ط³ط®ط© ط¨ظ†ط¬ط§ط­.")
                 return redirect("dashboard_book_copies", book_id=book.id)
     else:
         form = BookCopyForm()
@@ -426,7 +415,7 @@ def dashboard_delete_book_copy(request, copy_id):
         copy = get_object_or_404(BookCopy, id=copy_id)
         book_id = copy.book_id
         copy.delete()
-        messages.success(request, "تم حذف النسخة بنجاح.")
+        messages.success(request, "طھظ… ط­ط°ظپ ط§ظ„ظ†ط³ط®ط© ط¨ظ†ط¬ط§ط­.")
         return redirect("dashboard_book_copies", book_id=book_id)
     return redirect("dashboard_books_list")
 
@@ -476,7 +465,7 @@ def dashboard_copy_qr_print(request):
 
         printable_copies = list(printable_queryset)
         if not printable_copies:
-            messages.error(request, "لا توجد نسخ مطابقة للطباعة.")
+            messages.error(request, "ظ„ط§ طھظˆط¬ط¯ ظ†ط³ط® ظ…ط·ط§ط¨ظ‚ط© ظ„ظ„ط·ط¨ط§ط¹ط©.")
             return redirect("dashboard_copy_qr_print")
 
         return render(
@@ -545,18 +534,23 @@ def dashboard_digital_add(request):
             create_new_book = form.cleaned_data.get("create_new_book")
 
             if create_new_book:
-                pdf_file = form.cleaned_data["pdf_file"]
-                detected_pages, extracted_cover, metadata_title = _extract_pdf_metadata(pdf_file)
+                pdf_file = form.cleaned_data.get("pdf_file")
+                detected_pages = None
+                extracted_cover = None
+                metadata_title = None
+                if pdf_file:
+                    detected_pages, extracted_cover, metadata_title = _extract_pdf_metadata(pdf_file)
 
                 typed_title = (form.cleaned_data.get("new_title") or "").strip()
-                inferred_title = typed_title or metadata_title or _title_from_filename(pdf_file) or "كتاب رقمي"
-
+                inferred_title = typed_title or metadata_title or (_title_from_filename(pdf_file) if pdf_file else "") or "مورد رقمي"
                 pages_value = form.cleaned_data.get("new_pages") or detected_pages
                 category = _resolve_category(form.cleaned_data["new_category_name"].strip())
                 publisher, _ = Publisher.objects.get_or_create(name=form.cleaned_data["new_publisher_name"].strip())
 
                 book = Book.objects.create(
                     title=inferred_title,
+                    isbn=form.cleaned_data.get("new_isbn") or "",
+                    doi=form.cleaned_data.get("new_doi") or "",
                     dewey_decimal_number=form.cleaned_data["new_dewey_decimal_number"].strip(),
                     category=category,
                     publisher=publisher,
@@ -586,14 +580,18 @@ def dashboard_digital_add(request):
                 digital_book.save()
             else:
                 selected_book = form.cleaned_data["book"]
-                pdf_file = form.cleaned_data["pdf_file"]
-                detected_pages, extracted_cover, metadata_title = _extract_pdf_metadata(pdf_file)
+                pdf_file = form.cleaned_data.get("pdf_file")
+                detected_pages = None
+                extracted_cover = None
+                metadata_title = None
+                if pdf_file:
+                    detected_pages, extracted_cover, metadata_title = _extract_pdf_metadata(pdf_file)
 
                 update_fields = []
                 if metadata_title and not selected_book.title:
                     selected_book.title = metadata_title
                     update_fields.append("title")
-                elif not selected_book.title:
+                elif pdf_file and not selected_book.title:
                     selected_book.title = _title_from_filename(pdf_file) or selected_book.title
                     update_fields.append("title")
 
@@ -610,7 +608,7 @@ def dashboard_digital_add(request):
 
                 form.save()
 
-            messages.success(request, "تمت إضافة الكتاب الرقمي.")
+            messages.success(request, "تمت إضافة المورد الرقمي.")
             return redirect("dashboard_digital_list")
     else:
         form = DigitalLibraryForm()
@@ -620,14 +618,13 @@ def dashboard_digital_add(request):
         "dashboard/digital/form.html",
         {
             "form": form,
-            "title": "إضافة كتاب رقمي",
+            "title": "إضافة مورد رقمي",
             "submit_label": "حفظ",
             "authors_options": Author.objects.order_by("name").values_list("name", flat=True),
             "categories_options": Category.objects.order_by("name").values_list("name", flat=True),
             "publishers_options": Publisher.objects.order_by("name").values_list("name", flat=True),
         },
     )
-
 
 
 @admin_capability_required("can_manage_books")
@@ -638,9 +635,9 @@ def dashboard_digital_edit(request, digital_id):
         if form.is_valid():
             if form.cleaned_data.get("book"):
                 form.save()
-                messages.success(request, "تم تحديث الكتاب الرقمي.")
+                messages.success(request, "تم تحديث بيانات المورد الرقمي.")
                 return redirect("dashboard_digital_list")
-            messages.error(request, "في التعديل اختر كتابًا موجودًا مرتبطًا بالنسخة الرقمية.")
+            messages.error(request, "في التعديل اختر كتابًا موجودًا مرتبطًا بالمورد الرقمي.")
     else:
         form = DigitalLibraryForm(instance=digital_book)
 
@@ -649,7 +646,7 @@ def dashboard_digital_edit(request, digital_id):
         "dashboard/digital/form.html",
         {
             "form": form,
-            "title": f"تعديل كتاب رقمي: {digital_book.book.title}",
+            "title": f"تعديل مورد رقمي: {digital_book.book.title}",
             "submit_label": "حفظ التعديلات",
             "digital_book": digital_book,
             "authors_options": Author.objects.order_by("name").values_list("name", flat=True),
@@ -719,7 +716,7 @@ def dashboard_update_entity(request, entity_type, entity_id):
     }
 
     if entity_type not in entity_config:
-        messages.error(request, "نوع الكيان غير مدعوم.")
+        messages.error(request, "ظ†ظˆط¹ ط§ظ„ظƒظٹط§ظ† ط؛ظٹط± ظ…ط¯ط¹ظˆظ….")
         return redirect("dashboard_categories")
 
     model_class, fields = entity_config[entity_type]
@@ -733,14 +730,14 @@ def dashboard_update_entity(request, entity_type, entity_id):
             setattr(obj, field_name, value)
 
     if entity_type == "category" and not obj.name:
-        messages.error(request, "اسم الفئة لا يمكن أن يكون فارغًا.")
+        messages.error(request, "ط§ط³ظ… ط§ظ„ظپط¦ط© ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظپط§ط±ط؛ظ‹ط§.")
         return redirect("dashboard_categories")
     if entity_type in {"author", "publisher"} and not obj.name:
-        messages.error(request, "الاسم لا يمكن أن يكون فارغًا.")
+        messages.error(request, "ط§ظ„ط§ط³ظ… ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظپط§ط±ط؛ظ‹ط§.")
         return redirect("dashboard_categories")
 
     obj.save()
-    messages.success(request, "تم التحديث بنجاح.")
+    messages.success(request, "طھظ… ط§ظ„طھط­ط¯ظٹط« ط¨ظ†ط¬ط§ط­.")
     return redirect("dashboard_categories")
 
 
@@ -756,20 +753,20 @@ def dashboard_delete_entity(request, entity_type, entity_id):
     }
     model_class = entity_config.get(entity_type)
     if not model_class:
-        messages.error(request, "نوع الكيان غير مدعوم.")
+        messages.error(request, "ظ†ظˆط¹ ط§ظ„ظƒظٹط§ظ† ط؛ظٹط± ظ…ط¯ط¹ظˆظ….")
         return redirect("dashboard_categories")
 
     obj = get_object_or_404(model_class, id=entity_id)
     obj_name = getattr(obj, "name", str(obj))
     obj.delete()
-    messages.success(request, f"تم حذف: {obj_name}")
+    messages.success(request, f"طھظ… ط­ط°ظپ: {obj_name}")
     return redirect("dashboard_categories")
 
 def _build_manual_borrow_preview(membership_number, copy_barcode):
     if not membership_number:
-        raise ValueError("رقم العضوية مطلوب.")
+        raise ValueError("ط±ظ‚ظ… ط§ظ„ط¹ط¶ظˆظٹط© ظ…ط·ظ„ظˆط¨.")
     if not copy_barcode:
-        raise ValueError("رقم نسخة الكتاب مطلوب.")
+        raise ValueError("ط±ظ‚ظ… ظ†ط³ط®ط© ط§ظ„ظƒطھط§ط¨ ظ…ط·ظ„ظˆط¨.")
 
     member = Member.objects.get(membership_number=membership_number)
     copy = BookCopy.objects.select_related("book").get(barcode=copy_barcode)
@@ -793,55 +790,55 @@ def _build_manual_borrow_preview(membership_number, copy_barcode):
         "copy": copy,
         "book": copy.book,
         "active_member_borrows": active_member_borrows,
-        "status_label": "متاحة",
+        "status_label": "ظ…طھط§ط­ط©",
         "status_tone": "emerald",
-        "status_message": "النسخة جاهزة للاستعارة.",
+        "status_message": "ط§ظ„ظ†ط³ط®ط© ط¬ط§ظ‡ط²ط© ظ„ظ„ط§ط³طھط¹ط§ط±ط©.",
         "can_confirm": True,
     }
 
-    # نعرض حالة العضو والنسخة قبل التأكيد دون تغيير شروط الاستعارة الفعلية.
+    # ظ†ط¹ط±ط¶ ط­ط§ظ„ط© ط§ظ„ط¹ط¶ظˆ ظˆط§ظ„ظ†ط³ط®ط© ظ‚ط¨ظ„ ط§ظ„طھط£ظƒظٹط¯ ط¯ظˆظ† طھط؛ظٹظٹط± ط´ط±ظˆط· ط§ظ„ط§ط³طھط¹ط§ط±ط© ط§ظ„ظپط¹ظ„ظٹط©.
     if member.is_suspended:
         preview.update(
             {
-                "status_label": "العضوية موقوفة",
+                "status_label": "ط§ظ„ط¹ط¶ظˆظٹط© ظ…ظˆظ‚ظˆظپط©",
                 "status_tone": "rose",
-                "status_message": "هذا العضو موقوف عن الاستعارة ويجب معالجة سبب الإيقاف أولًا.",
+                "status_message": "ظ‡ط°ط§ ط§ظ„ط¹ط¶ظˆ ظ…ظˆظ‚ظˆظپ ط¹ظ† ط§ظ„ط§ط³طھط¹ط§ط±ط© ظˆظٹط¬ط¨ ظ…ط¹ط§ظ„ط¬ط© ط³ط¨ط¨ ط§ظ„ط¥ظٹظ‚ط§ظپ ط£ظˆظ„ظ‹ط§.",
                 "can_confirm": False,
             }
         )
     elif copy.status != "new":
         preview.update(
             {
-                "status_label": "غير متاحة",
+                "status_label": "ط؛ظٹط± ظ…طھط§ط­ط©",
                 "status_tone": "amber",
-                "status_message": "حالة النسخة الحالية لا تسمح بالاستعارة.",
+                "status_message": "ط­ط§ظ„ط© ط§ظ„ظ†ط³ط®ط© ط§ظ„ط­ط§ظ„ظٹط© ظ„ط§ طھط³ظ…ط­ ط¨ط§ظ„ط§ط³طھط¹ط§ط±ط©.",
                 "can_confirm": False,
             }
         )
     elif active_copy_borrowing:
         preview.update(
             {
-                "status_label": "مستعارة",
+                "status_label": "ظ…ط³طھط¹ط§ط±ط©",
                 "status_tone": "rose",
-                "status_message": f"النسخة معارة حاليًا للعضو {active_copy_borrowing.member.name}.",
+                "status_message": f"ط§ظ„ظ†ط³ط®ط© ظ…ط¹ط§ط±ط© ط­ط§ظ„ظٹظ‹ط§ ظ„ظ„ط¹ط¶ظˆ {active_copy_borrowing.member.name}.",
                 "can_confirm": False,
             }
         )
     elif not member_has_limit:
         preview.update(
             {
-                "status_label": "الحد الأقصى مكتمل",
+                "status_label": "ط§ظ„ط­ط¯ ط§ظ„ط£ظ‚طµظ‰ ظ…ظƒطھظ…ظ„",
                 "status_tone": "amber",
-                "status_message": "العضو بلغ الحد الأعلى للاستعارات النشطة.",
+                "status_message": "ط§ظ„ط¹ط¶ظˆ ط¨ظ„ط؛ ط§ظ„ط­ط¯ ط§ظ„ط£ط¹ظ„ظ‰ ظ„ظ„ط§ط³طھط¹ط§ط±ط§طھ ط§ظ„ظ†ط´ط·ط©.",
                 "can_confirm": False,
             }
         )
     elif not supply_allows_borrow:
         preview.update(
             {
-                "status_label": "محجوزة",
+                "status_label": "ظ…ط­ط¬ظˆط²ط©",
                 "status_tone": "amber",
-                "status_message": "لا توجد إتاحة حالية بسبب الحجوزات المعتمدة على هذا الكتاب.",
+                "status_message": "ظ„ط§ طھظˆط¬ط¯ ط¥طھط§ط­ط© ط­ط§ظ„ظٹط© ط¨ط³ط¨ط¨ ط§ظ„ط­ط¬ظˆط²ط§طھ ط§ظ„ظ…ط¹طھظ…ط¯ط© ط¹ظ„ظ‰ ظ‡ط°ط§ ط§ظ„ظƒطھط§ط¨.",
                 "can_confirm": False,
             }
         )
@@ -861,7 +858,7 @@ def _circulation_context(manual_preview=None, manual_form=None):
         return_date__isnull=True
     ).order_by("due_date")
 
-    # مجموعة معرفات الكتب التي عليها حجوزات معتمدة الآن (تمنع التجديد)
+    # ظ…ط¬ظ…ظˆط¹ط© ظ…ط¹ط±ظپط§طھ ط§ظ„ظƒطھط¨ ط§ظ„طھظٹ ط¹ظ„ظٹظ‡ط§ ط­ط¬ظˆط²ط§طھ ظ…ط¹طھظ…ط¯ط© ط§ظ„ط¢ظ† (طھظ…ظ†ط¹ ط§ظ„طھط¬ط¯ظٹط¯)
     approved_reserved_book_ids = set(
         Reservation.objects.filter(status="approved").values_list("book_id", flat=True)
     )
@@ -900,7 +897,7 @@ def dashboard_manual_borrow(request):
             borrowing = borrow_book(preview["member"], preview["book"], request.user, preferred_copy=preview["copy"])
             messages.success(
                 request,
-                f"تم تسجيل الاستعارة بنجاح للعضو {borrowing.member.name} على النسخة {borrowing.book_copy.barcode}.",
+                f"طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط§ط³طھط¹ط§ط±ط© ط¨ظ†ط¬ط§ط­ ظ„ظ„ط¹ط¶ظˆ {borrowing.member.name} ط¹ظ„ظ‰ ط§ظ„ظ†ط³ط®ط© {borrowing.book_copy.barcode}.",
             )
             return redirect("dashboard_circulation")
 
@@ -910,9 +907,9 @@ def dashboard_manual_borrow(request):
             _circulation_context(manual_preview=preview, manual_form=manual_form),
         )
     except Member.DoesNotExist:
-        messages.error(request, "رقم العضوية غير صحيح.")
+        messages.error(request, "ط±ظ‚ظ… ط§ظ„ط¹ط¶ظˆظٹط© ط؛ظٹط± طµط­ظٹط­.")
     except BookCopy.DoesNotExist:
-        messages.error(request, "رقم النسخة غير صحيح.")
+        messages.error(request, "ط±ظ‚ظ… ط§ظ„ظ†ط³ط®ط© ط؛ظٹط± طµط­ظٹط­.")
     except ValueError as exc:
         messages.error(request, str(exc))
 
@@ -925,7 +922,7 @@ def dashboard_approve_reservation(request, reservation_id):
     if request.method == "POST":
         try:
             approve_reservation(reservation)
-            messages.success(request, "تم اعتماد طلب الحجز.")
+            messages.success(request, "طھظ… ط§ط¹طھظ…ط§ط¯ ط·ظ„ط¨ ط§ظ„ط­ط¬ط².")
         except ValueError as exc:
             messages.error(request, str(exc))
     return redirect("dashboard_circulation")
@@ -937,7 +934,7 @@ def dashboard_complete_reservation(request, reservation_id):
     if request.method == "POST":
         try:
             complete_reservation(reservation, employee=request.user)
-            messages.success(request, "تم إتمام الاستعارة من الحجز.")
+            messages.success(request, "طھظ… ط¥طھظ…ط§ظ… ط§ظ„ط§ط³طھط¹ط§ط±ط© ظ…ظ† ط§ظ„ط­ط¬ط².")
         except ValueError as exc:
             messages.error(request, str(exc))
     return redirect("dashboard_circulation")
@@ -949,7 +946,7 @@ def dashboard_cancel_reservation(request, reservation_id):
     if request.method == "POST":
         try:
             cancel_reservation(reservation)
-            messages.success(request, "تم إلغاء طلب الحجز.")
+            messages.success(request, "طھظ… ط¥ظ„ط؛ط§ط، ط·ظ„ط¨ ط§ظ„ط­ط¬ط².")
         except ValueError as exc:
             messages.error(request, str(exc))
     return redirect("dashboard_circulation")
@@ -964,10 +961,10 @@ def dashboard_return_borrowing(request, borrowing_id):
             if fine:
                 messages.success(
                     request,
-                    f"تم تسجيل الإرجاع. تم احتساب غرامة {fine.amount} ({describe_fine_units(fine.days_late)} تأخير).",
+                    f"طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط¥ط±ط¬ط§ط¹. طھظ… ط§ط­طھط³ط§ط¨ ط؛ط±ط§ظ…ط© {fine.amount} ({describe_fine_units(fine.days_late)} طھط£ط®ظٹط±).",
                 )
             else:
-                messages.success(request, "تم تسجيل إرجاع الكتاب.")
+                messages.success(request, "طھظ… طھط³ط¬ظٹظ„ ط¥ط±ط¬ط§ط¹ ط§ظ„ظƒطھط§ط¨.")
         except ValueError as exc:
             messages.error(request, str(exc))
     return redirect("dashboard_circulation")
@@ -978,7 +975,7 @@ def dashboard_approve_renewal(request, borrowing_id):
     if request.method == "POST":
         try:
             renew_borrowing(borrowing)
-            messages.success(request, "تمت الموافقة على طلب التجديد.")
+            messages.success(request, "طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ ط·ظ„ط¨ ط§ظ„طھط¬ط¯ظٹط¯.")
         except ValueError as exc:
             messages.error(request, str(exc))
     return redirect("dashboard_circulation")
@@ -986,12 +983,12 @@ def dashboard_approve_renewal(request, borrowing_id):
 
 @admin_capability_required("can_manage_circulation")
 def dashboard_direct_renew(request, borrowing_id):
-    """تجديد مباشر من قبل الإداري من قائمة الاستعارات النشطة"""
+    """طھط¬ط¯ظٹط¯ ظ…ط¨ط§ط´ط± ظ…ظ† ظ‚ط¨ظ„ ط§ظ„ط¥ط¯ط§ط±ظٹ ظ…ظ† ظ‚ط§ط¦ظ…ط© ط§ظ„ط§ط³طھط¹ط§ط±ط§طھ ط§ظ„ظ†ط´ط·ط©"""
     borrowing = get_object_or_404(Borrowing, id=borrowing_id)
     if request.method == "POST":
         try:
             renew_borrowing(borrowing)
-            messages.success(request, f"تم تجديد استعارة {borrowing.member.name} بنجاح.")
+            messages.success(request, f"طھظ… طھط¬ط¯ظٹط¯ ط§ط³طھط¹ط§ط±ط© {borrowing.member.name} ط¨ظ†ط¬ط§ط­.")
         except ValueError as exc:
             messages.error(request, str(exc))
     return redirect("dashboard_circulation")
@@ -1003,7 +1000,7 @@ def dashboard_reject_renewal(request, borrowing_id):
     if request.method == "POST":
         try:
             reject_renewal_request(borrowing)
-            messages.success(request, "تم رفض طلب التجديد.")
+            messages.success(request, "طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„طھط¬ط¯ظٹط¯.")
         except ValueError as exc:
             messages.error(request, str(exc))
     return redirect("dashboard_circulation")
@@ -1021,22 +1018,22 @@ def dashboard_reports(request):
 
     report_tables = {
         "books": {
-            "label": "الكتب",
+            "label": "ط§ظ„ظƒطھط¨",
             "queryset": Book.objects.select_related("category", "publisher", "created_by").prefetch_related("authors"),
             "sort_options": [
-                ("title", "العنوان (أ-ي)"),
-                ("-title", "العنوان (ي-أ)"),
-                ("created_at", "تاريخ الإدراج (أقدم)"),
-                ("-created_at", "تاريخ الإدراج (أحدث)"),
-                ("view_count", "الأقل مشاهدة"),
-                ("-view_count", "الأكثر مشاهدة"),
+                ("title", "ط§ظ„ط¹ظ†ظˆط§ظ† (ط£-ظٹ)"),
+                ("-title", "ط§ظ„ط¹ظ†ظˆط§ظ† (ظٹ-ط£)"),
+                ("created_at", "طھط§ط±ظٹط® ط§ظ„ط¥ط¯ط±ط§ط¬ (ط£ظ‚ط¯ظ…)"),
+                ("-created_at", "طھط§ط±ظٹط® ط§ظ„ط¥ط¯ط±ط§ط¬ (ط£ط­ط¯ط«)"),
+                ("view_count", "ط§ظ„ط£ظ‚ظ„ ظ…ط´ط§ظ‡ط¯ط©"),
+                ("-view_count", "ط§ظ„ط£ظƒط«ط± ظ…ط´ط§ظ‡ط¯ط©"),
             ],
-            "headers": ["ID", "العنوان", "المؤلفون", "الفئة", "الناشر", "أضيف بواسطة", "السنة", "اللغة", "الصفحات"],
+            "headers": ["ID", "ط§ظ„ط¹ظ†ظˆط§ظ†", "ط§ظ„ظ…ط¤ظ„ظپظˆظ†", "ط§ظ„ظپط¦ط©", "ط§ظ„ظ†ط§ط´ط±", "ط£ط¶ظٹظپ ط¨ظˆط§ط³ط·ط©", "ط§ظ„ط³ظ†ط©", "ط§ظ„ظ„ط؛ط©", "ط§ظ„طµظپط­ط§طھ"],
             "rows": lambda q: [
                 [
                     item.id,
                     item.title,
-                    "، ".join(item.authors.values_list("name", flat=True)) or "-",
+                    "طŒ ".join(item.authors.values_list("name", flat=True)) or "-",
                     item.category.name if item.category else "-",
                     item.publisher.name if item.publisher else "-",
                     item.created_by.username if item.created_by else "-",
@@ -1048,17 +1045,17 @@ def dashboard_reports(request):
             ],
         },
         "members": {
-            "label": "الأعضاء",
+            "label": "ط§ظ„ط£ط¹ط¶ط§ط،",
             "queryset": Member.objects.all(),
             "sort_options": [
-                ("name", "الاسم (أ-ي)"),
-                ("-name", "الاسم (ي-أ)"),
-                ("membership_expiry", "انتهاء العضوية (الأقرب)"),
-                ("-membership_expiry", "انتهاء العضوية (الأبعد)"),
-                ("created_at", "الأقدم إضافة"),
-                ("-created_at", "الأحدث إضافة"),
+                ("name", "ط§ظ„ط§ط³ظ… (ط£-ظٹ)"),
+                ("-name", "ط§ظ„ط§ط³ظ… (ظٹ-ط£)"),
+                ("membership_expiry", "ط§ظ†طھظ‡ط§ط، ط§ظ„ط¹ط¶ظˆظٹط© (ط§ظ„ط£ظ‚ط±ط¨)"),
+                ("-membership_expiry", "ط§ظ†طھظ‡ط§ط، ط§ظ„ط¹ط¶ظˆظٹط© (ط§ظ„ط£ط¨ط¹ط¯)"),
+                ("created_at", "ط§ظ„ط£ظ‚ط¯ظ… ط¥ط¶ط§ظپط©"),
+                ("-created_at", "ط§ظ„ط£ط­ط¯ط« ط¥ط¶ط§ظپط©"),
             ],
-            "headers": ["ID", "الاسم", "رقم العضوية", "النوع", "رقم القيد", "التخصص", "المستوى", "جهة العمل", "انتهاء العضوية"],
+            "headers": ["ID", "ط§ظ„ط§ط³ظ…", "ط±ظ‚ظ… ط§ظ„ط¹ط¶ظˆظٹط©", "ط§ظ„ظ†ظˆط¹", "ط±ظ‚ظ… ط§ظ„ظ‚ظٹط¯", "ط§ظ„طھط®طµطµ", "ط§ظ„ظ…ط³طھظˆظ‰", "ط¬ظ‡ط© ط§ظ„ط¹ظ…ظ„", "ط§ظ†طھظ‡ط§ط، ط§ظ„ط¹ط¶ظˆظٹط©"],
             "rows": lambda q: [
                 [
                     item.id,
@@ -1075,15 +1072,15 @@ def dashboard_reports(request):
             ],
         },
         "borrowings": {
-            "label": "الاستعارات",
+            "label": "ط§ظ„ط§ط³طھط¹ط§ط±ط§طھ",
             "queryset": Borrowing.objects.select_related("book_copy__book", "member", "employee", "created_by"),
             "sort_options": [
-                ("borrow_date", "تاريخ الاستعارة (الأقدم)"),
-                ("-borrow_date", "تاريخ الاستعارة (الأحدث)"),
-                ("due_date", "تاريخ الاستحقاق (الأقرب)"),
-                ("-due_date", "تاريخ الاستحقاق (الأبعد)"),
+                ("borrow_date", "طھط§ط±ظٹط® ط§ظ„ط§ط³طھط¹ط§ط±ط© (ط§ظ„ط£ظ‚ط¯ظ…)"),
+                ("-borrow_date", "طھط§ط±ظٹط® ط§ظ„ط§ط³طھط¹ط§ط±ط© (ط§ظ„ط£ط­ط¯ط«)"),
+                ("due_date", "طھط§ط±ظٹط® ط§ظ„ط§ط³طھط­ظ‚ط§ظ‚ (ط§ظ„ط£ظ‚ط±ط¨)"),
+                ("-due_date", "طھط§ط±ظٹط® ط§ظ„ط§ط³طھط­ظ‚ط§ظ‚ (ط§ظ„ط£ط¨ط¹ط¯)"),
             ],
-            "headers": ["ID", "الكتاب", "النسخة", "العضو", "الموظف", "أُنشئت بواسطة", "الاستعارة", "الاستحقاق", "الإرجاع", "طلب تجديد"],
+            "headers": ["ID", "ط§ظ„ظƒطھط§ط¨", "ط§ظ„ظ†ط³ط®ط©", "ط§ظ„ط¹ط¶ظˆ", "ط§ظ„ظ…ظˆط¸ظپ", "ط£ظڈظ†ط´ط¦طھ ط¨ظˆط§ط³ط·ط©", "ط§ظ„ط§ط³طھط¹ط§ط±ط©", "ط§ظ„ط§ط³طھط­ظ‚ط§ظ‚", "ط§ظ„ط¥ط±ط¬ط§ط¹", "ط·ظ„ط¨ طھط¬ط¯ظٹط¯"],
             "rows": lambda q: [
                 [
                     item.id,
@@ -1095,33 +1092,33 @@ def dashboard_reports(request):
                     item.borrow_date,
                     item.due_date,
                     item.return_date or "-",
-                    "نعم" if item.renewal_requested else "لا",
+                    "ظ†ط¹ظ…" if item.renewal_requested else "ظ„ط§",
                 ]
                 for item in q
             ],
         },
         "overdue": {
-            "label": "المتأخرات",
+            "label": "ط§ظ„ظ…طھط£ط®ط±ط§طھ",
             "queryset": Borrowing.objects.select_related("book_copy__book", "member").filter(return_date__isnull=True, due_date__lt=timezone.now()),
             "sort_options": [
-                ("due_date", "الأقرب استحقاقًا"),
-                ("-due_date", "الأحدث استحقاقًا"),
-                ("borrow_date", "أقدم استعارة"),
-                ("-borrow_date", "أحدث استعارة"),
+                ("due_date", "ط§ظ„ط£ظ‚ط±ط¨ ط§ط³طھط­ظ‚ط§ظ‚ظ‹ط§"),
+                ("-due_date", "ط§ظ„ط£ط­ط¯ط« ط§ط³طھط­ظ‚ط§ظ‚ظ‹ط§"),
+                ("borrow_date", "ط£ظ‚ط¯ظ… ط§ط³طھط¹ط§ط±ط©"),
+                ("-borrow_date", "ط£ط­ط¯ط« ط§ط³طھط¹ط§ط±ط©"),
             ],
-            "headers": ["ID", "العضو", "الكتاب", "تاريخ الاستعارة", "تاريخ الانتهاء", "مدة التأخير", "الغرامة"],
+            "headers": ["ID", "ط§ظ„ط¹ط¶ظˆ", "ط§ظ„ظƒطھط§ط¨", "طھط§ط±ظٹط® ط§ظ„ط§ط³طھط¹ط§ط±ط©", "طھط§ط±ظٹط® ط§ظ„ط§ظ†طھظ‡ط§ط،", "ظ…ط¯ط© ط§ظ„طھط£ط®ظٹط±", "ط§ظ„ط؛ط±ط§ظ…ط©"],
             "rows": _overdue_report_rows,
         },
         "reservations": {
-            "label": "الحجوزات",
+            "label": "ط§ظ„ط­ط¬ظˆط²ط§طھ",
             "queryset": Reservation.objects.select_related("book", "member", "related_borrow"),
             "sort_options": [
-                ("reservation_date", "تاريخ الطلب (الأقدم)"),
-                ("-reservation_date", "تاريخ الطلب (الأحدث)"),
-                ("status", "الحالة (تصاعدي)"),
-                ("-status", "الحالة (تنازلي)"),
+                ("reservation_date", "طھط§ط±ظٹط® ط§ظ„ط·ظ„ط¨ (ط§ظ„ط£ظ‚ط¯ظ…)"),
+                ("-reservation_date", "طھط§ط±ظٹط® ط§ظ„ط·ظ„ط¨ (ط§ظ„ط£ط­ط¯ط«)"),
+                ("status", "ط§ظ„ط­ط§ظ„ط© (طھطµط§ط¹ط¯ظٹ)"),
+                ("-status", "ط§ظ„ط­ط§ظ„ط© (طھظ†ط§ط²ظ„ظٹ)"),
             ],
-            "headers": ["ID", "الكتاب", "العضو", "الحالة", "تاريخ الطلب", "ينتهي", "إعارة مرتبطة"],
+            "headers": ["ID", "ط§ظ„ظƒطھط§ط¨", "ط§ظ„ط¹ط¶ظˆ", "ط§ظ„ط­ط§ظ„ط©", "طھط§ط±ظٹط® ط§ظ„ط·ظ„ط¨", "ظٹظ†طھظ‡ظٹ", "ط¥ط¹ط§ط±ط© ظ…ط±طھط¨ط·ط©"],
             "rows": lambda q: [
                 [
                     item.id,
@@ -1136,28 +1133,28 @@ def dashboard_reports(request):
             ],
         },
         "copies": {
-            "label": "نسخ الكتب",
+            "label": "ظ†ط³ط® ط§ظ„ظƒطھط¨",
             "queryset": BookCopy.objects.select_related("book"),
             "sort_options": [
-                ("book__title", "عنوان الكتاب (أ-ي)"),
-                ("-book__title", "عنوان الكتاب (ي-أ)"),
-                ("copy_number", "رقم النسخة (تصاعدي)"),
-                ("-copy_number", "رقم النسخة (تنازلي)"),
-                ("status", "حالة النسخة"),
+                ("book__title", "ط¹ظ†ظˆط§ظ† ط§ظ„ظƒطھط§ط¨ (ط£-ظٹ)"),
+                ("-book__title", "ط¹ظ†ظˆط§ظ† ط§ظ„ظƒطھط§ط¨ (ظٹ-ط£)"),
+                ("copy_number", "ط±ظ‚ظ… ط§ظ„ظ†ط³ط®ط© (طھطµط§ط¹ط¯ظٹ)"),
+                ("-copy_number", "ط±ظ‚ظ… ط§ظ„ظ†ط³ط®ط© (طھظ†ط§ط²ظ„ظٹ)"),
+                ("status", "ط­ط§ظ„ط© ط§ظ„ظ†ط³ط®ط©"),
             ],
-            "headers": ["ID", "الكتاب", "رقم النسخة", "رمز QR", "حالة النسخة"],
+            "headers": ["ID", "ط§ظ„ظƒطھط§ط¨", "ط±ظ‚ظ… ط§ظ„ظ†ط³ط®ط©", "ط±ظ…ط² QR", "ط­ط§ظ„ط© ط§ظ„ظ†ط³ط®ط©"],
             "rows": lambda q: [[item.id, item.book.title, item.copy_number or "-", item.barcode, item.get_status_display()] for item in q],
         },
         "digital": {
-            "label": "الكتب الرقمية",
+            "label": "ط§ظ„ظƒطھط¨ ط§ظ„ط±ظ‚ظ…ظٹط©",
             "queryset": DigitalLibrary.objects.select_related("book"),
             "sort_options": [
-                ("book__title", "عنوان الكتاب (أ-ي)"),
-                ("-book__title", "عنوان الكتاب (ي-أ)"),
-                ("id", "الأقدم"),
-                ("-id", "الأحدث"),
+                ("book__title", "ط¹ظ†ظˆط§ظ† ط§ظ„ظƒطھط§ط¨ (ط£-ظٹ)"),
+                ("-book__title", "ط¹ظ†ظˆط§ظ† ط§ظ„ظƒطھط§ط¨ (ظٹ-ط£)"),
+                ("id", "ط§ظ„ط£ظ‚ط¯ظ…"),
+                ("-id", "ط§ظ„ط£ط­ط¯ط«"),
             ],
-            "headers": ["ID", "الكتاب", "رقم ديوي", "الفئة", "رابط الملف"],
+            "headers": ["ID", "ط§ظ„ظƒطھط§ط¨", "ط±ظ‚ظ… ط¯ظٹظˆظٹ", "ط§ظ„ظپط¦ط©", "ط±ط§ط¨ط· ط§ظ„ظ…ظ„ظپ"],
             "rows": lambda q: [
                 [
                     item.id,
@@ -1170,15 +1167,15 @@ def dashboard_reports(request):
             ],
         },
         "fines": {
-            "label": "الغرامات",
+            "label": "ط§ظ„ط؛ط±ط§ظ…ط§طھ",
             "queryset": Fine.objects.select_related("borrowing__member", "borrowing__book_copy__book", "payment__created_by"),
             "sort_options": [
-                ("created_at", "الأقدم"),
-                ("-created_at", "الأحدث"),
-                ("amount", "المبلغ (تصاعدي)"),
-                ("-amount", "المبلغ (تنازلي)"),
+                ("created_at", "ط§ظ„ط£ظ‚ط¯ظ…"),
+                ("-created_at", "ط§ظ„ط£ط­ط¯ط«"),
+                ("amount", "ط§ظ„ظ…ط¨ظ„ط؛ (طھطµط§ط¹ط¯ظٹ)"),
+                ("-amount", "ط§ظ„ظ…ط¨ظ„ط؛ (طھظ†ط§ط²ظ„ظٹ)"),
             ],
-            "headers": ["ID", "العضو", "الكتاب", "أيام التأخير", "المبلغ", "الحالة", "تم الدفع بواسطة", "تاريخ الإنشاء"],
+            "headers": ["ID", "ط§ظ„ط¹ط¶ظˆ", "ط§ظ„ظƒطھط§ط¨", "ط£ظٹط§ظ… ط§ظ„طھط£ط®ظٹط±", "ط§ظ„ظ…ط¨ظ„ط؛", "ط§ظ„ط­ط§ظ„ط©", "طھظ… ط§ظ„ط¯ظپط¹ ط¨ظˆط§ط³ط·ط©", "طھط§ط±ظٹط® ط§ظ„ط¥ظ†ط´ط§ط،"],
             "rows": lambda q: [
                 [
                     item.id,
@@ -1233,11 +1230,11 @@ def dashboard_reports(request):
             "selected_member": selected_member,
             "member_snapshot": member_snapshot,
             "message_types": [
-                ("overdue", "تذكير بالاستعارات المتأخرة"),
-                ("reservation_approved", "إشعار اعتماد الحجز"),
-                ("book_available", "إشعار توفر كتاب"),
-                ("pending_fines", "تنبيه الغرامات"),
-                ("suspension_warning", "تحذير قبل إيقاف العضوية"),
+                ("overdue", "طھط°ظƒظٹط± ط¨ط§ظ„ط§ط³طھط¹ط§ط±ط§طھ ط§ظ„ظ…طھط£ط®ط±ط©"),
+                ("reservation_approved", "ط¥ط´ط¹ط§ط± ط§ط¹طھظ…ط§ط¯ ط§ظ„ط­ط¬ط²"),
+                ("book_available", "ط¥ط´ط¹ط§ط± طھظˆظپط± ظƒطھط§ط¨"),
+                ("pending_fines", "طھظ†ط¨ظٹظ‡ ط§ظ„ط؛ط±ط§ظ…ط§طھ"),
+                ("suspension_warning", "طھط­ط°ظٹط± ظ‚ط¨ظ„ ط¥ظٹظ‚ط§ظپ ط§ظ„ط¹ط¶ظˆظٹط©"),
             ],
         },
     )
@@ -1261,7 +1258,7 @@ def dashboard_update_fine_payment(request, fine_id):
         else:
             FinePayment.objects.filter(fine=fine).delete()
 
-        messages.success(request, "تم تحديث حالة دفع الغرامة.")
+        messages.success(request, "طھظ… طھط­ط¯ظٹط« ط­ط§ظ„ط© ط¯ظپط¹ ط§ظ„ط؛ط±ط§ظ…ط©.")
 
     return redirect(next_url)
 
@@ -1275,9 +1272,9 @@ def dashboard_send_member_message(request, member_id):
         result = send_member_message(member=member, message_type=message_type, sent_by=request.user)
 
         if result["email_sent"] or result["sms_prepared"]:
-            messages.success(request, "تم إرسال التذكير للعضو بنجاح.")
+            messages.success(request, "طھظ… ط¥ط±ط³ط§ظ„ ط§ظ„طھط°ظƒظٹط± ظ„ظ„ط¹ط¶ظˆ ط¨ظ†ط¬ط§ط­.")
         else:
-            messages.error(request, "تعذر إرسال البريد/تجهيز الرسالة. تأكد من إعدادات الإرسال والبيانات.")
+            messages.error(request, "طھط¹ط°ط± ط¥ط±ط³ط§ظ„ ط§ظ„ط¨ط±ظٹط¯/طھط¬ظ‡ظٹط² ط§ظ„ط±ط³ط§ظ„ط©. طھط£ظƒط¯ ظ…ظ† ط¥ط¹ط¯ط§ط¯ط§طھ ط§ظ„ط¥ط±ط³ط§ظ„ ظˆط§ظ„ط¨ظٹط§ظ†ط§طھ.")
 
     return redirect(next_url)
 
@@ -1295,7 +1292,7 @@ def dashboard_send_notification_message(request, notification_id):
             notification.reservation.member if notification.reservation_id else None
         )
         if not member:
-            messages.error(request, "تعذر تحديد عضو مرتبط بهذا الإشعار.")
+            messages.error(request, "طھط¹ط°ط± طھط­ط¯ظٹط¯ ط¹ط¶ظˆ ظ…ط±طھط¨ط· ط¨ظ‡ط°ط§ ط§ظ„ط¥ط´ط¹ط§ط±.")
             return redirect(next_url)
 
         result = send_member_message(
@@ -1305,9 +1302,9 @@ def dashboard_send_notification_message(request, notification_id):
             notification=notification,
         )
         if result["email_sent"] or result["sms_prepared"]:
-            messages.success(request, "تم إرسال رسالة مرتبطة بالإشعار.")
+            messages.success(request, "طھظ… ط¥ط±ط³ط§ظ„ ط±ط³ط§ظ„ط© ظ…ط±طھط¨ط·ط© ط¨ط§ظ„ط¥ط´ط¹ط§ط±.")
         else:
-            messages.error(request, "تعذر إرسال رسالة مرتبطة بالإشعار.")
+            messages.error(request, "طھط¹ط°ط± ط¥ط±ط³ط§ظ„ ط±ط³ط§ظ„ط© ظ…ط±طھط¨ط·ط© ط¨ط§ظ„ط¥ط´ط¹ط§ط±.")
 
     return redirect(next_url)
 
@@ -1326,12 +1323,12 @@ def dashboard_open_notification(request, notification_id):
 
 def _admin_manager_required(request):
     if not request.user.is_authenticated:
-        raise PermissionDenied("ليس لديك صلاحية لإدارة حسابات الأدمنز.")
+        raise PermissionDenied("ليس لديك صلاحية لإدارة حسابات المشرفين.")
     if request.user.is_superuser or getattr(request.user, "can_manage_admins", False):
         return
     if request.user.created_admins.filter(is_staff=True, is_superuser=False).exists():
         return
-    raise PermissionDenied("ليس لديك صلاحية لإدارة حسابات الأدمنز.")
+    raise PermissionDenied("ليس لديك صلاحية لإدارة حسابات المشرفين.")
 
 
 def _managed_admins_queryset(actor):
@@ -1345,9 +1342,8 @@ def _get_managed_admin(request, admin_id):
     return get_object_or_404(_managed_admins_queryset(request.user), id=admin_id)
 
 
-
 def _delete_admin_related_data(admin_user):
-    # نحذف العلاقات المرتبطة مباشرة بالحساب لأن بعضها مضبوط على SET_NULL افتراضيًا.
+    # نحذف العلاقات المباشرة المرتبطة بالحساب قبل الحذف النهائي لتفادي بيانات يتيمة.
     Log.objects.filter(user=admin_user).delete()
     Loan.objects.filter(user=admin_user).delete()
     Borrowing.objects.filter(employee=admin_user).delete()
@@ -1368,8 +1364,8 @@ def dashboard_admin_users(request):
             new_admin = form.save(commit=False)
             new_admin.created_by = request.user
             new_admin.save()
-            messages.success(request, "تم إنشاء حساب الأدمن وتعيين كلمة المرور بنجاح.")
-            return redirect("dashboard_admin_users")
+            messages.success(request, "تم إنشاء حساب المشرف وتعيين كلمة المرور بنجاح.")
+            return redirect("dashboard_supervisor_users")
     else:
         form = AdminUserCreationForm(initial={"is_active": True}, allow_admin_management=request.user.is_superuser)
 
@@ -1394,8 +1390,8 @@ def dashboard_admin_edit(request, admin_id):
         form = AdminUserUpdateForm(request.POST, instance=admin_user, allow_admin_management=request.user.is_superuser)
         if form.is_valid():
             form.save()
-            messages.success(request, "تم تحديث بيانات الأدمن.")
-            return redirect("dashboard_admin_users")
+            messages.success(request, "تم تحديث بيانات المشرف.")
+            return redirect("dashboard_supervisor_users")
     else:
         form = AdminUserUpdateForm(instance=admin_user, allow_admin_management=request.user.is_superuser)
 
@@ -1418,9 +1414,9 @@ def dashboard_admin_toggle_active(request, admin_id):
     if request.method == "POST":
         admin_user.is_active = not admin_user.is_active
         admin_user.save(update_fields=["is_active"])
-        messages.success(request, "تم تحديث حالة حساب الأدمن.")
+        messages.success(request, "تم تحديث حالة حساب المشرف.")
 
-    return redirect("dashboard_admin_users")
+    return redirect("dashboard_supervisor_users")
 
 
 @admin_required
@@ -1430,16 +1426,15 @@ def dashboard_admin_delete(request, admin_id):
 
     if request.method == "POST":
         if admin_user == request.user:
-            messages.error(request, "لا يمكن حذف حسابك من هذه الصفحة.")
-            return redirect("dashboard_admin_users")
+            messages.error(request, "لا يمكنك حذف حسابك من هذه الصفحة.")
+            return redirect("dashboard_supervisor_users")
 
         username = admin_user.username
         _delete_admin_related_data(admin_user)
         admin_user.delete()
-        messages.success(request, f"تم حذف حساب الأدمن وكل البيانات المرتبطة به: {username}")
+        messages.success(request, f"تم حذف حساب المشرف وكل البيانات المرتبطة به: {username}")
 
-    return redirect("dashboard_admin_users")
-
+    return redirect("dashboard_supervisor_users")
 
 
 @admin_required
@@ -1454,8 +1449,8 @@ def dashboard_admin_reset_password(request, admin_id):
         _apply_input_css(form)
         if form.is_valid():
             form.save()
-            messages.success(request, "تم تعيين كلمة المرور بنجاح.")
-            return redirect("dashboard_admin_users")
+            messages.success(request, "تم تعيين كلمة المرور الجديدة بنجاح.")
+            return redirect("dashboard_supervisor_users")
 
     return render(
         request,
@@ -1483,7 +1478,7 @@ def dashboard_my_account(request):
             profile_form = AdminSelfProfileForm(request.POST, instance=request.user, prefix="profile")
             if profile_form.is_valid():
                 profile_form.save()
-                messages.success(request, "تم تحديث بيانات الحساب.")
+                messages.success(request, "طھظ… طھط­ط¯ظٹط« ط¨ظٹط§ظ†ط§طھ ط§ظ„ط­ط³ط§ط¨.")
                 return redirect("dashboard_my_account")
 
         if "change_password" in request.POST:
@@ -1492,7 +1487,7 @@ def dashboard_my_account(request):
             if password_form.is_valid():
                 user = password_form.save()
                 update_session_auth_hash(request, user)
-                messages.success(request, "تم تغيير كلمة المرور بنجاح.")
+                messages.success(request, "طھظ… طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط¨ظ†ط¬ط§ط­.")
                 return redirect("dashboard_my_account")
 
         if request.user.is_superuser and "save_branding" in request.POST:
@@ -1505,14 +1500,14 @@ def dashboard_my_account(request):
             )
             if branding_form.is_valid():
                 branding_form.save()
-                messages.success(request, "تم تحديث بيانات هوية المكتبة.")
+                messages.success(request, "طھظ… طھط­ط¯ظٹط« ط¨ظٹط§ظ†ط§طھ ظ‡ظˆظٹط© ط§ظ„ظ…ظƒطھط¨ط©.")
                 return redirect("dashboard_my_account")
 
     capability_labels = []
     if request.user.is_superuser:
         capability_labels.append("Superuser")
     elif request.user.can_manage_admins:
-        capability_labels.append("إدارة الأدمنز")
+        capability_labels.append("إدارة المشرفين")
     if request.user.can_manage_books:
         capability_labels.append("الكتب")
     if request.user.can_manage_members:
@@ -1549,6 +1544,35 @@ def dashboard_mark_single_notification_read(request, notification_id):
     if request.method == "POST":
         Notification.objects.filter(id=notification_id, is_read=False).update(is_read=True)
     return redirect(request.POST.get("next") or reverse("dashboard_home"))
+
+
+@admin_capability_required("can_manage_books")
+def dashboard_book_conflict_check(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "invalid-request"}, status=400)
+
+    title = (request.POST.get("title") or "").strip()
+    isbn = (request.POST.get("isbn") or "").strip()
+    conflict = find_duplicate_book_conflict(title=title, isbn=isbn)
+
+    if conflict["type"] == "none":
+        return JsonResponse({"type": "none"})
+
+    book = conflict["book"]
+    return JsonResponse(
+        {
+            "type": conflict["type"],
+            "score": conflict["score"],
+            "book": {
+                "id": book.id,
+                "title": book.title,
+                "isbn": book.isbn,
+                "category": book.category.name if book.category else "",
+                "publisher": book.publisher.name if book.publisher else "",
+                "authors": list(book.authors.values_list("name", flat=True)),
+            },
+        }
+    )
 
 
 @admin_capability_required("can_manage_books")
@@ -1614,6 +1638,16 @@ def api_create_entity(request):
         return JsonResponse({"success": True, "id": obj.id, "name": getattr(obj, "name", "")})
     except Exception as exc:
         return JsonResponse({"error": str(exc)}, status=500)
+
+
+
+
+
+
+
+
+
+
 
 
 

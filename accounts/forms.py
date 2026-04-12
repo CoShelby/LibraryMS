@@ -12,7 +12,7 @@ class AdminAuthenticationForm(AuthenticationForm):
         super().confirm_login_allowed(user)
         if not (user.is_superuser or user.is_staff or getattr(user, "is_admin", False)):
             raise forms.ValidationError(
-                "هذا الحساب غير مصرح له بدخول لوحة الإدارة.",
+                "هذا الحساب غير مصرح له بدخول لوحة المشرفين.",
                 code="not_admin",
             )
 
@@ -39,7 +39,7 @@ class AdminUserCreationForm(forms.ModelForm):
             "first_name": "الاسم الأول",
             "last_name": "اسم العائلة",
             "email": "البريد الإلكتروني",
-            "can_manage_admins": "يمكنه إدارة الأدمنز الذين ينشئهم",
+            "can_manage_admins": "يمكنه إدارة المشرفين الذين ينشئهم",
             "can_manage_books": "يمكنه إدارة الكتب والنسخ والرقمي",
             "can_manage_members": "يمكنه إدارة الأعضاء",
             "can_manage_circulation": "يمكنه إدارة الاستعارات",
@@ -114,7 +114,7 @@ class AdminUserUpdateForm(forms.ModelForm):
             "first_name": "الاسم الأول",
             "last_name": "اسم العائلة",
             "email": "البريد الإلكتروني",
-            "can_manage_admins": "يمكنه إدارة الأدمنز الذين ينشئهم",
+            "can_manage_admins": "يمكنه إدارة المشرفين الذين ينشئهم",
             "can_manage_books": "يمكنه إدارة الكتب",
             "can_manage_members": "يمكنه إدارة الأعضاء",
             "can_manage_circulation": "يمكنه إدارة الاستعارات",
@@ -197,4 +197,5 @@ class AdminSelfProfileForm(forms.ModelForm):
         if query.exists():
             raise forms.ValidationError("هذا البريد مستخدم مسبقًا.")
         return normalized
+
 

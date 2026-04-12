@@ -1,6 +1,9 @@
-import re
+﻿import re
+from collections import OrderedDict
+from functools import lru_cache
 
 from django.core.cache import cache
+from django.db import models
 from django.db.models import (
     BooleanField,
     Case,
@@ -19,14 +22,18 @@ from django.db.models.functions import Coalesce
 
 from digital_library.models import DigitalLibrary
 
-from .models import Book, Category
+from .models import Book, BookCopy, Category
+
+try:
+    from rapidfuzz import fuzz
+except Exception:  # pragma: no cover - fallback only when dependency is unavailable
+    fuzz = None
 
 _ARABIC_VARIANTS = str.maketrans(
     {
         "أ": "ا",
         "إ": "ا",
         "آ": "ا",
-        "?": "ا",
         "ى": "ي",
         "ؤ": "و",
         "ئ": "ي",
@@ -37,8 +44,27 @@ _ARABIC_DIACRITICS_RE = re.compile(r"[\u0617-\u061A\u064B-\u0652\u0670\u0640]")
 _NON_WORD_RE = re.compile(r"[^\w\s]", re.UNICODE)
 _SPACE_RE = re.compile(r"\s+")
 
+_TEXT_FIELD_TYPES = (
+    models.CharField,
+    models.TextField,
+    models.EmailField,
+    models.SlugField,
+    models.URLField,
+    models.UUIDField,
+)
+_NUMERIC_FIELD_TYPES = (
+    models.IntegerField,
+    models.PositiveIntegerField,
+    models.PositiveBigIntegerField,
+    models.BigIntegerField,
+    models.FloatField,
+    models.DecimalField,
+)
+_DATE_FIELD_TYPES = (models.DateField, models.DateTimeField)
+_FILE_FIELD_TYPES = (models.FileField, models.ImageField)
 
-def _normalize_search_text(value):
+
+def normalize_search_text(value):
     text = str(value or "").strip().lower()
     if not text:
         return ""
@@ -49,94 +75,194 @@ def _normalize_search_text(value):
     return text.strip()
 
 
-def _levenshtein_distance(first, second):
-    if first == second:
+def normalize_isbn(value):
+    return re.sub(r"[^0-9xX]", "", str(value or "")).upper()
+
+
+def normalize_doi(value):
+    return str(value or "").strip().lower()
+
+
+def _fuzzy_ratio(query, text):
+    normalized_query = normalize_search_text(query)
+    normalized_text = normalize_search_text(text)
+    if not normalized_query or not normalized_text:
         return 0
-    if not first:
-        return len(second)
-    if not second:
-        return len(first)
+    if normalized_query == normalized_text:
+        return 100
+    if fuzz is not None:
+        return max(
+            fuzz.WRatio(normalized_query, normalized_text),
+            fuzz.token_set_ratio(normalized_query, normalized_text),
+            fuzz.partial_ratio(normalized_query, normalized_text),
+        )
 
-    if len(first) > len(second):
-        first, second = second, first
+    if normalized_query in normalized_text or normalized_text in normalized_query:
+        return 90
 
-    previous_row = list(range(len(first) + 1))
-    for index_second, char_second in enumerate(second, start=1):
-        current_row = [index_second]
-        for index_first, char_first in enumerate(first, start=1):
-            insertions = previous_row[index_first] + 1
-            deletions = current_row[index_first - 1] + 1
-            substitutions = previous_row[index_first - 1] + (char_first != char_second)
-            current_row.append(min(insertions, deletions, substitutions))
-        previous_row = current_row
-    return previous_row[-1]
-
-
-def _lcs_length(first, second):
-    if not first or not second:
+    query_words = set(normalized_query.split())
+    text_words = set(normalized_text.split())
+    if not query_words or not text_words:
         return 0
-
-    rows = len(first) + 1
-    cols = len(second) + 1
-    table = [[0] * cols for _ in range(rows)]
-
-    for i in range(1, rows):
-        for j in range(1, cols):
-            if first[i - 1] == second[j - 1]:
-                table[i][j] = table[i - 1][j - 1] + 1
-            else:
-                table[i][j] = max(table[i - 1][j], table[i][j - 1])
-    return table[-1][-1]
+    overlap = len(query_words & text_words)
+    return int((overlap / max(len(query_words), len(text_words))) * 100)
 
 
-def _longest_common_substring_length(first, second):
-    if not first or not second:
-        return 0
+@lru_cache(maxsize=1)
+def _book_lookup_specs():
+    specs = []
+    direct_fields = []
 
-    rows = len(first) + 1
-    cols = len(second) + 1
-    table = [[0] * cols for _ in range(rows)]
-    best = 0
+    for field in Book._meta.get_fields():
+        if not getattr(field, "concrete", False) and not field.many_to_many:
+            continue
+        if getattr(field, "auto_created", False) and not field.concrete:
+            continue
+        if field.name == "id":
+            continue
 
-    for i in range(1, rows):
-        for j in range(1, cols):
-            if first[i - 1] == second[j - 1]:
-                table[i][j] = table[i - 1][j - 1] + 1
-                best = max(best, table[i][j])
-    return best
+        if isinstance(field, _TEXT_FIELD_TYPES):
+            direct_fields.append((field.name, "text"))
+        elif isinstance(field, _NUMERIC_FIELD_TYPES):
+            direct_fields.append((field.name, "numeric"))
+        elif isinstance(field, _DATE_FIELD_TYPES):
+            direct_fields.append((field.name, "date"))
+        elif isinstance(field, _FILE_FIELD_TYPES):
+            direct_fields.append((field.name, "file"))
+
+        if field.is_relation and (field.many_to_one or field.one_to_one or field.many_to_many):
+            related_model = field.related_model
+            if related_model is None:
+                continue
+            for related_field in related_model._meta.get_fields():
+                if not getattr(related_field, "concrete", False):
+                    continue
+                if getattr(related_field, "auto_created", False):
+                    continue
+                if related_field.name == "id":
+                    continue
+                if isinstance(related_field, _TEXT_FIELD_TYPES):
+                    specs.append((f"{field.name}__{related_field.name}", "text"))
+                elif isinstance(related_field, _NUMERIC_FIELD_TYPES):
+                    specs.append((f"{field.name}__{related_field.name}", "numeric"))
+                elif isinstance(related_field, _DATE_FIELD_TYPES):
+                    specs.append((f"{field.name}__{related_field.name}", "date"))
+                elif isinstance(related_field, _FILE_FIELD_TYPES):
+                    specs.append((f"{field.name}__{related_field.name}", "file"))
+
+    specs.extend(direct_fields)
+    return specs
 
 
-def _text_similarity_score(query, text):
-    query_text = _normalize_search_text(query)
-    target_text = _normalize_search_text(text)
+def _append_lookup_clause(query_object, lookup, field_type, raw_term):
+    term = str(raw_term or "").strip()
+    if not term:
+        return query_object
 
-    if not query_text or not target_text:
-        return 0.0
+    if field_type in {"text", "file"}:
+        return query_object | Q(**{f"{lookup}__icontains": term})
 
-    if query_text == target_text:
-        return 1.0
+    if field_type == "numeric":
+        normalized = term.replace(",", "")
+        if re.fullmatch(r"-?\d+", normalized):
+            return query_object | Q(**{lookup: int(normalized)})
+        return query_object
 
-    max_length = max(len(query_text), len(target_text))
-    levenshtein_ratio = 1 - (_levenshtein_distance(query_text, target_text) / max_length)
-    lcs_ratio = _lcs_length(query_text, target_text) / len(query_text)
-    lcss_ratio = _longest_common_substring_length(query_text, target_text) / len(query_text)
+    if field_type == "date":
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", term):
+            return query_object | Q(**{f"{lookup}__date": term})
+        if re.fullmatch(r"\d{4}", term):
+            return query_object | Q(**{f"{lookup}__year": int(term)})
+        return query_object
 
-    partial_match = 1.0 if query_text in target_text else 0.0
-    prefix_match = 1.0 if any(word.startswith(query_text) for word in target_text.split()) else 0.0
+    return query_object
 
-    score = (
-        (levenshtein_ratio * 0.4)
-        + (lcs_ratio * 0.25)
-        + (lcss_ratio * 0.2)
-        + (partial_match * 0.1)
-        + (prefix_match * 0.05)
-    )
 
-    return max(score, 0.0)
+def build_books_lookup_query(query):
+    terms = [term for term in normalize_search_text(query).split() if term]
+    if not terms:
+        return Q()
+
+    specs = _book_lookup_specs()
+    query_object = Q()
+    for term in terms:
+        term_query = Q()
+        for lookup, field_type in specs:
+            term_query = _append_lookup_clause(term_query, lookup, field_type, term)
+        query_object &= term_query
+    return query_object
+
+
+def _related_values_for_book(book):
+    values = []
+    for field in Book._meta.get_fields():
+        if getattr(field, "auto_created", False) and not field.concrete:
+            continue
+
+        if field.many_to_many:
+            manager = getattr(book, field.name)
+            for related_obj in manager.all():
+                for related_field in related_obj._meta.concrete_fields:
+                    if related_field.name == "id":
+                        continue
+                    value = getattr(related_obj, related_field.name, None)
+                    if value not in (None, ""):
+                        values.append((field.name, str(value)))
+            continue
+
+        if field.is_relation and (field.many_to_one or field.one_to_one):
+            related_obj = getattr(book, field.name, None)
+            if related_obj is None:
+                continue
+            for related_field in related_obj._meta.concrete_fields:
+                if related_field.name == "id":
+                    continue
+                value = getattr(related_obj, related_field.name, None)
+                if value not in (None, ""):
+                    values.append((field.name, str(value)))
+            continue
+
+        if field.concrete and field.name != "id":
+            value = getattr(book, field.name, None)
+            if value not in (None, ""):
+                values.append((field.name, str(value)))
+
+    digital = getattr(book, "digitallibrary", None)
+    if digital and getattr(digital, "pdf_file", None):
+        values.append(("digital_file", str(digital.pdf_file)))
+    return values
+
+
+def _book_score(query, book):
+    normalized_query = normalize_search_text(query)
+    title = normalize_search_text(book.title)
+    exact_title = title == normalized_query
+    partial_title = normalized_query in title if normalized_query and title else False
+
+    best_score = 0
+    direct_match = False
+    for _, value in _related_values_for_book(book):
+        normalized_value = normalize_search_text(value)
+        if not normalized_value:
+            continue
+        if normalized_query in normalized_value:
+            direct_match = True
+        best_score = max(best_score, _fuzzy_ratio(normalized_query, normalized_value))
+
+    title_score = _fuzzy_ratio(normalized_query, book.title)
+    best_score = max(best_score, title_score)
+
+    return {
+        "exact_title": exact_title,
+        "partial_title": partial_title,
+        "direct_match": direct_match,
+        "best_score": best_score,
+        "title_score": title_score,
+    }
 
 
 def _base_books_queryset():
-    books = (
+    return (
         Book.objects.select_related("category", "publisher")
         .prefetch_related("authors")
         .annotate(
@@ -152,7 +278,7 @@ def _base_books_queryset():
         )
         .annotate(
             available_copies_raw=ExpressionWrapper(
-                F("usable_copies") - F("active_borrowings"),
+                F("usable_copies") - F("active_borrowings") - F("approved_reservations"),
                 output_field=IntegerField(),
             )
         )
@@ -174,114 +300,24 @@ def _base_books_queryset():
             ),
         )
     )
-    return books
 
 
 def _apply_common_filters(books, category=None, author=None, publisher=None, min_pages=None, max_pages=None, year=None, language=None):
     if category:
         books = books.filter(category=category)
-
     if author:
         books = books.filter(authors=author)
-
     if publisher:
         books = books.filter(publisher=publisher)
-
     if min_pages:
         books = books.filter(pages__gte=min_pages)
-
     if max_pages:
         books = books.filter(pages__lte=max_pages)
-
     if year:
         books = books.filter(publication_year=year)
-
     if language:
         books = books.filter(language=language)
-
     return books
-
-
-def _book_similarity(query, book):
-    title = _normalize_search_text(book.title)
-    author_names = _normalize_search_text(" ".join(author.name for author in book.authors.all()))
-    category_name = _normalize_search_text((book.category.name if book.category else "") + " " + (book.category.name_en if book.category else ""))
-    publisher_name = _normalize_search_text(book.publisher.name if book.publisher else "")
-    dewey = _normalize_search_text(book.dewey_decimal_number)
-    description = _normalize_search_text(book.description)
-
-    edition = _normalize_search_text(book.edition)
-    language_display = _normalize_search_text(dict(Book.LANGUAGE_CHOICES).get(book.language, ""))
-    year = _normalize_search_text(str(book.publication_year) if book.publication_year else "")
-    pages = _normalize_search_text(str(book.pages) if book.pages else "")
-
-    title_score = _text_similarity_score(query, title)
-    author_score = _text_similarity_score(query, author_names)
-    category_score = _text_similarity_score(query, category_name)
-    publisher_score = _text_similarity_score(query, publisher_name)
-    dewey_score = _text_similarity_score(query, dewey)
-    description_score = _text_similarity_score(query, description)
-    edition_score = _text_similarity_score(query, edition)
-    language_score = _text_similarity_score(query, language_display)
-    year_score = _text_similarity_score(query, year)
-    pages_score = _text_similarity_score(query, pages)
-
-    weighted_score = (
-        (title_score * 0.42)
-        + (author_score * 0.15)
-        + (category_score * 0.08)
-        + (publisher_score * 0.08)
-        + (edition_score * 0.06)
-        + (year_score * 0.06)
-        + (language_score * 0.05)
-        + (dewey_score * 0.04)
-        + (pages_score * 0.03)
-        + (description_score * 0.03)
-    )
-
-    query_normalized = _normalize_search_text(query)
-    partial_in_title = query_normalized in title and title != query_normalized
-    exact_in_title = title == query_normalized
-
-    return {
-        "weighted_score": weighted_score,
-        "partial_in_title": partial_in_title,
-        "exact_in_title": exact_in_title,
-    }
-
-
-def _rank_books_by_similarity(query, books):
-    scored_books = []
-
-    for book in books:
-        similarity = _book_similarity(query, book)
-        popularity_boost = min(book.view_count / 1000, 0.25)
-        final_score = similarity["weighted_score"] + popularity_boost
-
-        if final_score < 0.12:
-            continue
-
-        scored_books.append(
-            (
-                1 if similarity["partial_in_title"] else 0,
-                final_score,
-                1 if similarity["exact_in_title"] else 0,
-                book.view_count,
-                book,
-            )
-        )
-
-    scored_books.sort(
-        key=lambda row: (
-            -row[0],  # partial matching first as requested
-            -row[1],  # global similarity score
-            -row[2],  # exact title match
-            -row[3],  # popularity fallback
-            row[4].title,
-        )
-    )
-
-    return [item[4] for item in scored_books]
 
 
 def search_books(
@@ -313,87 +349,106 @@ def search_books(
         language=language,
     )
 
-    query_text = _normalize_search_text(query)
-    if not query_text:
-        return books.distinct().order_by("-has_digital", "-view_count", "title")
+    normalized_query = normalize_search_text(query)
+    if not normalized_query:
+        return books.distinct().order_by("-view_count", "title")
 
-    # خطوة أولى: تضييق النتائج بفلترة سريعة من قاعدة البيانات قبل حساب التشابه المتقدم.
-    terms = [term for term in query_text.split() if term]
-    lookup_query = Q()
-    for term in terms:
-        lookup_query |= (
-            Q(title__icontains=term)
-            | Q(description__icontains=term)
-            | Q(authors__name__icontains=term)
-            | Q(category__name__icontains=term)
-            | Q(category__name_en__icontains=term)
-            | Q(publisher__name__icontains=term)
-            | Q(dewey_decimal_number__icontains=term)
-        )
-
+    lookup_query = build_books_lookup_query(normalized_query)
     candidates_queryset = books.filter(lookup_query).distinct() if lookup_query else books.distinct()
     candidates = list(candidates_queryset[:600])
 
     if not candidates:
         candidates = list(books.distinct().order_by("-view_count", "title")[:300])
 
-    ranked = _rank_books_by_similarity(query_text, candidates)
+    ranked = []
+    for book in candidates:
+        score = _book_score(normalized_query, book)
+        if not (score["direct_match"] or score["best_score"] >= 80):
+            continue
+        ranked.append(
+            (
+                1 if score["exact_title"] else 0,
+                1 if score["partial_title"] else 0,
+                score["title_score"],
+                score["best_score"],
+                book.view_count,
+                book,
+            )
+        )
 
+    ranked.sort(key=lambda item: (-item[0], -item[1], -item[2], -item[3], -item[4], item[5].title))
     if ranked:
-        return ranked
+        return [item[-1] for item in ranked]
 
     return list(candidates_queryset.order_by("-view_count", "title")[:100])
 
 
 def get_search_suggestions(query, limit=8):
-    query_text = _normalize_search_text(query)
-    if len(query_text) < 1:
+    normalized_query = normalize_search_text(query)
+    if not normalized_query:
         return []
 
-    cache_key = f"search:suggest:{query_text}:{limit}"
+    cache_key = f"search:suggest:v2:{normalized_query}:{limit}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
 
-    words = [item for item in query_text.split() if item]
-    lookup = Q()
-    for word in words:
-        lookup |= Q(title__icontains=word)
+    suggestions = OrderedDict()
+    books = list(
+        Book.objects.select_related("category", "publisher")
+        .prefetch_related("authors")
+        .filter(build_books_lookup_query(normalized_query))
+        .distinct()
+        .order_by("-view_count", "title")[:60]
+    )
 
-    queryset = Book.objects.select_related("category").only("id", "title", "view_count", "category__name")
-    if lookup:
-        queryset = queryset.filter(lookup)
-
-    candidates = list(queryset.distinct().order_by("-view_count", "title")[:120])
-
-    ranked = []
-    for book in candidates:
-        score = _text_similarity_score(query_text, book.title)
-        if score < 0.1:
-            continue
-        ranked.append((score, book.view_count, book))
-
-    ranked.sort(key=lambda item: (-item[0], -item[1], item[2].title))
-
-    suggestions = [
-        {
-            "id": item[2].id,
-            "title": item[2].title,
-            "category": item[2].category.name if item[2].category else "-",
+    def add_suggestion(value, kind, meta=""):
+        cleaned = str(value or "").strip()
+        if not cleaned:
+            return
+        score = _fuzzy_ratio(normalized_query, cleaned)
+        if normalized_query not in normalize_search_text(cleaned) and score < 80:
+            return
+        key = f"{kind}:{cleaned.lower()}"
+        current = suggestions.get(key)
+        payload = {
+            "value": cleaned,
+            "label": cleaned,
+            "kind": kind,
+            "meta": meta,
+            "score": score,
         }
-        for item in ranked[:limit]
-    ]
+        if current is None or payload["score"] > current["score"]:
+            suggestions[key] = payload
 
-    cache.set(cache_key, suggestions, 300)
-    return suggestions
+    for book in books:
+        authors = "، ".join(book.authors.values_list("name", flat=True))
+        category_name = book.category.name if book.category else ""
+        publisher_name = book.publisher.name if book.publisher else ""
+        add_suggestion(book.title, "title", category_name or authors)
+        add_suggestion(book.isbn, "isbn", book.title)
+        add_suggestion(book.doi, "doi", book.title)
+        add_suggestion(book.dewey_decimal_number, "dewey", book.title)
+        add_suggestion(category_name, "category", book.title)
+        add_suggestion(publisher_name, "publisher", book.title)
+        for author_name in book.authors.values_list("name", flat=True):
+            add_suggestion(author_name, "author", book.title)
+
+    sorted_items = sorted(
+        suggestions.values(),
+        key=lambda item: (-item["score"], item["kind"], item["label"]),
+    )[:limit]
+    result = [{key: value for key, value in item.items() if key != "score"} for item in sorted_items]
+    cache.set(cache_key, result, 300)
+    return result
 
 
-def get_popular_books():
-    return _base_books_queryset().order_by("-view_count", "title")[:8]
+def get_popular_books(limit=8):
+    return _base_books_queryset().order_by("-view_count", "title")[:limit]
 
 
-def get_recent_books():
-    return _base_books_queryset().order_by("-created_at")[:8]
+def get_recent_books(limit=8):
+    return _base_books_queryset().order_by("-created_at")[:limit]
 
 
 def get_popular_categories(limit=8):
@@ -416,11 +471,127 @@ def get_popular_categories(limit=8):
 
 def get_homepage_data():
     return {
-        "popular_books": get_popular_books(),
+        "popular_books": get_popular_books(limit=5),
         "recent_books": get_recent_books(),
         "popular_categories": get_popular_categories(),
     }
 
 
+def get_similar_books(book, limit=6):
+    candidates = (
+        Book.objects.exclude(id=book.id)
+        .filter(
+            Q(category=book.category)
+            | Q(authors__in=book.authors.all())
+            | Q(publisher=book.publisher)
+        )
+        .distinct()
+        .select_related("category", "publisher")
+        .prefetch_related("authors")
+    )
+
+    ranked = []
+    for candidate in candidates:
+        score = 0
+        if candidate.category_id == book.category_id:
+            score += 20
+        if candidate.publisher_id == book.publisher_id and candidate.publisher_id:
+            score += 10
+        for author in candidate.authors.all():
+            if book.authors.filter(id=author.id).exists():
+                score += 15
+        score += _fuzzy_ratio(book.title, candidate.title)
+        ranked.append((score, candidate.view_count, candidate))
+
+    ranked.sort(key=lambda item: (-item[0], -item[1], item[2].title))
+    return [item[2] for item in ranked[:limit]]
+
+
+def record_category_search(category, weight=1):
+    if not category:
+        return
+
+    try:
+        weight_value = max(int(weight), 1)
+    except (TypeError, ValueError):
+        weight_value = 1
+
+    from .models import CategorySearchStat
+
+    stat, created = CategorySearchStat.objects.get_or_create(category=category)
+    if created:
+        stat.search_count = weight_value
+    else:
+        stat.search_count += weight_value
+    stat.save(update_fields=["search_count", "updated_at"])
+
+
+def record_categories_from_results(books, max_items=20):
+    counts = OrderedDict()
+    for book in list(books)[:max_items]:
+        category = getattr(book, "category", None)
+        if not category:
+            continue
+        counts[category.pk] = counts.get(category.pk, {"category": category, "count": 0})
+        counts[category.pk]["count"] += 1
+
+    for item in counts.values():
+        record_category_search(item["category"], weight=item["count"])
+
+
+def find_duplicate_book_conflict(*, title, isbn=""):
+    cleaned_isbn = normalize_isbn(isbn)
+    if cleaned_isbn:
+        for candidate in (
+            Book.objects.select_related("category", "publisher")
+            .prefetch_related("authors")
+            .exclude(isbn="")[:500]
+        ):
+            if normalize_isbn(candidate.isbn) == cleaned_isbn:
+                return {
+                    "type": "exact",
+                    "book": candidate,
+                    "score": 100,
+                }
+
+    normalized_title = normalize_search_text(title)
+    if not normalized_title:
+        return {"type": "none", "book": None, "score": 0}
+
+    candidates = (
+        Book.objects.select_related("category", "publisher")
+        .prefetch_related("authors")
+        .filter(title__isnull=False)
+        .exclude(title="")[:250]
+    )
+
+    best_book = None
+    best_score = 0
+    for candidate in candidates:
+        score = _fuzzy_ratio(normalized_title, candidate.title)
+        if score > best_score:
+            best_score = score
+            best_book = candidate
+
+    if best_book and best_score >= 80:
+        return {
+            "type": "similar",
+            "book": best_book,
+            "score": best_score,
+        }
+
+    return {"type": "none", "book": None, "score": best_score}
+
+
+def add_copies_to_book(book, copies_count=1):
+    try:
+        copies_total = max(int(copies_count or 1), 1)
+    except (TypeError, ValueError):
+        copies_total = 1
+
+    created_copies = []
+    for _ in range(copies_total):
+        created_copies.append(BookCopy.objects.create(book=book, status="new"))
+    return created_copies
 
 

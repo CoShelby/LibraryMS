@@ -1,13 +1,19 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% load static %}
 
-{% block title %}دليل الكتب الورقية | {{ library_branding.name }}{% endblock %}
+{% block title %}{{ page_title }} | {{ library_branding.name }}{% endblock %}
 
 {% block content %}
 <section class="space-y-6">
-    <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-black">دليل الكتب الورقية</h1>
-        <a href="{% url 'search_results' %}" class="btn-secondary" title="بحث متقدم"><i class="fa-solid fa-magnifying-glass-plus"></i></a>
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+            <h1 class="text-2xl font-black">{{ page_title }}</h1>
+            {% if page_description %}<p class="text-sm text-slate-500 mt-1">{{ page_description }}</p>{% endif %}
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'search_results' %}" class="btn-secondary" title="بحث متقدم"><i class="fa-solid fa-magnifying-glass-plus"></i></a>
+            {% if page_title != 'الأكثر مشاهدة' %}<a href="{% url 'most_viewed_books' %}" class="btn-secondary">الأكثر مشاهدة</a>{% endif %}
+        </div>
     </div>
 
     <div class="books-grid">
@@ -24,7 +30,8 @@
                 <h2 title="{{ book.title }}">{{ book.title }}</h2>
                 <p>الفئة: {{ book.category.name|default:"-" }}</p>
                 <p>المؤلف: {% for author in book.authors.all %}{{ author.name }}{% if not forloop.last %}، {% endif %}{% empty %}-{% endfor %}</p>
-                <p>المكان: {{ book.category.shelf_location|default:"غير محدد" }}</p>
+                <p>الموقع: {{ book.category.shelf_location|default:"غير محدد" }}</p>
+                {% if show_view_count %}<p>المشاهدات: {{ book.view_count }}</p>{% endif %}
 
                 <div class="mt-2 text-xs">
                     {% if book.available_copies_count > 0 %}
@@ -40,7 +47,7 @@
                 </div>
             </article>
         {% empty %}
-            <div class="col-span-full card text-center py-10 text-slate-500">لا توجد كتب ورقية حاليًا.</div>
+            <div class="col-span-full card text-center py-10 text-slate-500">لا توجد كتب متاحة حاليًا.</div>
         {% endfor %}
     </div>
 </section>

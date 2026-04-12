@@ -1,4 +1,4 @@
-from django.urls import path
+﻿from django.urls import path
 
 from . import views
 
@@ -6,6 +6,7 @@ urlpatterns = [
     path("", views.dashboard_home, name="dashboard_home"),
     path("books/", views.dashboard_books_list, name="dashboard_books_list"),
     path("books/add/", views.dashboard_add_book, name="dashboard_add_book"),
+    path("books/check-conflict/", views.dashboard_book_conflict_check, name="dashboard_book_conflict_check"),
     path("books/edit/<int:book_id>/", views.dashboard_edit_book, name="dashboard_edit_book"),
     path("books/<int:book_id>/copies/", views.dashboard_book_copies, name="dashboard_book_copies"),
     path("books/copies/qr-print/", views.dashboard_copy_qr_print, name="dashboard_copy_qr_print"),
@@ -31,6 +32,11 @@ urlpatterns = [
     path("reports/", views.dashboard_reports, name="dashboard_reports"),
     path("reports/members/<int:member_id>/send-message/", views.dashboard_send_member_message, name="dashboard_send_member_message"),
     path("my-account/", views.dashboard_my_account, name="dashboard_my_account"),
+    path("supervisors/", views.dashboard_admin_users, name="dashboard_supervisor_users"),
+    path("supervisors/<int:admin_id>/edit/", views.dashboard_admin_edit, name="dashboard_supervisor_edit"),
+    path("supervisors/<int:admin_id>/toggle-active/", views.dashboard_admin_toggle_active, name="dashboard_supervisor_toggle_active"),
+    path("supervisors/<int:admin_id>/delete/", views.dashboard_admin_delete, name="dashboard_supervisor_delete"),
+    path("supervisors/<int:admin_id>/reset-password/", views.dashboard_admin_reset_password, name="dashboard_supervisor_reset_password"),
     path("admins/", views.dashboard_admin_users, name="dashboard_admin_users"),
     path("admins/<int:admin_id>/edit/", views.dashboard_admin_edit, name="dashboard_admin_edit"),
     path("admins/<int:admin_id>/toggle-active/", views.dashboard_admin_toggle_active, name="dashboard_admin_toggle_active"),
@@ -43,4 +49,3 @@ urlpatterns = [
     path("api/check-entity/", views.api_check_entity, name="api_check_entity"),
     path("api/create-entity/", views.api_create_entity, name="api_create_entity"),
 ]
-

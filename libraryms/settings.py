@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'rest_framework',
+    'django_filters',
 
 ]
 
@@ -169,3 +171,16 @@ ADMIN_RESET_CODE_TTL_SECONDS = int(os.getenv('ADMIN_RESET_CODE_TTL_SECONDS', str
 # Library timing configuration
 LIBRARY_DEMO_MODE = os.getenv('LIBRARY_DEMO_MODE', '1').lower() in {'1', 'true', 'yes'}
 LIBRARY_FINE_PER_UNIT = int(os.getenv('LIBRARY_FINE_PER_UNIT', '1000'))
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 25,
+}
+
+

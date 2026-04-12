@@ -1,4 +1,4 @@
-from django.http import JsonResponse
+﻿from django.http import JsonResponse
 from django.shortcuts import render
 
 from books.forms import BookSearchForm
@@ -32,9 +32,7 @@ def _has_active_search(request):
 
 
 def _store_recent_search(request, query):
-    if not query:
-        return
-    cleaned = query.strip()
+    cleaned = (query or "").strip()
     if not cleaned:
         return
 
@@ -42,16 +40,14 @@ def _store_recent_search(request, query):
     if cleaned in recent:
         recent.remove(cleaned)
     recent.insert(0, cleaned)
-    request.session["recent_searches"] = recent[:8]
+    request.session["recent_searches"] = recent[:10]
 
 
 def home_view(request):
     data = get_homepage_data()
     context = {
         "popular_books": data["popular_books"],
-        "recent_books": data["recent_books"],
         "popular_categories": data["popular_categories"],
-        "recent_searches": request.session.get("recent_searches", []),
     }
     return render(request, "public/home.html", context)
 
@@ -60,6 +56,7 @@ def search_results_view(request):
     form = BookSearchForm(request.GET or None)
     books = []
     has_active_search = _has_active_search(request)
+    recent_searches = request.session.get("recent_searches", [])
 
     if form.is_valid() and has_active_search:
         books = search_books_service(
@@ -77,12 +74,11 @@ def search_results_view(request):
         selected_category = form.cleaned_data.get("category")
 
         _store_recent_search(request, query_value)
+        recent_searches = request.session.get("recent_searches", [])
 
         if selected_category:
-            # Explicit category searches are a stronger signal.
             record_category_search(selected_category, weight=3)
         elif query_value:
-            # For free-text searches, infer likely categories from top matches.
             record_categories_from_results(books, max_items=20)
 
     return render(
@@ -92,15 +88,16 @@ def search_results_view(request):
             "form": form,
             "books": books,
             "has_active_search": has_active_search,
-            "recent_searches": request.session.get("recent_searches", []),
+            "recent_searches": recent_searches,
         },
     )
 
 
 def search_suggestions_view(request):
     query = (request.GET.get("q") or "").strip()
-    suggestions = search_suggestions_service(query=query, limit=8) if query else []
+    suggestions = search_suggestions_service(query=query, limit=10) if query else []
     return JsonResponse({"results": suggestions})
 
 
-
+def recent_searches_view(request):
+    return JsonResponse({"results": request.session.get("recent_searches", [])})

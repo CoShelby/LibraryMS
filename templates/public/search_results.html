@@ -1,22 +1,24 @@
-{% extends "base.html" %}
-{% load static %}
+﻿{% extends "base.html" %}
 
-{% block title %}نتائج البحث | {{ library_branding.name }}{% endblock %}
+{% block title %}البحث | {{ library_branding.name }}{% endblock %}
 
 {% block content %}
 <section class="space-y-6">
-    <div class="card space-y-3">
+    <div class="card space-y-4">
         <div class="flex flex-wrap items-center gap-2 justify-between">
-            <h1 class="text-2xl font-black">البحث المتقدم</h1>
+            <div>
+                <h1 class="text-2xl font-black">صفحة البحث</h1>
+                <p class="text-sm text-slate-500">ابحث في جميع بيانات الكتاب والكيانات المرتبطة به، مع اقتراحات مباشرة أثناء الكتابة.</p>
+            </div>
             <div class="flex gap-2">
                 <a href="{% url 'home' %}" class="btn-secondary" title="الرئيسية"><i class="fa-solid fa-house"></i></a>
-                <button type="button" id="openFilterDrawer" class="btn-secondary" title="فلترة"><i class="fa-solid fa-filter"></i></button>
+                <button type="button" id="openFilterDrawer" class="btn-secondary" title="الفلاتر"><i class="fa-solid fa-filter"></i></button>
             </div>
         </div>
 
-        <form method="get" action="{% url 'search_results' %}" class="flex flex-col sm:flex-row gap-2 items-start" autocomplete="off">
+        <form method="get" action="{% url 'search_results' %}" class="flex flex-col sm:flex-row gap-2 items-start" autocomplete="off" id="searchForm">
             <div class="suggestions-host flex-1 w-full">
-                <input id="searchQueryInput" type="text" name="query" value="{{ form.query.value|default:'' }}" class="input-field" placeholder="ابحث بعنوان كتاب، مؤلف، فئة، ديوي...">
+                <input id="searchQueryInput" type="text" name="query" value="{{ form.query.value|default:'' }}" class="input-field" placeholder="ابدأ الكتابة للبحث في العنوان والمؤلف والفئة والناشر وISBN وDOI..." autofocus>
                 <div id="searchSuggestions" class="search-suggestions hidden"></div>
             </div>
             {% if form.search_scope.value %}<input type="hidden" name="search_scope" value="{{ form.search_scope.value }}">{% endif %}
@@ -31,12 +33,29 @@
         </form>
     </div>
 
-    {% if has_active_search %}
-        <div class="flex items-center justify-between">
-            <h2 class="text-xl font-extrabold">عدد النتائج: {{ books|length }}</h2>
-            {% if recent_searches %}
-                <div class="text-xs text-slate-500">آخر بحث: {{ recent_searches.0 }}</div>
-            {% endif %}
+    {% if not has_active_search %}
+        <section class="card space-y-4" id="recentSearchesCard">
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                    <h2 class="text-xl font-black">آخر عمليات البحث</h2>
+                    <p class="text-sm text-slate-500">تظهر هنا الكلمات التي استخدمتها مؤخرًا قبل بدء كتابة استعلام جديد.</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                {% for keyword in recent_searches %}
+                    <a href="{% url 'search_results' %}?query={{ keyword|urlencode }}" class="px-3 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-sm font-bold">{{ keyword }}</a>
+                {% empty %}
+                    <p class="text-sm text-slate-500">لا توجد عمليات بحث محفوظة بعد.</p>
+                {% endfor %}
+            </div>
+        </section>
+    {% else %}
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+                <h2 class="text-xl font-extrabold">عدد النتائج: {{ books|length }}</h2>
+                {% if recent_searches %}<p class="text-xs text-slate-500 mt-1">آخر بحث محفوظ: {{ recent_searches.0 }}</p>{% endif %}
+            </div>
+            <a href="{% url 'search_results' %}" class="btn-secondary">بحث جديد</a>
         </div>
 
         <div class="books-grid">
@@ -47,12 +66,14 @@
                     {% if book.cover_image %}
                         <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="book-card-media">
                     {% else %}
-                        <img src="{{ library_branding.logo_url }}" alt="{{ book.title }}" class="book-card-media" style="object-fit: contain; padding: 1.5rem;">
+                        <img src="{{ library_branding.logo_url }}" alt="{{ book.title }}" class="book-card-media" style="object-fit: contain; padding: 1.2rem;">
                     {% endif %}
 
                     <h3 title="{{ book.title }}">{{ book.title }}</h3>
                     <p>الفئة: {{ book.category.name|default:"-" }}</p>
                     <p>المؤلف: {% for author in book.authors.all %}{{ author.name }}{% if not forloop.last %}، {% endif %}{% empty %}-{% endfor %}</p>
+                    {% if book.publisher %}<p>الناشر: {{ book.publisher.name }}</p>{% endif %}
+                    {% if book.isbn %}<p dir="ltr">ISBN: {{ book.isbn }}</p>{% elif book.doi %}<p dir="ltr">DOI: {{ book.doi }}</p>{% endif %}
 
                     <div class="mt-2 text-xs space-y-1">
                         <div>
@@ -63,7 +84,7 @@
                             {% endif %}
                         </div>
                         {% if book.has_digital %}
-                            <span class="badge bg-cyan-100 text-cyan-700">نسخة رقمية</span>
+                            <span class="badge bg-cyan-100 text-cyan-700">مورد رقمي</span>
                         {% endif %}
                     </div>
 
@@ -72,14 +93,14 @@
                         {% if book.has_physical_copy %}
                             <button type="button" onclick="openReserveModal('{{ book.id }}', '{{ book.title|escapejs }}')" class="btn-secondary">حجز</button>
                         {% else %}
-                            <span class="text-center text-[10px] px-1 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500">للمطالعة فقط</span>
+                            <span class="text-center text-[10px] px-1 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500">للمطالعة الرقمية</span>
                         {% endif %}
                     </div>
 
                     {% if book.has_digital %}
                         <div class="book-card-actions !mt-2">
                             <a href="{% url 'read_digital_book' book.id %}" class="btn-secondary">قراءة</a>
-                            <a href="{% url 'download_digital_book' book.id %}" class="btn-secondary">تحميل</a>
+                            {% if book.doi %}<a href="https://doi.org/{{ book.doi }}" target="_blank" rel="noopener" class="btn-secondary">فتح DOI</a>{% else %}<a href="{% url 'download_digital_book' book.id %}" class="btn-secondary">تحميل</a>{% endif %}
                         </div>
                     {% endif %}
                 </article>
@@ -87,15 +108,13 @@
                 <div class="col-span-full card text-center py-10 text-slate-500">لا توجد نتائج مطابقة.</div>
             {% endfor %}
         </div>
-    {% else %}
-        <div class="card text-center py-10 text-slate-500">أدخل كلمة بحث أو اضغط زر الفلترة ثم اضغط بحث.</div>
     {% endif %}
 </section>
 
 <div id="filterBackdrop" class="fixed inset-0 bg-black/40 z-40 hidden"></div>
 <aside id="filterDrawer" class="fixed top-0 left-0 h-full w-full max-w-md bg-white dark:bg-slate-950 z-50 transform -translate-x-full transition-transform duration-300 shadow-xl overflow-y-auto">
     <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <h3 class="font-black">خيارات الفلترة</h3>
+        <h3 class="font-black">خيارات التصفية</h3>
         <button type="button" id="closeFilterDrawer" class="btn-secondary px-3 py-1">إغلاق</button>
     </div>
 
@@ -126,6 +145,7 @@
     const filterBackdrop = document.getElementById('filterBackdrop');
     const openFilterDrawerBtn = document.getElementById('openFilterDrawer');
     const closeFilterDrawerBtn = document.getElementById('closeFilterDrawer');
+    const recentSearchesCard = document.getElementById('recentSearchesCard');
 
     function openFilterDrawer() {
         filterDrawer.classList.remove('-translate-x-full');
@@ -139,12 +159,13 @@
         document.body.style.overflow = 'auto';
     }
 
-    if (openFilterDrawerBtn) openFilterDrawerBtn.addEventListener('click', openFilterDrawer);
-    if (closeFilterDrawerBtn) closeFilterDrawerBtn.addEventListener('click', closeFilterDrawer);
-    if (filterBackdrop) filterBackdrop.addEventListener('click', closeFilterDrawer);
+    openFilterDrawerBtn?.addEventListener('click', openFilterDrawer);
+    closeFilterDrawerBtn?.addEventListener('click', closeFilterDrawer);
+    filterBackdrop?.addEventListener('click', closeFilterDrawer);
 
     const searchInput = document.getElementById('searchQueryInput');
     const suggestionsBox = document.getElementById('searchSuggestions');
+    const searchForm = document.getElementById('searchForm');
     let searchTimer = null;
 
     function clearSuggestions() {
@@ -164,13 +185,21 @@
         results.forEach((item) => {
             const button = document.createElement('button');
             button.type = 'button';
-            button.className = 'w-full text-right rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800';
-            button.innerHTML = `<div class="text-sm font-bold">${item.title}</div><div class="text-xs text-slate-500">${item.category || '-'}</div>`;
+            button.className = 'w-full text-right rounded-xl px-3 py-3 hover:bg-slate-100 dark:hover:bg-slate-800';
+            button.innerHTML = `
+                <div class="flex items-center justify-between gap-2">
+                    <div>
+                        <div class="text-sm font-bold">${item.label}</div>
+                        <div class="text-xs text-slate-500">${item.meta || ''}</div>
+                    </div>
+                    <span class="text-[11px] px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800">${suggestionKindLabels[item.kind] || item.kind}</span>
+                </div>
+            `;
             button.addEventListener('click', () => {
                 if (searchInput) {
-                    searchInput.value = item.title;
+                    searchInput.value = item.value;
                     clearSuggestions();
-                    searchInput.form.submit();
+                    searchForm.submit();
                 }
             });
             suggestionsBox.appendChild(button);
@@ -178,23 +207,24 @@
         suggestionsBox.classList.remove('hidden');
     }
 
-    if (searchInput) {
-        searchInput.addEventListener('input', () => {
-            clearTimeout(searchTimer);
-            const query = searchInput.value.trim();
-            if (query.length < 1) {
-                clearSuggestions();
-                return;
-            }
+    searchInput?.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        const query = searchInput.value.trim();
+        if (recentSearchesCard) {
+            recentSearchesCard.style.display = query ? 'none' : '';
+        }
+        if (query.length < 1) {
+            clearSuggestions();
+            return;
+        }
 
-            searchTimer = setTimeout(() => {
-                fetch(`{% url 'search_suggestions' %}?q=${encodeURIComponent(query)}`)
-                    .then((response) => response.json())
-                    .then((data) => renderSuggestions(data.results || []))
-                    .catch(() => clearSuggestions());
-            }, 220);
-        });
-    }
+        searchTimer = setTimeout(() => {
+            fetch(`{% url 'search_suggestions' %}?q=${encodeURIComponent(query)}`)
+                .then((response) => response.json())
+                .then((data) => renderSuggestions(data.results || []))
+                .catch(() => clearSuggestions());
+        }, 180);
+    });
 
     document.addEventListener('click', (event) => {
         if (!suggestionsBox || !searchInput) return;
@@ -202,3 +232,5 @@
     });
 </script>
 {% endblock %}
+
+

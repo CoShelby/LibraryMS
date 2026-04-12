@@ -1,4 +1,4 @@
-from django.contrib import messages
+﻿from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -45,12 +45,12 @@ def add_member(request):
         form = MemberForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
-            messages.success(request, "Member created successfully.")
+            messages.success(request, "تمت إضافة العضو بنجاح.")
             return redirect("member_list")
     else:
         form = MemberForm()
 
-    return render(request, "members/add_member.html", {"form": form, "title": "Add Member"})
+    return render(request, "members/add_member.html", {"form": form, "title": "إضافة عضو"})
 
 
 @admin_capability_required("can_manage_members")
@@ -60,7 +60,7 @@ def edit_member(request, member_id):
         form = MemberForm(request.POST, request.FILES, instance=member)
         if form.is_valid():
             form.save()
-            messages.success(request, "Member updated successfully.")
+            messages.success(request, "تم تحديث بيانات العضو بنجاح.")
             return redirect("member_list")
     else:
         form = MemberForm(instance=member)
@@ -68,7 +68,7 @@ def edit_member(request, member_id):
     return render(
         request,
         "members/edit_member.html",
-        {"form": form, "member": member, "title": f"Edit Member: {member.name}"},
+        {"form": form, "member": member, "title": f"تعديل العضو: {member.name}"},
     )
 
 
@@ -78,18 +78,18 @@ def delete_member(request, member_id):
         member = get_object_or_404(Member, id=member_id)
         name = member.name
         member.delete()
-        messages.success(request, f"تم حذف العضو {name} بنجاح.")
+        messages.success(request, f"طھظ… ط­ط°ظپ ط§ظ„ط¹ط¶ظˆ {name} ط¨ظ†ط¬ط§ط­.")
     return redirect("member_list")
 
 @admin_capability_required("can_manage_members")
 def print_cards_select(request):
-    """صفحة تحديد الأعضاء قبل الطباعة"""
+    """طµظپط­ط© طھط­ط¯ظٹط¯ ط§ظ„ط£ط¹ط¶ط§ط، ظ‚ط¨ظ„ ط§ظ„ط·ط¨ط§ط¹ط©"""
     scope = request.GET.get("scope", "unprinted")
 
     if scope == "all":
         members_qs = Member.objects.all().order_by("-created_at")
     elif scope == "selected":
-        # عرض كل الأعضاء للتحديد اليدوي
+        # ط¹ط±ط¶ ظƒظ„ ط§ظ„ط£ط¹ط¶ط§ط، ظ„ظ„طھط­ط¯ظٹط¯ ط§ظ„ظٹط¯ظˆظٹ
         members_qs = Member.objects.all().order_by("-created_at")
     else:  # unprinted
         members_qs = Member.objects.filter(is_printed=False).order_by("-created_at")
@@ -114,7 +114,7 @@ def print_cards(request):
 
     now = timezone.now()
     for m in members_list:
-        m.is_reprint = m.card_print_count > 0  # تحديد إذا كانت بدل فاقد
+        m.is_reprint = m.card_print_count > 0  # طھط­ط¯ظٹط¯ ط¥ط°ط§ ظƒط§ظ†طھ ط¨ط¯ظ„ ظپط§ظ‚ط¯
         m.is_printed = True
         m.card_print_count += 1
         m.last_card_printed_at = now
@@ -122,4 +122,5 @@ def print_cards(request):
 
     pages = [members_list[i:i + 4] for i in range(0, len(members_list), 4)]
     return render(request, "members/print_cards.html", {"pages": pages, "printed_at": now})
+
 

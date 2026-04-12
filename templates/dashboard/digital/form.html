@@ -1,12 +1,10 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}{{ title }}{% endblock %}
 
 {% block extra_head %}
-<!-- TomSelect CSS -->
 <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
 <style>
-    /* Adjust tom-select to match tailwind inputs */
     .ts-control {
         border: 1px solid rgba(93, 62, 63, 0.25) !important;
         border-radius: 0.85rem !important;
@@ -31,10 +29,13 @@
 {% endblock %}
 
 {% block content %}
-<section class="max-w-4xl mx-auto space-y-5">
-    <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-black">{{ title }}</h1>
-        <a href="{% url 'dashboard_digital_list' %}" class="btn-secondary" title="رجوع"><i class="fa-solid fa-arrow-right px-1"></i></a>
+<section class="max-w-5xl mx-auto space-y-5">
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+            <h1 class="text-2xl font-black">{{ title }}</h1>
+            <p class="text-sm text-slate-500 mt-1">يمكن أن يكون المورد الرقمي ملف PDF أو رابط DOI أو كليهما.</p>
+        </div>
+        <a href="{% url 'dashboard_digital_list' %}" class="btn-secondary">رجوع</a>
     </div>
 
     <form method="post" enctype="multipart/form-data" class="card space-y-4">
@@ -44,116 +45,92 @@
             <div>
                 <label for="{{ form.book.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.book.label }}</label>
                 {{ form.book }}
-                {% for error in form.book.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                {% for error in form.book.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
             <div>
                 <label for="{{ form.pdf_file.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.pdf_file.label }}</label>
                 {{ form.pdf_file }}
-                {% for error in form.pdf_file.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
-                <p class="text-xs text-slate-500 mt-1">يحاول النظام استخراج العنوان وعدد الصفحات والغلاف من ملف PDF عند توفر دعم الاستخراج.</p>
+                <p class="text-xs text-slate-500 mt-1">الملف اختياري إذا كان المورد يعتمد على DOI فقط.</p>
+                {% for error in form.pdf_file.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
         </div>
 
         <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
-            <label class="inline-flex items-center gap-2 text-sm font-bold">{{ form.create_new_book }} إنشاء كتاب جديد مع هذا الملف</label>
-            {% for error in form.create_new_book.errors %}
-                <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-            {% endfor %}
+            <label class="inline-flex items-center gap-2 text-sm font-bold">{{ form.create_new_book }} إنشاء كتاب جديد لهذا المورد</label>
+            {% for error in form.create_new_book.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="new-book-fields">
             <div>
                 <label for="{{ form.new_title.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_title.label }}</label>
                 {{ form.new_title }}
-                {% for error in form.new_title.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                {% for error in form.new_title.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
             <div>
                 <label for="{{ form.new_dewey_decimal_number.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_dewey_decimal_number.label }}</label>
                 {{ form.new_dewey_decimal_number }}
-                {% for error in form.new_dewey_decimal_number.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                {% for error in form.new_dewey_decimal_number.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+            </div>
+            <div>
+                <label for="{{ form.new_isbn.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_isbn.label }}</label>
+                {{ form.new_isbn }}
+                {% for error in form.new_isbn.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+            </div>
+            <div>
+                <label for="{{ form.new_doi.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_doi.label }}</label>
+                {{ form.new_doi }}
+                {% for error in form.new_doi.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
             <div>
                 <label for="{{ form.new_author_names.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_author_names.label }}</label>
                 {{ form.new_author_names }}
-                {% for error in form.new_author_names.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                {% for error in form.new_author_names.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
             <div>
                 <label for="{{ form.new_category_name.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_category_name.label }}</label>
                 {{ form.new_category_name }}
-                {% for error in form.new_category_name.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                {% for error in form.new_category_name.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
             <div>
                 <label for="{{ form.new_publisher_name.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_publisher_name.label }}</label>
                 {{ form.new_publisher_name }}
-                {% for error in form.new_publisher_name.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                {% for error in form.new_publisher_name.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
             <div>
                 <label for="{{ form.new_publication_year.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_publication_year.label }}</label>
                 {{ form.new_publication_year }}
-                {% for error in form.new_publication_year.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                {% for error in form.new_publication_year.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
             <div>
                 <label for="{{ form.new_language.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_language.label }}</label>
                 {{ form.new_language }}
-                {% for error in form.new_language.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                {% for error in form.new_language.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
             <div>
                 <label for="{{ form.new_pages.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_pages.label }}</label>
                 {{ form.new_pages }}
-                <p class="text-xs text-slate-500 mt-1">عند نجاح الاستخراج من PDF سيتم استخدام عدد الصفحات المكتشف.</p>
-                {% for error in form.new_pages.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                {% for error in form.new_pages.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
             <div class="md:col-span-2">
                 <label for="{{ form.new_cover_image.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_cover_image.label }}</label>
                 {{ form.new_cover_image }}
-                <p class="text-xs text-slate-500 mt-1">عند نجاح الاستخراج يمكن استخدام أول صفحة من PDF كغلاف.</p>
-                {% for error in form.new_cover_image.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                {% for error in form.new_cover_image.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
             <div class="md:col-span-2">
                 <label for="{{ form.new_description.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_description.label }}</label>
                 {{ form.new_description }}
-                {% for error in form.new_description.errors %}
-                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                {% for error in form.new_description.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
         </div>
 
         <datalist id="authors-options">
-            {% for name in authors_options %}
-                <option value="{{ name }}"></option>
-            {% endfor %}
+            {% for name in authors_options %}<option value="{{ name }}"></option>{% endfor %}
         </datalist>
         <datalist id="categories-options">
-            {% for name in categories_options %}
-                <option value="{{ name }}"></option>
-            {% endfor %}
+            {% for name in categories_options %}<option value="{{ name }}"></option>{% endfor %}
         </datalist>
         <datalist id="publishers-options">
-            {% for name in publishers_options %}
-                <option value="{{ name }}"></option>
-            {% endfor %}
+            {% for name in publishers_options %}<option value="{{ name }}"></option>{% endfor %}
         </datalist>
 
         <button type="submit" class="btn-primary">{{ submit_label }}</button>
@@ -170,7 +147,7 @@
             new TomSelect(bookSelect, {
                 create: false,
                 sortField: { field: "text", direction: "asc" },
-                placeholder: "ابحث عن الجزء الورقي للكتاب..."
+                placeholder: "ابحث عن كتاب موجود..."
             });
         }
     });
@@ -187,12 +164,6 @@
     }
 
     toggleNewBookFields();
-    if (createCheckbox) {
-        createCheckbox.addEventListener('change', toggleNewBookFields);
-    }
+    createCheckbox?.addEventListener('change', toggleNewBookFields);
 </script>
 {% endblock %}
-
-
-
-

@@ -21,7 +21,7 @@ def admin_required(view_func):
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
         if not is_library_admin(request.user):
-            raise PermissionDenied("Admin access required.")
+            raise PermissionDenied("Supervisor access required.")
         return view_func(request, *args, **kwargs)
 
     return _wrapped
@@ -33,7 +33,7 @@ def admin_capability_required(capability):
         @wraps(view_func)
         def _wrapped(request, *args, **kwargs):
             if not is_library_admin(request.user):
-                raise PermissionDenied("Admin access required.")
+                raise PermissionDenied("Supervisor access required.")
             if not has_admin_capability(request.user, capability):
                 raise PermissionDenied("You do not have permission to access this page.")
             return view_func(request, *args, **kwargs)
@@ -41,3 +41,4 @@ def admin_capability_required(capability):
         return _wrapped
 
     return decorator
+

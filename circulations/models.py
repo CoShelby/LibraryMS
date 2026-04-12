@@ -1,4 +1,4 @@
-﻿from django.db import models
+from django.db import models
 
 from accounts.models import User
 from books.models import Book, BookCopy
@@ -9,7 +9,7 @@ class Borrowing(models.Model):
     borrowing_id = models.CharField(max_length=100, blank=True, null=True, unique=True)
     book_copy = models.ForeignKey(BookCopy, on_delete=models.CASCADE)
     member = models.ForeignKey(Member, on_delete=models.CASCADE)
-    employee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    employee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='employee_borrowings')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_borrowings')
     borrow_date = models.DateTimeField()
     due_date = models.DateTimeField()
@@ -58,7 +58,7 @@ class FinePayment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.fine_id}'
+        return f'Payment for Fine #{self.fine_id}'
 
 
 class Loan(models.Model):

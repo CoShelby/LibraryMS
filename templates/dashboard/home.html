@@ -1,4 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
+
+{% block extra_head %}
+<meta charset="UTF-8">
+{% endblock %}
 
 {% block title %}لوحة الإدارة | {{ library_branding.name }}{% endblock %}
 
@@ -72,7 +77,7 @@
                 {% endif %}
                 <a href="{% url 'dashboard_reports' %}" class="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">التقارير</a>
                 {% if can_manage_admins %}
-                    <a href="{% url 'dashboard_admin_users' %}" class="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">إدارة الأدمنز</a>
+                    <a href="{% url 'dashboard_supervisor_users' %}" class="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">إدارة المشرفين</a>
                 {% endif %}
             </div>
         </section>
@@ -93,4 +98,3 @@
     </div>
 </section>
 {% endblock %}
-

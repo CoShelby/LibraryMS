@@ -104,7 +104,7 @@
                 <a href="{% url 'dashboard_reports' %}" class="sidebar-link {% if '/dashboard/reports/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-table"></i> التقارير</a>
 
                 {% if admin_can_manage_accounts %}
-                    <a href="{% url 'dashboard_admin_users' %}" class="sidebar-link {% if '/dashboard/admins/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-user-shield"></i> إدارة الأدمنز</a>
+                    <a href="{% url 'dashboard_supervisor_users' %}" class="sidebar-link {% if '/dashboard/supervisors/' in path or '/dashboard/admins/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-user-shield"></i> إدارة المشرفين</a>
                 {% endif %}
 
                 <a href="{% url 'dashboard_my_account' %}" class="sidebar-link {% if '/dashboard/my-account/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-user-gear"></i> حسابي الإداري</a>
@@ -130,7 +130,7 @@
         {% if request.user.is_authenticated and request.user.is_superuser or request.user.is_authenticated and request.user.is_admin or request.user.is_authenticated and request.user.is_staff %}
             <div class="admin-toolbar print-hidden">
                 <div>
-                    <div class="text-sm font-black">لوحة الإدارة</div>
+                    <div class="text-sm font-black">لوحة المشرفين</div>
                     <div class="text-xs text-slate-500">{{ request.user.username }}</div>
                 </div>
                 <div class="notification-menu">
@@ -201,7 +201,7 @@
                         </form>
                     </article>
                 {% empty %}
-                    <p class="text-sm text-slate-500">لا توجد إشعارات حاليًا.</p>
+                    <p class="text-sm text-slate-500">لا توجد إشعارات حالياً.</p>
                 {% endfor %}
             </div>
         </div>
@@ -231,7 +231,7 @@
             <div class="p-4 space-y-3">
                 <div id="qrScannerStatus" class="text-sm text-slate-500">جاري تجهيز الماسح...</div>
                 <div id="qrScannerReader" class="rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 min-h-[260px]"></div>
-                <p class="text-xs text-slate-500">سيطلب المتصفح إذن الوصول إلى الكاميرا عند أول استخدام. إذا تعذر ذلك، يبقى الإدخال اليدوي متاحًا بدون أي مشكلة.</p>
+                <p class="text-xs text-slate-500">سيطلب المتصفح إذن الوصول إلى الكاميرا عند أول استخدام. إذا تعذر ذلك، يبقى الإدخال اليدوي متاحاً بدون أي مشكلة.</p>
             </div>
         </div>
     </div>
@@ -422,7 +422,7 @@
                 }
 
                 if (!window.isSecureContext && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-                    scannerStatus.textContent = 'فتح الكاميرا على الهاتف يتطلب HTTPS أو تشغيل الموقع محليًا.';
+                    scannerStatus.textContent = 'فتح الكاميرا على الهاتف يتطلب HTTPS أو تشغيل الموقع محلياً.';
                     return;
                 }
 
@@ -475,7 +475,3 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
-
-
-
-
