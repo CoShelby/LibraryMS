@@ -1,4 +1,4 @@
-﻿import os
+import os
 
 from django import forms
 from django.db.models import Q
@@ -91,7 +91,7 @@ class BookForm(forms.ModelForm):
         self.fields["author_names"].widget.attrs.update(
             {
                 "class": "input-field",
-                "placeholder": "اكتب الاسم، ويمكن إدخال أكثر من اسم بالفاصلة",
+                "placeholder": "اكتب الاسم، ويمكن إدخال أكثر من اسم مفصولة بشرطة (-)",
                 "list": "authors-options",
             }
         )
@@ -112,7 +112,7 @@ class BookForm(forms.ModelForm):
         self.fields["copies_count"].widget.attrs.update({"class": "input-field", "placeholder": "مثال: 1"})
 
         if self.instance and self.instance.pk:
-            self.fields["author_names"].initial = "، ".join(self.instance.authors.values_list("name", flat=True))
+            self.fields["author_names"].initial = " - ".join(self.instance.authors.values_list("name", flat=True))
             self.fields["category_name"].initial = self.instance.category.name if self.instance.category else ""
             self.fields["publisher_name"].initial = self.instance.publisher.name if self.instance.publisher else ""
             self.fields["copies_count"].initial = 0
@@ -122,7 +122,7 @@ class BookForm(forms.ModelForm):
         values = self._split_names(self.cleaned_data.get("author_names"))
         if not values:
             raise forms.ValidationError("أدخل اسم مؤلف واحد على الأقل.")
-        return "، ".join(values)
+        return " - ".join(values)
 
     def clean_category_name(self):
         value = (self.cleaned_data.get("category_name") or "").strip()
@@ -260,7 +260,7 @@ class DigitalLibraryForm(forms.ModelForm):
             "pdf_file": "ملف PDF",
         }
         widgets = {
-            "book": forms.Select(attrs={"class": "input-field"}),
+            "book": forms.HiddenInput(attrs={"class": "input-field"}),
             "pdf_file": forms.ClearableFileInput(attrs={"class": "input-field", "accept": "application/pdf"}),
         }
 

@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -43,7 +43,13 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label for="{{ form.book.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.book.label }}</label>
+                <label for="existing_book_search" class="block text-sm font-bold mb-1">{{ form.book.label }}</label>
+                <input type="text" id="existing_book_search" list="existing-books-options" class="input-field" placeholder="ابحث واختر كتاباً موجوداً..." value="{% if digital_book %}{{ digital_book.book.title }}{% endif %}">
+                <datalist id="existing-books-options">
+                    {% for b in form.fields.book.queryset %}
+                        <option data-id="{{ b.id }}" value="{{ b.title }}"></option>
+                    {% endfor %}
+                </datalist>
                 {{ form.book }}
                 {% for error in form.book.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
@@ -139,28 +145,40 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const bookSelect = document.getElementById('{{ form.book.id_for_label }}');
-        if (bookSelect) {
-            new TomSelect(bookSelect, {
-                create: false,
-                sortField: { field: "text", direction: "asc" },
-                placeholder: "ابحث عن كتاب موجود..."
-            });
-        }
-    });
+    const searchInput = document.getElementById('existing_book_search');
+    const hiddenBookId = document.getElementById('{{ form.book.id_for_label }}');
+
+    if (searchInput && hiddenBookId) {
+        searchInput.addEventListener('input', function(e) {
+            const val = e.target.value;
+            // Handle explicit escaping issues by comparing exactly what's typed
+            const allOptions = document.querySelectorAll('#existing-books-options option');
+            let matchedId = '';
+            for (let opt of allOptions) {
+                if (opt.value === val) {
+                    matchedId = opt.getAttribute('data-id');
+                    break;
+                }
+            }
+            hiddenBookId.value = matchedId;
+        });
+    }
 
     const createCheckbox = document.getElementById('{{ form.create_new_book.id_for_label }}');
     const newFieldsBox = document.getElementById('new-book-fields');
-    const existingBookField = document.getElementById('{{ form.book.id_for_label }}');
+    const existingBookContainer = document.getElementById('existing_book_search');
 
     function toggleNewBookFields() {
-        if (!createCheckbox || !newFieldsBox || !existingBookField) return;
+        if (!createCheckbox || !newFieldsBox || !existingBookContainer) return;
         const createNew = createCheckbox.checked;
         newFieldsBox.style.display = createNew ? 'grid' : 'none';
-        existingBookField.closest('div').style.opacity = createNew ? '0.6' : '1';
+        existingBookContainer.closest('div').style.opacity = createNew ? '0.6' : '1';
+        
+        if (createNew) {
+            existingBookContainer.value = '';
+            if (hiddenBookId) hiddenBookId.value = '';
+        }
     }
 
     toggleNewBookFields();

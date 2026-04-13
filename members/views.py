@@ -1,4 +1,4 @@
-from django.contrib import messages
+﻿from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -89,7 +89,7 @@ def print_cards_select(request):
     if scope == "all":
         members_qs = Member.objects.all().order_by("-created_at")
     elif scope == "selected":
-        # ط¹ط±ط¶ ظƒظ„ ط§ظ„ط£ط¹ط¶ط§ط، ظ„ظ„طھط­ط¯ظٹط¯ ط§ظ„ظٹط¯ظˆظٹ
+        # عرض كل الأعضاء للتحديد اليدوي
         members_qs = Member.objects.all().order_by("-created_at")
     else:  # unprinted
         members_qs = Member.objects.filter(is_printed=False).order_by("-created_at")
@@ -114,7 +114,7 @@ def print_cards(request):
 
     now = timezone.now()
     for m in members_list:
-        m.is_reprint = m.card_print_count > 0  # طھط­ط¯ظٹط¯ ط¥ط°ط§ ظƒط§ظ†طھ ط¨ط¯ظ„ ظپط§ظ‚ط¯
+        m.is_reprint = m.card_print_count > 0  #تحديد إذا كانت بدل فاقد
         m.is_printed = True
         m.card_print_count += 1
         m.last_card_printed_at = now

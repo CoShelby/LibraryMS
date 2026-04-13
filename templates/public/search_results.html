@@ -108,7 +108,11 @@
             {% endfor %}
         </div>
         {% else %}
-        <section class="card text-center py-10 text-slate-500">لا توجد نتائج مطابقة.</section>
+        <div class="flex items-center justify-between gap-3 flex-wrap py-3">
+            <div>
+                <h2 class="text-xl font-black text-slate-500">لا توجد نتائج مطابقة.</h2>
+            </div>
+        </div>
         {% endif %}
     {% endif %}
 </section>

@@ -54,7 +54,7 @@
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
             <article class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-1">
                 <h3 class="font-black text-lg">{{selected_member.name}}</h3>
-                <p class="text-sm text-slate-500">ID: {{selected_member.id}} | رقم العضوية: {{                    selected_member.membership_number}}</p>
+                <p class="text-sm text-slate-500">ID: {{selected_member.id}} | رقم العضوية: {{selected_member.membership_number}}</p>
                 <p class="text-sm text-slate-500">البريد: {{selected_member.email|default:"-"}}</p>
                 <p class="text-sm text-slate-500">الهاتف: {{selected_member.phone|default:"-"}}</p>
                 <p class="text-sm text-slate-500">الحالة: {% if selected_member.is_suspended %}<span

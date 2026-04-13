@@ -54,8 +54,7 @@ from notifications.models import Notification
 from .notifications import notification_target_url
 
 def _split_names(raw_value):
-    prepared = (raw_value or "").replace("،", ",")
-    values = [name.strip() for name in prepared.split(",") if name.strip()]
+    values = [name.strip() for name in (raw_value or "").split("-") if name.strip()]
     return list(dict.fromkeys(values))
 
 
@@ -280,9 +279,9 @@ def dashboard_confirm_physical_book(request, book_id):
     if request.method == "POST":
         if not book.bookcopy_set.exists():
             BookCopy.objects.create(book=book, status="new")
-            messages.success(request, "طھظ… طھط£ظƒظٹط¯ ط¥ط¯ط±ط§ط¬ الكتاب ط¶ظ…ظ† الكتب ط§ظ„ظˆط±ظ‚ظٹط© ط¨ط¥ط¶ط§ظپط© ط£ظˆظ„ ظ†ط³ط®ط©.")
+            messages.success(request, "تم تأكيد إدراج الكتاب ضمن الكتب الورقية بإضافة أول نسخة.")
         else:
-            messages.info(request, "الكتاب ظ„ط¯ظٹظ‡ ظ†ط³ط® ط¨ط§ظ„ظپط¹ظ„.")
+            messages.info(request, "الكتاب لديه نسخ بالفعل.")
     return redirect("dashboard_books_list")
 
 
@@ -370,7 +369,7 @@ def dashboard_edit_book(request, book_id):
 def dashboard_book_copies(request, book_id):
     book = Book.objects.filter(id=book_id).first()
     if not book:
-        messages.warning(request, "طھظ… ط­ط°ظپ الكتاب طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¨ط¹ط¯ ط­ط°ظپ ط¬ظ…ظٹط¹ ظ†ط³ط®ظ‡ ط§ظ„ظ…ط§ط¯ظٹط©.")
+        messages.warning(request, "تم حذف الكتاب تلقائياً بعد حذف جميع نسخه المادية.")
         return redirect("dashboard_books_list")
     copy_query = (request.GET.get("q") or "").strip()
 
@@ -383,7 +382,7 @@ def dashboard_book_copies(request, book_id):
                 form = BookCopyForm()
             else:
                 copy.book = book
-                # النسخة ط§ظ„ط¬ط¯ظٹط¯ط© طھط¹طھط¨ط± ط؛ظٹط± ظ…ط·ط¨ظˆط¹ط© ط­طھظ‰ طھظ…ط± ط¹ط¨ط± طµظپط­ط© ط§ظ„ط·ط¨ط§ط¹ط©.
+                # النسخة الجديدة تعتبر غير مطبوعة حتى تمر عبر صفحة الطباعة.
                 copy.is_printed = False
                 copy.save()
                 messages.success(request, "تمت إضافة النسخة بنجاح.")
@@ -415,7 +414,7 @@ def dashboard_delete_book_copy(request, copy_id):
         copy = get_object_or_404(BookCopy, id=copy_id)
         book_id = copy.book_id
         copy.delete()
-        messages.success(request, "طھظ… ط­ط°ظپ النسخة بنجاح.")
+        messages.success(request, "تم حذف النسخة بنجاح.")
         return redirect("dashboard_book_copies", book_id=book_id)
     return redirect("dashboard_books_list")
 
@@ -730,14 +729,14 @@ def dashboard_update_entity(request, entity_type, entity_id):
             setattr(obj, field_name, value)
 
     if entity_type == "category" and not obj.name:
-        messages.error(request, "ط§ط³ظ… الفئة لا ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظپط§ط±ط؛ظ‹ط§.")
+        messages.error(request, "اسم الفئة لا يمكن أن يكون فارغًا.")
         return redirect("dashboard_categories")
     if entity_type in {"author", "publisher"} and not obj.name:
-        messages.error(request, "الاسم لا ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظپط§ط±ط؛ظ‹ط§.")
+        messages.error(request, "الاسم لا يمكن أن يكون فارغًا.")
         return redirect("dashboard_categories")
 
     obj.save()
-    messages.success(request, "طھظ… ط§ظ„طھط­ط¯ظٹط« بنجاح.")
+    messages.success(request, "تم التحديث بنجاح.")
     return redirect("dashboard_categories")
 
 
@@ -764,9 +763,9 @@ def dashboard_delete_entity(request, entity_type, entity_id):
 
 def _build_manual_borrow_preview(membership_number, copy_barcode):
     if not membership_number:
-        raise ValueError("رقم العضوية ظ…ط·ظ„ظˆط¨.")
+        raise ValueError("رقم العضوية مطلوب.")
     if not copy_barcode:
-        raise ValueError("ط±ظ‚ظ… ظ†ط³ط®ط© الكتاب ظ…ط·ظ„ظˆط¨.")
+        raise ValueError("رقم نسخة الكتاب مطلوب.")
 
     member = Member.objects.get(membership_number=membership_number)
     copy = BookCopy.objects.select_related("book").get(barcode=copy_barcode)
@@ -796,13 +795,13 @@ def _build_manual_borrow_preview(membership_number, copy_barcode):
         "can_confirm": True,
     }
 
-    # ظ†ط¹ط±ط¶ ط­ط§ظ„ط© العضو ظˆالنسخة ظ‚ط¨ظ„ ط§ظ„طھط£ظƒظٹط¯ ط¯ظˆظ† طھط؛ظٹظٹط± ط´ط±ظˆط· الاستعارة ط§ظ„ظپط¹ظ„ظٹط©.
+    # نعرض حالة العضو والنسخة قبل التأكيد دون تغيير شروط الاستعارة الفعلية.
     if member.is_suspended:
         preview.update(
             {
-                "status_label": "العضوظٹط© ظ…ظˆظ‚ظˆظپط©",
+                "status_label": "العضوية موقوفة",
                 "status_tone": "rose",
-                "status_message": "ظ‡ط°ط§ العضو ظ…ظˆظ‚ظˆظپ ط¹ظ† الاستعارة ظˆظٹط¬ط¨ ظ…ط¹ط§ظ„ط¬ط© ط³ط¨ط¨ ط§ظ„ط¥ظٹظ‚ط§ظپ ط£ظˆظ„ظ‹ط§.",
+                "status_message": "هذا العضو موقوف عن الاستعارة ويجب معالجة سبب الإيقاف أولاً.",
                 "can_confirm": False,
             }
         )
@@ -811,7 +810,7 @@ def _build_manual_borrow_preview(membership_number, copy_barcode):
             {
                 "status_label": "غير متاحة",
                 "status_tone": "amber",
-                "status_message": "حالة النسخة ط§ظ„ط­ط§ظ„ظٹط© لا طھط³ظ…ط­ ط¨الاستعارة.",
+                "status_message": "حالة النسخة الحالية لا تسمح بالاستعارة.",
                 "can_confirm": False,
             }
         )
@@ -829,7 +828,7 @@ def _build_manual_borrow_preview(membership_number, copy_barcode):
             {
                 "status_label": "الحد الأقصى مكتمل",
                 "status_tone": "amber",
-                "status_message": "العضو ط¨ظ„ط؛ ط§ظ„ط­ط¯ ط§ظ„ط£ط¹ظ„ظ‰ ظ„لاط³طھط¹ط§ط±ط§طھ ط§ظ„ظ†ط´ط·ط©.",
+                "status_message": "العضو بلغ الحد الأعلى للاستعارات النشطة.",
                 "can_confirm": False,
             }
         )
@@ -838,7 +837,7 @@ def _build_manual_borrow_preview(membership_number, copy_barcode):
             {
                 "status_label": "محجوزة",
                 "status_tone": "amber",
-                "status_message": "لا طھظˆط¬ط¯ ط¥طھط§ط­ط© ط­ط§ظ„ظٹط© ط¨ط³ط¨ط¨ الحجوزات ط§ظ„ظ…ط¹طھظ…ط¯ط© ط¹ظ„ظ‰ ظ‡ط°ط§ الكتاب.",
+                "status_message": "لا توجد إتاحة حالية بسبب الحجوزات المعتمدة على هذا الكتاب.",
                 "can_confirm": False,
             }
         )
@@ -858,7 +857,7 @@ def _circulation_context(manual_preview=None, manual_form=None):
         return_date__isnull=True
     ).order_by("due_date")
 
-    # ظ…ط¬ظ…ظˆط¹ط© ظ…ط¹ط±ظپط§طھ الكتب ط§ظ„طھظٹ ط¹ظ„ظٹظ‡ط§ ط­ط¬ظˆط²ط§طھ ظ…ط¹طھظ…ط¯ط© ط§ظ„ط¢ظ† (طھظ…ظ†ط¹ ط§ظ„طھط¬ط¯ظٹط¯)
+    # مجموعة معرفات الكتب التي عليها حجوزات معتمدة الآن (تمنع التجديد)
     approved_reserved_book_ids = set(
         Reservation.objects.filter(status="approved").values_list("book_id", flat=True)
     )
@@ -897,7 +896,7 @@ def dashboard_manual_borrow(request):
             borrowing = borrow_book(preview["member"], preview["book"], request.user, preferred_copy=preview["copy"])
             messages.success(
                 request,
-                f"طھظ… طھط³ط¬ظٹظ„ الاستعارة ط¨ظ†ط¬ط§ط­ ظ„ظ„ط¹ط¶ظˆ {borrowing.member.name} ط¹ظ„ظ‰ النسخة {borrowing.book_copy.barcode}.",
+                f"تم تسجيل الاستعارة بنجاح للعضو {borrowing.member.name} على النسخة {borrowing.book_copy.barcode}.",
             )
             return redirect("dashboard_circulation")
 
@@ -907,7 +906,7 @@ def dashboard_manual_borrow(request):
             _circulation_context(manual_preview=preview, manual_form=manual_form),
         )
     except Member.DoesNotExist:
-        messages.error(request, "رقم العضوية ط؛ظٹط± طµط­ظٹط­.")
+        messages.error(request, "رقم العضوية غير صحيح.")
     except BookCopy.DoesNotExist:
         messages.error(request, "رقم النسخة غير صحيح.")
     except ValueError as exc:
@@ -934,7 +933,7 @@ def dashboard_complete_reservation(request, reservation_id):
     if request.method == "POST":
         try:
             complete_reservation(reservation, employee=request.user)
-            messages.success(request, "طھظ… ط¥طھظ…ط§ظ… الاستعارة ظ…ظ† ط§ظ„ط­ط¬ط².")
+            messages.success(request, "تم إتمام الاستعارة من الحجز.")
         except ValueError as exc:
             messages.error(request, str(exc))
     return redirect("dashboard_circulation")
@@ -961,10 +960,10 @@ def dashboard_return_borrowing(request, borrowing_id):
             if fine:
                 messages.success(
                     request,
-                    f"طھظ… طھط³ط¬ظٹظ„ الإرجاع. طھظ… ط§ط­طھط³ط§ط¨ ط؛ط±ط§ظ…ط© {fine.amount} ({describe_fine_units(fine.days_late)} تأخير).",
+                    f"تم تسجيل الإرجاع. تم احتساب غرامة {fine.amount} ({describe_fine_units(fine.days_late)} تأخير).",
                 )
             else:
-                messages.success(request, "طھظ… طھط³ط¬ظٹظ„ ط¥ط±ط¬ط§ط¹ الكتاب.")
+                messages.success(request, "تم تسجيل إرجاع الكتاب.")
         except ValueError as exc:
             messages.error(request, str(exc))
     return redirect("dashboard_circulation")
@@ -983,7 +982,7 @@ def dashboard_approve_renewal(request, borrowing_id):
 
 @admin_capability_required("can_manage_circulation")
 def dashboard_direct_renew(request, borrowing_id):
-    """طھط¬ط¯ظٹط¯ ظ…ط¨ط§ط´ط± ظ…ظ† ظ‚ط¨ظ„ ط§ظ„ط¥ط¯ط§ط±ظٹ ظ…ظ† ظ‚ط§ط¦ظ…ط© الاستعارات ط§ظ„ظ†ط´ط·ط©"""
+    """تجديد مباشر من قبل الإداري من قائمة الاستعارات النشطة"""
     borrowing = get_object_or_404(Borrowing, id=borrowing_id)
     if request.method == "POST":
         try:
@@ -1022,7 +1021,7 @@ def dashboard_reports(request):
             "queryset": Book.objects.select_related("category", "publisher", "created_by").prefetch_related("authors"),
             "sort_options": [
                 ("title", "العنوان (أ-ي)"),
-                ("-title", "العنوان (ظٹ-ط£)"),
+                ("-title", "العنوان (ي-أ)"),
                 ("created_at", "تاريخ الإدراج (أقدم)"),
                 ("-created_at", "تاريخ الإدراج (أحدث)"),
                 ("view_count", "الأقل مشاهدة"),
@@ -1048,12 +1047,12 @@ def dashboard_reports(request):
             "label": "الأعضاء",
             "queryset": Member.objects.all(),
             "sort_options": [
-                ("name", "الاسم (ط£-ظٹ)"),
-                ("-name", "الاسم (ظٹ-ط£)"),
-                ("membership_expiry", "انتهاء العضوية (ط§ظ„ط£ظ‚ط±ط¨)"),
-                ("-membership_expiry", "انتهاء العضوية (ط§ظ„ط£ط¨ط¹ط¯)"),
+                ("name", "الاسم (أ-ي)"),
+                ("-name", "الاسم (ي-أ)"),
+                ("membership_expiry", "انتهاء العضوية (الأقرب)"),
+                ("-membership_expiry", "انتهاء العضوية (الأبعد)"),
                 ("created_at", "الأقدم إضافة"),
-                ("-created_at", "الأحدث ط¥ط¶ط§ظپط©"),
+                ("-created_at", "الأحدث إضافة"),
             ],
             "headers": ["ID", "الاسم", "رقم العضوية", "النوع", "رقم القيد", "التخصص", "المستوى", "جهة العمل", "انتهاء العضوية"],
             "rows": lambda q: [
@@ -1075,8 +1074,8 @@ def dashboard_reports(request):
             "label": "الاستعارات",
             "queryset": Borrowing.objects.select_related("book_copy__book", "member", "employee", "created_by"),
             "sort_options": [
-                ("borrow_date", "طھط§ط±ظٹط® الاستعارة (الأقدم)"),
-                ("-borrow_date", "طھط§ط±ظٹط® الاستعارة (الأحدث)"),
+                ("borrow_date", "تاريخ الاستعارة (الأقدم)"),
+                ("-borrow_date", "تاريخ الاستعارة (الأحدث)"),
                 ("due_date", "تاريخ الاستحقاق (الأقرب)"),
                 ("-due_date", "تاريخ الاستحقاق (الأبعد)"),
             ],
@@ -1102,11 +1101,11 @@ def dashboard_reports(request):
             "queryset": Borrowing.objects.select_related("book_copy__book", "member").filter(return_date__isnull=True, due_date__lt=timezone.now()),
             "sort_options": [
                 ("due_date", "الأقرب استحقاقًا"),
-                ("-due_date", "الأحدث ط§ط³طھط­ظ‚ط§ظ‚ظ‹ط§"),
+                ("-due_date", "الأحدث استحقاقًا"),
                 ("borrow_date", "أقدم استعارة"),
                 ("-borrow_date", "أحدث استعارة"),
             ],
-            "headers": ["ID", "العضو", "الكتاب", "طھط§ط±ظٹط® الاستعارة", "تاريخ الانتهاء", "مدة التأخير", "الغرامة"],
+            "headers": ["ID", "العضو", "الكتاب", "تاريخ الاستعارة", "تاريخ الانتهاء", "مدة التأخير", "الغرامة"],
             "rows": _overdue_report_rows,
         },
         "reservations": {
@@ -1133,7 +1132,7 @@ def dashboard_reports(request):
             ],
         },
         "copies": {
-            "label": "ظ†ط³ط® الكتب",
+            "label": "نسخ الكتب",
             "queryset": BookCopy.objects.select_related("book"),
             "sort_options": [
                 ("book__title", "عنوان الكتاب (أ-ي)"),
@@ -1142,7 +1141,7 @@ def dashboard_reports(request):
                 ("-copy_number", "رقم النسخة (تنازلي)"),
                 ("status", "حالة النسخة"),
             ],
-            "headers": ["ID", "الكتاب", "ط±ظ‚ظ… النسخة", "رمز QR", "حالة النسخة"],
+            "headers": ["ID", "الكتاب", "رقم النسخة", "رمز QR", "حالة النسخة"],
             "rows": lambda q: [[item.id, item.book.title, item.copy_number or "-", item.barcode, item.get_status_display()] for item in q],
         },
         "digital": {
@@ -1172,8 +1171,8 @@ def dashboard_reports(request):
             "sort_options": [
                 ("created_at", "الأقدم"),
                 ("-created_at", "الأحدث"),
-                ("amount", "المبلغ (طھطµط§ط¹ط¯ظٹ)"),
-                ("-amount", "المبلغ (طھظ†ط§ط²ظ„ظٹ)"),
+                ("amount", "المبلغ (تصاعدي)"),
+                ("-amount", "المبلغ (تنازلي)"),
             ],
             "headers": ["ID", "العضو", "الكتاب", "أيام التأخير", "المبلغ", "الحالة", "تم الدفع بواسطة", "تاريخ الإنشاء"],
             "rows": lambda q: [
@@ -1230,11 +1229,11 @@ def dashboard_reports(request):
             "selected_member": selected_member,
             "member_snapshot": member_snapshot,
             "message_types": [
-                ("overdue", "طھط°ظƒظٹط± ط¨الاستعارات ط§ظ„ظ…طھط£ط®ط±ط©"),
+                ("overdue", "تذكير بالاستعارات المتأخرة"),
                 ("reservation_approved", "إشعار اعتماد الحجز"),
                 ("book_available", "إشعار توفر كتاب"),
                 ("pending_fines", "تنبيه الغرامات"),
-                ("suspension_warning", "طھط­ط°ظٹط± ظ‚ط¨ظ„ ط¥ظٹظ‚ط§ظپ العضوظٹط©"),
+                ("suspension_warning", "تحذير قبل إيقاف العضوية"),
             ],
         },
     )
@@ -1272,7 +1271,7 @@ def dashboard_send_member_message(request, member_id):
         result = send_member_message(member=member, message_type=message_type, sent_by=request.user)
 
         if result["email_sent"] or result["sms_prepared"]:
-            messages.success(request, "طھظ… ط¥ط±ط³ط§ظ„ ط§ظ„طھط°ظƒظٹط± ظ„ظ„ط¹ط¶ظˆ بنجاح.")
+            messages.success(request, "تم إرسال التذكير للعضو بنجاح.")
         else:
             messages.error(request, "تعذر إرسال البريد/تجهيز الرسالة. تأكد من إعدادات الإرسال والبيانات.")
 
@@ -1487,7 +1486,7 @@ def dashboard_my_account(request):
             if password_form.is_valid():
                 user = password_form.save()
                 update_session_auth_hash(request, user)
-                messages.success(request, "طھظ… طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± بنجاح.")
+                messages.success(request, "تم تغيير كلمة المرور بنجاح.")
                 return redirect("dashboard_my_account")
 
         if request.user.is_superuser and "save_branding" in request.POST:

@@ -9,12 +9,16 @@
         <div class="hero-search-orb hero-search-orb-right animate-floaty pointer-events-none"></div>
 
         <div class="relative z-10 max-w-3xl">
-            <h1 class="text-3xl md:text-4xl font-black mb-3">ابحث في مكتبتك من صفحة واحدة مخصصة للبحث</h1>
-            <p class="text-sm md:text-base text-slate-600 dark:text-slate-300 mb-6">اضغط على حقل البحث للانتقال مباشرة إلى صفحة البحث، وهناك ستجد آخر عمليات البحث والاقتراحات الحية والنتائج الكاملة.</p>
+            <h1 class="text-3xl md:text-4xl font-black mb-3">صفحة بحث واحدة لكل المكتبة</h1>
+            <p class="text-sm md:text-base text-slate-600 dark:text-slate-300 mb-6">
+                اضغط على حقل البحث لمشاهدة النتائج والاقتراحات.
+            </p>
 
             <div class="flex flex-col md:flex-row gap-3">
-                <input id="homeSearchGateway" type="text" class="input-field flex-1 cursor-pointer" placeholder="اضغط هنا للانتقال إلى صفحة البحث" readonly>
-                <button type="button" id="homeSearchButton" class="btn-primary px-8 w-full md:w-auto">ابدأ البحث</button>
+                <input id="homeSearchGateway" type="text" class="input-field flex-1 cursor-pointer"
+                    placeholder="اضغط هنا للانتقال إلى صفحة البحث" readonly>
+                <button type="button" id="homeSearchButton" class="btn-primary px-8 w-full md:w-auto">ابدأ
+                    البحث</button>
             </div>
         </div>
     </div>
@@ -30,25 +34,27 @@
 
         <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 home-most-viewed-grid">
             {% for book in popular_books %}
-                <article class="card book-card book-card-compact">
-                    <a href="{% url 'book_detail' book.id %}" class="book-card-link-overlay" aria-label="{{ book.title }}"></a>
-                    {% if book.cover_image %}
-                        <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="book-card-media">
-                    {% else %}
-                        <img src="{{ library_branding.logo_url }}" alt="{{ book.title }}" class="book-card-media" style="object-fit: contain; padding: 1rem;">
-                    {% endif %}
-                    <h3 title="{{ book.title }}">{{ book.title }}</h3>
-                    <p>{{ book.category.name|default:"-" }}</p>
-                    <div class="mt-auto pt-2 text-xs font-bold text-slate-500">{{ book.view_count }} مشاهدة</div>
-                </article>
+            <article class="card book-card book-card-compact">
+                <a href="{% url 'book_detail' book.id %}" class="book-card-link-overlay"
+                    aria-label="{{ book.title }}"></a>
+                {% if book.cover_image %}
+                <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="book-card-media">
+                {% else %}
+                <img src="{{ library_branding.logo_url }}" alt="{{ book.title }}" class="book-card-media"
+                    style="object-fit: contain; padding: 1rem;">
+                {% endif %}
+                <h3 title="{{ book.title }}">{{ book.title }}</h3>
+                <p>{{ book.category.name|default:"-" }}</p>
+                <div class="mt-auto pt-2 text-xs font-bold text-slate-500">{{ book.view_count }} مشاهدة</div>
+            </article>
             {% empty %}
-                <div class="col-span-full card text-center py-10 text-slate-500">لا توجد بيانات مشاهدة بعد.</div>
+            <div class="col-span-full card text-center py-10 text-slate-500">لا توجد بيانات مشاهدة بعد.</div>
             {% endfor %}
 
             <a href="{% url 'most_viewed_books' %}" class="card more-books-card">
-                <span class="text-sm text-slate-500">المزيد من العناوين</span>
-                <span class="text-2xl font-black">المزيد</span>
-                <span class="text-sm text-slate-500">عرض القائمة الكاملة مرتبة حسب المشاهدات</span>
+                <!-- <span class="text-sm text-slate-500">المزيد من العناوين</span> -->
+                <span class="text-2xl font-black">مشاهدة المزيد</span>
+                <!-- <span class="text-sm text-slate-500">عرض القائمة الكاملة مرتبة حسب المشاهدات</span> -->
             </a>
         </div>
     </section>
@@ -63,11 +69,12 @@
         </div>
         <div class="flex flex-wrap gap-2">
             {% for cat in popular_categories %}
-                <a href="{% url 'search_results' %}?category={{ cat.id }}" class="px-3 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-sm font-bold">
-                    {{ cat.name }}{% if cat.name_en %} / {{ cat.name_en }}{% endif %}
-                </a>
+            <a href="{% url 'search_results' %}?category={{ cat.id }}"
+                class="px-3 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-sm font-bold">
+                {{ cat.name }}{% if cat.name_en %} / {{ cat.name_en }}{% endif %}
+            </a>
             {% empty %}
-                <p class="text-sm text-slate-500">لا توجد فئات شائعة حتى الآن.</p>
+            <p class="text-sm text-slate-500">لا توجد فئات شائعة حتى الآن.</p>
             {% endfor %}
         </div>
     </section>

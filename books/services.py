@@ -1,4 +1,4 @@
-﻿import string
+import string
 from collections import Counter
 
 from django.db.models import F, Q
@@ -18,7 +18,7 @@ def search_suggestions_service(query, limit=8):
 def get_homepage_data():
     return {
         "recent_books": get_recent_books(),
-        "popular_books": get_popular_books(),
+        "popular_books": get_popular_books(limit=5),
         "popular_categories": get_popular_categories(),
     }
 
