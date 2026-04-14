@@ -4,7 +4,8 @@ from django.utils import timezone
 
 from books.models import BookCopy
 from circulations.models import Borrowing, Fine, Reservation
-from circulations.timing import calculate_fine_snapshot
+from circulations.timing import calculate_fine_snapshot, get_reservation_duration
+from emails.member_messages import send_member_message, sync_automatic_member_messages
 from members.models import Member
 
 from notifications.models import Notification
@@ -88,7 +89,7 @@ def sync_overdue_notifications():
     for borrowing in overdue_borrowings:
         fine_snapshot = calculate_fine_snapshot(borrowing.due_date, reference_time=now)
         delay_text = _format_overdue_duration(fine_snapshot["delay"])
-        _upsert_notification(
+        notification = _upsert_notification(
             Notification.TYPE_OVERDUE,
             "انتهاء مدة الاستعارة",
             f"العضو {borrowing.member.name} تأخر في إعادة الكتاب {borrowing.book_copy.book.title} لمدة {delay_text}.",
@@ -108,18 +109,27 @@ def notify_reserved_book_available(book):
     if available_slots <= 0:
         return
 
-    pending_reservations = list(
+    waiting_reservations = list(
         Reservation.objects.select_related("member", "book")
-        .filter(book=book, status="pending")
-        .order_by("reservation_date")[:available_slots]
+        .filter(book=book, status="approved", cancel_date__isnull=True)
+        .order_by("approved_at", "reservation_date")[:available_slots]
     )
-    for reservation in pending_reservations:
-        _upsert_notification(
+    window_start = timezone.now()
+    for reservation in waiting_reservations:
+        reservation.cancel_date = window_start + get_reservation_duration()
+        reservation.save(update_fields=["cancel_date"])
+        notification = _upsert_notification(
             Notification.TYPE_RESERVATION_AVAILABLE,
             "كتاب محجوز أصبح متاحًا",
             f"الكتاب {reservation.book.title} أصبح متاحًا الآن للعضو {reservation.member.name}.",
             reservation=reservation,
             member=reservation.member,
+        )
+        send_member_message(
+            member=reservation.member,
+            message_type="book_available",
+            notification=notification,
+            skip_if_notification_sent=True,
         )
 
 
@@ -168,7 +178,7 @@ def sync_high_risk_members_notifications():
             "تنبيه: يوصى بإرسال إنذار قبل إيقاف العضوية."
         )
 
-        _upsert_notification(
+        notification = _upsert_notification(
             Notification.TYPE_HIGH_RISK_MEMBER,
             "عضو غير ملتزم - تأخيرات متكررة",
             message,
@@ -191,7 +201,7 @@ def sync_pending_fines_notifications():
     active_member_ids = set()
     for member in members_with_fines:
         active_member_ids.add(member.id)
-        _upsert_notification(
+        notification = _upsert_notification(
             Notification.TYPE_PENDING_FINE,
             "غرامات غير مدفوعة",
             f"العضو {member.name} لديه {member.unpaid_count} غرامة غير مدفوعة بإجمالي {member.unpaid_total or 0}.",
@@ -210,7 +220,7 @@ def sync_suspended_members_notifications():
     for member in suspended_members:
         active_member_ids.add(member.id)
         reason = f" السبب: {member.suspension_reason}." if member.suspension_reason else ""
-        _upsert_notification(
+        notification = _upsert_notification(
             Notification.TYPE_SUSPENDED_MEMBER,
             "عضو موقوف",
             f"العضو {member.name} موقوف عن الاستعارة.{reason}",
@@ -249,5 +259,6 @@ def get_admin_notifications(limit=8):
     sync_high_risk_members_notifications()
     sync_pending_fines_notifications()
     sync_suspended_members_notifications()
+    sync_automatic_member_messages()
     return Notification.objects.select_related("member", "borrowing", "reservation").order_by("-updated_at", "-id")[:limit]
 

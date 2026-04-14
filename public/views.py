@@ -1,4 +1,4 @@
-﻿from django.http import JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import render
 
 from books.forms import BookSearchForm
@@ -9,6 +9,7 @@ from books.services import (
     search_books_service,
     search_suggestions_service,
 )
+from emails.member_messages import sync_automatic_member_messages
 
 SEARCH_TRIGGER_FIELDS = [
     "query",
@@ -44,9 +45,11 @@ def _store_recent_search(request, query):
 
 
 def home_view(request):
+    sync_automatic_member_messages()
     data = get_homepage_data()
     context = {
         "popular_books": data["popular_books"],
+        "recent_books": data["recent_books"],
         "popular_categories": data["popular_categories"],
     }
     return render(request, "public/home.html", context)

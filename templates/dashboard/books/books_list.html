@@ -53,8 +53,7 @@
                         <td class="p-3">{{ book.category.name|default:"-" }}</td>
                         <td class="p-3">
                             إجمالي {{ book.total_copies }}
-                            <div class="text-xs text-slate-500">صالح للاستعارة: {{ book.usable_copies }} | معار: {{
-                                book.borrowed_copies }} | حجز معتمد: {{ book.approved_reservations }}</div>
+                            <div class="text-xs text-slate-500">صالح للاستعارة: {{ book.usable_copies }} | معار: {{ book.borrowed_copies }} | حجز معتمد: {{ book.approved_reservations }}</div>
                         </td>
                         <td class="p-3">
                             {% if book.total_copies == 0 %}

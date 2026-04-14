@@ -206,7 +206,7 @@ def reserve_book(member, book):
         member=member,
         book=book,
         status="pending",
-        cancel_date=timezone.now() + get_reservation_duration(),
+        cancel_date=None,
     )
     create_reservation_created_notification(reservation)
     return reservation
@@ -274,4 +274,3 @@ def get_member_reservation_history(member):
 
 def describe_fine_units(units):
     return f"{units} {fine_unit_label(units)}"
-

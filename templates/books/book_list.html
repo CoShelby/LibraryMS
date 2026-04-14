@@ -11,11 +11,32 @@
             {% if page_description %}<p class="text-sm text-slate-500 mt-1">{{ page_description }}</p>{% endif %}
         </div>
         <div class="flex gap-2">
+            <button type="button" id="openListFilterDrawer" class="btn-secondary"><i class="fa-solid fa-filter"></i></button>
             <a href="{% url 'search_results' %}" class="btn-secondary" title="بحث متقدم"><i class="fa-solid fa-magnifying-glass-plus"></i></a>
             {% if page_title != 'الأكثر مشاهدة' %}<a href="{% url 'most_viewed_books' %}" class="btn-secondary">الأكثر مشاهدة</a>{% endif %}
         </div>
     </div>
 
+    <div id="listFilterBackdrop" class="fixed inset-0 bg-black/40 z-40 hidden"></div>
+    <aside id="listFilterDrawer" class="fixed top-0 left-0 h-full w-full max-w-md bg-white dark:bg-slate-950 z-50 transform -translate-x-full transition-transform duration-300 shadow-xl overflow-y-auto">
+        <form method="get" class="p-4 space-y-3">
+            <input type="hidden" name="search_scope" value="{{ fixed_search_scope }}">
+            <div>{{ filter_form.query }}</div>
+            <div>{{ filter_form.category }}</div>
+            <div>{{ filter_form.author }}</div>
+            <div>{{ filter_form.publisher }}</div>
+            <div>{{ filter_form.language }}</div>
+            <div class="grid grid-cols-2 gap-3">
+                {{ filter_form.min_pages }}
+                {{ filter_form.max_pages }}
+            </div>
+            <div>{{ filter_form.year }}</div>
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i></button>
+                <a href="{{ request.path }}" class="btn-secondary text-center"><i class="fa-solid fa-rotate-left"></i></a>
+            </div>
+        </form>
+    </aside>
     <div class="books-grid">
         {% for book in books %}
             <article class="card book-card">
@@ -34,7 +55,7 @@
                 {% if show_view_count %}<p>المشاهدات: {{ book.view_count }}</p>{% endif %}
 
                 <div class="mt-2 text-xs">
-                    {% if book.available_copies_count > 0 %}
+                    {% if book.has_available_copies %}
                         <span class="badge bg-emerald-100 text-emerald-700">متوفر</span>
                     {% else %}
                         <span class="badge bg-amber-100 text-amber-800">غير متوفر</span>
@@ -43,7 +64,9 @@
 
                 <div class="book-card-actions">
                     <a href="{% url 'book_detail' book.id %}" class="btn-primary">التفاصيل</a>
+                    {% if book.has_physical_copy %}
                     <button type="button" onclick="openReserveModal('{{ book.id }}', '{{ book.title|escapejs }}')" class="btn-secondary">حجز</button>
+                    {% endif %}
                 </div>
             </article>
         {% empty %}
@@ -51,4 +74,27 @@
         {% endfor %}
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const listFilterDrawer = document.getElementById('listFilterDrawer');
+    const listFilterBackdrop = document.getElementById('listFilterBackdrop');
+    const openListFilterDrawerBtn = document.getElementById('openListFilterDrawer');
+
+    function openListFilterDrawer() {
+        listFilterDrawer?.classList.remove('-translate-x-full');
+        listFilterBackdrop?.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeListFilterDrawer() {
+        listFilterDrawer?.classList.add('-translate-x-full');
+        listFilterBackdrop?.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    openListFilterDrawerBtn?.addEventListener('click', openListFilterDrawer);
+    listFilterBackdrop?.addEventListener('click', closeListFilterDrawer);
+</script>
 {% endblock %}

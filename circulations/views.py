@@ -4,6 +4,7 @@ from django.utils import timezone
 
 from accounts.services import admin_capability_required, is_library_admin
 from books.models import Book
+from emails.member_messages import sync_automatic_member_messages
 from members.models import Member
 
 from .models import Borrowing, Fine, Reservation
@@ -61,6 +62,7 @@ def reserve_view(request, book_id):
 
 
 def member_portal_view(request):
+    sync_automatic_member_messages()
     membership_number = (request.GET.get("membership") or "").strip()
     member_id = (request.GET.get("member_id") or "").strip()
 

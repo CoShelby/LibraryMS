@@ -1,6 +1,7 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,8 +46,10 @@
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
+
 <body class="bg-paper dark:bg-night text-slate-900 dark:text-slate-100 font-sans">
-    <div class="md:hidden sticky top-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+    <div
+        class="md:hidden sticky top-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur border-b border-slate-200 dark:border-slate-800">
         <div class="px-4 py-3 flex items-center justify-between gap-2">
             <button id="mobile-menu-btn" type="button" class="btn-secondary px-3 py-2">
                 <i class="fa-solid fa-bars"></i>
@@ -63,7 +66,8 @@
 
     <div id="drawer-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden"></div>
 
-    <aside id="app-drawer" class="fixed top-0 right-0 h-screen w-72 bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-50 transform translate-x-full md:translate-x-0 transition-transform duration-300 overflow-y-auto">
+    <aside id="app-drawer"
+        class="fixed top-0 right-0 h-screen w-72 bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-50 transform translate-x-full md:translate-x-0 transition-transform duration-300 overflow-y-auto">
         <div class="p-5 border-b border-slate-200 dark:border-slate-800">
             <div class="nav-brand mb-2">
                 <img src="{{ library_branding.logo_url }}" alt="Library Logo" class="nav-logo">
@@ -74,134 +78,176 @@
 
         {% with path=request.path %}
         <nav class="p-4 space-y-2 text-sm font-bold">
-            <a href="{% url 'home' %}" class="sidebar-link {% if path == '/' %}sidebar-link-active{% endif %}"><i class="fa-solid fa-house"></i> الرئيسية</a>
-            <a href="{% url 'book_list' %}" class="sidebar-link {% if '/books/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-book"></i> دليل الكتب الورقية</a>
-            <a href="{% url 'digital_list' %}" class="sidebar-link {% if '/digital/' in path and '/dashboard/digital/' not in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-file-pdf"></i> المكتبة الرقمية</a>
-            <a href="{% url 'member_portal' %}" class="sidebar-link {% if '/circulations/member/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-id-card"></i> بوابة العضو</a>
+            <a href="{% url 'home' %}" class="sidebar-link {% if path == '/' %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-house"></i> الرئيسية</a>
+            <a href="{% url 'book_list' %}"
+                class="sidebar-link {% if '/books/' in path %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-book"></i> دليل الكتب الورقية</a>
+            <a href="{% url 'digital_list' %}"
+                class="sidebar-link {% if '/digital/' in path and '/dashboard/digital/' not in path %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-file-pdf"></i> المكتبة الرقمية</a>
+            <a href="{% url 'member_portal' %}"
+                class="sidebar-link {% if '/circulations/member/' in path %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-id-card"></i> بوابة العضو</a>
 
-            {% if request.user.is_authenticated and request.user.is_superuser or request.user.is_authenticated and request.user.is_admin or request.user.is_authenticated and request.user.is_staff %}
-                <div class="pt-4 mt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">قائمة الإدارة</div>
+            {% if request.user.is_authenticated %}
+            {% if request.user.is_superuser or request.user.is_admin or request.user.is_staff %}
+            <div class="pt-4 mt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">قائمة الإدارة
+            </div>
 
-                <a href="{% url 'dashboard_home' %}" class="sidebar-link {% if path == '/dashboard/' %}sidebar-link-active{% endif %}"><i class="fa-solid fa-gauge"></i> لوحة التحكم</a>
+            <a href="{% url 'dashboard_home' %}"
+                class="sidebar-link {% if path == '/dashboard/' %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-gauge"></i> لوحة التحكم</a>
 
-                {% if request.user.is_superuser or request.user.can_manage_books %}
-                    <a href="{% url 'dashboard_books_list' %}" class="sidebar-link {% if '/dashboard/books/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-book-open"></i> إدارة الكتب</a>
-                    <a href="{% url 'dashboard_digital_list' %}" class="sidebar-link {% if '/dashboard/digital/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-laptop-file"></i> إدارة الكتب الرقمية</a>
-                {% endif %}
+            {% if request.user.is_superuser or request.user.can_manage_books %}
+            <a href="{% url 'dashboard_books_list' %}"
+                class="sidebar-link {% if '/dashboard/books/' in path %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-book-open"></i> إدارة الكتب</a>
+            <a href="{% url 'dashboard_digital_list' %}"
+                class="sidebar-link {% if '/dashboard/digital/' in path %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-laptop-file"></i> إدارة الكتب الرقمية</a>
+            {% endif %}
 
-                {% if request.user.is_superuser or request.user.can_manage_members %}
-                    <a href="{% url 'member_list' %}" class="sidebar-link {% if '/members/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-users"></i> إدارة الأعضاء</a>
-                {% endif %}
+            {% if request.user.is_superuser or request.user.can_manage_members %}
+            <a href="{% url 'member_list' %}"
+                class="sidebar-link {% if '/members/' in path %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-users"></i> إدارة الأعضاء</a>
+            {% endif %}
 
-                {% if request.user.is_superuser or request.user.can_manage_circulation %}
-                    <a href="{% url 'dashboard_circulation' %}" class="sidebar-link {% if '/dashboard/circulation/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-right-left"></i> إدارة الاستعارات</a>
-                {% endif %}
+            {% if request.user.is_superuser or request.user.can_manage_circulation %}
+            <a href="{% url 'dashboard_circulation' %}"
+                class="sidebar-link {% if '/dashboard/circulation/' in path %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-right-left"></i> إدارة الإعارات</a>
+            {% endif %}
 
-                {% if request.user.is_superuser or request.user.can_manage_categories %}
-                    <a href="{% url 'dashboard_categories' %}" class="sidebar-link {% if '/dashboard/categories/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-tags"></i> الفئات والمؤلفون والناشرون</a>
-                {% endif %}
+            {% if request.user.is_superuser or request.user.can_manage_categories %}
+            <a href="{% url 'dashboard_categories' %}"
+                class="sidebar-link {% if '/dashboard/categories/' in path %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-tags"></i> الفئات والمؤلفون والناشرون</a>
+            {% endif %}
 
-                <a href="{% url 'dashboard_reports' %}" class="sidebar-link {% if '/dashboard/reports/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-table"></i> التقارير</a>
+            <a href="{% url 'dashboard_reports' %}"
+                class="sidebar-link {% if '/dashboard/reports/' in path %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-table"></i> التقارير</a>
 
-                {% if admin_can_manage_accounts %}
-                    <a href="{% url 'dashboard_supervisor_users' %}" class="sidebar-link {% if '/dashboard/supervisors/' in path or '/dashboard/admins/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-user-shield"></i> إدارة المشرفين</a>
-                {% endif %}
+            {% if admin_can_manage_accounts %}
+            <a href="{% url 'dashboard_supervisor_users' %}"
+                class="sidebar-link {% if '/dashboard/supervisors/' in path or '/dashboard/admins/' in path %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-user-shield"></i> إدارة المشرفين</a>
+            {% endif %}
 
-                <a href="{% url 'dashboard_my_account' %}" class="sidebar-link {% if '/dashboard/my-account/' in path %}sidebar-link-active{% endif %}"><i class="fa-solid fa-user-gear"></i> حسابي الإداري</a>
+            <a href="{% url 'dashboard_my_account' %}"
+                class="sidebar-link {% if '/dashboard/my-account/' in path %}sidebar-link-active{% endif %}"><i
+                    class="fa-solid fa-user-gear"></i> حسابي الإداري</a>
+            {% endif %}
             {% endif %}
         </nav>
         {% endwith %}
 
         <div class="p-4 mt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
-            <button id="theme-toggle" class="w-full btn-secondary"><i class="fa-solid fa-moon ml-2"></i>تغيير الثيم</button>
+            <button id="theme-toggle" class="w-full btn-secondary"><i class="fa-solid fa-moon ml-2"></i>تغيير
+                الثيم</button>
 
             {% if request.user.is_authenticated %}
-                <form method="post" action="{% url 'logout' %}">
-                    {% csrf_token %}
-                    <button type="submit" class="w-full btn-primary"><i class="fa-solid fa-right-from-bracket ml-2"></i>تسجيل الخروج</button>
-                </form>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="w-full btn-primary"><i
+                        class="fa-solid fa-right-from-bracket ml-2"></i>تسجيل الخروج</button>
+            </form>
             {% else %}
-                <a href="{% url 'login' %}" class="w-full btn-primary"><i class="fa-solid fa-right-to-bracket ml-2"></i>تسجيل الدخول</a>
+            <a href="{% url 'login' %}" class="w-full btn-primary"><i
+                    class="fa-solid fa-right-to-bracket ml-2"></i>تسجيل الدخول</a>
             {% endif %}
         </div>
     </aside>
 
     <main class="min-h-screen p-4 md:p-8 md:pr-80">
-        {% if request.user.is_authenticated and request.user.is_superuser or request.user.is_authenticated and request.user.is_admin or request.user.is_authenticated and request.user.is_staff %}
-            <div class="admin-toolbar print-hidden">
-                <div>
-                    <div class="text-sm font-black">لوحة المشرفين</div>
-                    <div class="text-xs text-slate-500">{{ request.user.username }}</div>
-                </div>
-                <div class="notification-menu">
-    <button id="adminNotificationsToggle" type="button" class="btn-secondary notification-button" aria-haspopup="dialog" aria-controls="adminNotificationsModal" aria-expanded="false">
-        <i class="fa-solid fa-bell"></i>
-        {% if admin_notification_unread_count %}
-            <span class="notification-badge">{{ admin_notification_unread_count }}</span>
-        {% endif %}
-    </button>
-</div>
+        {% if request.user.is_authenticated %}
+        {% if request.user.is_superuser or request.user.is_admin or request.user.is_staff %}
+        <div class="admin-toolbar print-hidden">
+            <div>
+                <div class="text-sm font-black">لوحة المشرفين</div>
+                <div class="text-xs text-slate-500">{{ request.user.username }}</div>
             </div>
+            <div class="notification-menu">
+                <button id="adminNotificationsToggle" type="button" class="btn-secondary notification-button"
+                    aria-haspopup="dialog" aria-controls="adminNotificationsModal" aria-expanded="false">
+                    <i class="fa-solid fa-bell"></i>
+                    {% if admin_notification_unread_count %}
+                    <span class="notification-badge">{{ admin_notification_unread_count }}</span>
+                    {% endif %}
+                </button>
+            </div>
+        </div>
+        {% endif %}
         {% endif %}
         {% if request.path != '/' and '/dashboard/' not in request.path and '/members/' not in request.path %}
-            <div class="mb-4">
-                <a href="{% url 'home' %}" class="btn-secondary" title="العودة للرئيسية"><i class="fa-solid fa-house"></i></a>
-            </div>
+        <div class="mb-4">
+            <a href="{% url 'home' %}" class="btn-secondary" title="العودة للرئيسية"><i
+                    class="fa-solid fa-house"></i></a>
+        </div>
         {% endif %}
 
         {% if messages %}
-            <div class="space-y-2 mb-5">
-                {% for message in messages %}
-                    <div class="p-3 rounded-lg text-sm font-bold {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-emerald-50 text-emerald-700 border border-emerald-200{% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
+        <div class="space-y-2 mb-5">
+            {% for message in messages %}
+            <div
+                class="p-3 rounded-lg text-sm font-bold {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-emerald-50 text-emerald-700 border border-emerald-200{% endif %}">
+                {{ message }}
             </div>
+            {% endfor %}
+        </div>
         {% endif %}
 
         {% block content %}{% endblock %}
     </main>
-    <div id="adminNotificationsModal" class="notification-modal hidden" role="dialog" aria-modal="true" aria-labelledby="adminNotificationsTitle">
+    <div id="adminNotificationsModal" class="notification-modal hidden" role="dialog" aria-modal="true"
+        aria-labelledby="adminNotificationsTitle">
         <div class="notification-modal-backdrop" id="adminNotificationsBackdrop"></div>
         <div class="notification-modal-dialog card">
             <div class="notification-panel-header p-4 border-b border-slate-200 dark:border-slate-800">
                 <h3 id="adminNotificationsTitle" class="font-black">أحدث الإشعارات</h3>
                 <div class="flex items-center gap-2">
                     {% if admin_notification_unread_count %}
-                        <form method="post" action="{% url 'dashboard_mark_notifications_read' %}" class="m-0">
-                            {% csrf_token %}
-                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                            <button type="submit" class="text-xs font-bold text-brand">تعليم الكل كمقروء</button>
-                        </form>
+                    <form method="post" action="{% url 'dashboard_mark_notifications_read' %}" class="m-0">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="text-xs font-bold text-brand">تعليم الكل كمقروء</button>
+                    </form>
                     {% endif %}
-                    <button id="adminNotificationsClose" type="button" class="btn-secondary px-3 py-2" aria-label="إغلاق الإشعارات">
+                    <button id="adminNotificationsClose" type="button" class="btn-secondary px-3 py-2"
+                        aria-label="إغلاق الإشعارات">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
             </div>
             <div class="p-4 space-y-2 max-h-[70vh] overflow-y-auto">
                 {% for notification in admin_notifications %}
-                    <article class="notification-item {% if notification.is_read %}notification-item-read{% else %}notification-item-unread{% endif %}">
-                        <a href="{% url 'dashboard_open_notification' notification.id %}" class="notification-link block text-right">
-                            <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-bold">{{ notification.title }}</div>
-                                {% if notification.is_read %}
-                                    <span class="text-[11px] text-slate-400">مقروء</span>
-                                {% else %}
-                                    <span class="text-[11px] font-bold text-amber-700">غير مقروء</span>
-                                {% endif %}
-                            </div>
-                            <div class="text-xs text-slate-500 mt-1">{{ notification.message|linebreaksbr }}</div>
-                            <div class="text-[11px] text-slate-400 mt-2">{{ notification.created_at|date:"Y-m-d H:i" }}</div>
-                        </a>
-                        <form method="post" action="{% url 'dashboard_send_notification_message' notification.id %}" class="mt-2">
-                            {% csrf_token %}
-                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                            <button type="submit" class="btn-secondary w-full">إرسال تذكير للعضو</button>
-                        </form>
-                    </article>
+                <article
+                    class="notification-item {% if notification.is_read %}notification-item-read{% else %}notification-item-unread{% endif %}">
+                    <a href="{% url 'dashboard_open_notification' notification.id %}"
+                        class="notification-link block text-right">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="text-sm font-bold">{{ notification.title }}</div>
+                            {% if notification.is_read %}
+                            <span class="text-[11px] text-slate-400">مقروء</span>
+                            {% else %}
+                            <span class="text-[11px] font-bold text-amber-700">غير مقروء</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-xs text-slate-500 mt-1">{{ notification.message|linebreaksbr }}</div>
+                        <div class="text-[11px] text-slate-400 mt-2">{{ notification.created_at|date:"Y-m-d H:i" }}
+                        </div>
+                    </a>
+                    <form method="post" action="{% url 'dashboard_send_notification_message' notification.id %}"
+                        class="mt-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="btn-secondary w-full">إرسال تذكير للعضو</button>
+                    </form>
+                </article>
                 {% empty %}
-                    <p class="text-sm text-slate-500">لا توجد إشعارات حالياً.</p>
+                <p class="text-sm text-slate-500">لا توجد إشعارات حاليا.</p>
                 {% endfor %}
             </div>
         </div>
@@ -210,12 +256,14 @@
         <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl">
             <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <h3 class="font-extrabold">طلب حجز كتاب ورقي</h3>
-                <button type="button" onclick="closeReserveModal()" class="text-slate-500 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" onclick="closeReserveModal()" class="text-slate-500 hover:text-red-600"><i
+                        class="fa-solid fa-xmark"></i></button>
             </div>
             <form id="reserveForm" method="post" class="p-4 space-y-3">
                 {% csrf_token %}
                 <p class="text-sm">الكتاب: <span id="modalBookTitle" class="font-bold"></span></p>
-                <input type="text" name="membership" required class="input-field" placeholder="أدخل رقم العضوية لإتمام الحجز">
+                <input type="text" name="membership" required class="input-field"
+                    placeholder="أدخل رقم العضوية لإتمام الحجز">
                 <button type="submit" class="btn-primary w-full">إرسال طلب الحجز</button>
                 <p class="text-xs text-slate-500">مدة الحجز تعتمد على إعدادات النظام الحالية.</p>
             </form>
@@ -226,16 +274,25 @@
         <div class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden">
             <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <h3 class="font-extrabold">مسح QR</h3>
-                <button type="button" id="closeScannerModal" class="text-slate-500 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" id="closeScannerModal" class="text-slate-500 hover:text-red-600"><i
+                        class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-3">
                 <div id="qrScannerStatus" class="text-sm text-slate-500">جاري تجهيز الماسح...</div>
-                <div id="qrScannerReader" class="rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 min-h-[260px]"></div>
-                <p class="text-xs text-slate-500">سيطلب المتصفح إذن الوصول إلى الكاميرا عند أول استخدام. إذا تعذر ذلك، يبقى الإدخال اليدوي متاحاً بدون أي مشكلة.</p>
+                <div id="qrScannerReader"
+                    class="rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 min-h-[260px]"></div>
+                <div id="qrScannerFallbackActions" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button type="button" id="qrScannerCaptureButton" class="btn-primary w-full">فتح كاميرا
+                        الهاتف</button>
+                    <button type="button" id="qrScannerImageButton" class="btn-secondary w-full">اختيار صورة QR</button>
+                </div>
+                <input id="qrScannerCameraInput" type="file" accept="image/*" capture="environment" class="hidden">
+                <input id="qrScannerImageInput" type="file" accept="image/*" class="hidden">
+                <p class="text-xs text-slate-500">سيحاول النظام تشغيل الكاميرا مباشرة عند توفرها، وإذا كان المتصفح يمنع
+                    ذلك عبر الشبكة المحلية فسيتم فتح كاميرا الهاتف أو اختيار صورة QR بدلاً من ذلك.</p>
             </div>
         </div>
     </div>
-
     <script>
         const html = document.documentElement;
         const themeToggleBtn = document.getElementById('theme-toggle');
@@ -373,6 +430,43 @@
             return scannerLibraryPromise;
         }
 
+        const scannerFallbackActions = document.getElementById('qrScannerFallbackActions');
+        const scannerCaptureButton = document.getElementById('qrScannerCaptureButton');
+        const scannerImageButton = document.getElementById('qrScannerImageButton');
+        const scannerCameraInput = document.getElementById('qrScannerCameraInput');
+        const scannerImageInput = document.getElementById('qrScannerImageInput');
+
+        function isLocalScannerHost() {
+            return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+        }
+
+        function canUseLiveScanner() {
+            return Boolean(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && (window.isSecureContext || isLocalScannerHost());
+        }
+
+        function setScannerFallbackVisible(isVisible) {
+            scannerFallbackActions?.classList.toggle('hidden', !isVisible);
+        }
+
+        function openScannerModal(statusText) {
+            if (!scannerModal || !scannerStatus) {
+                return;
+            }
+            scannerStatus.textContent = statusText;
+            scannerModal.classList.remove('hidden');
+            scannerModal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function applyScannerResult(decodedText) {
+            if (!activeScannerTarget) {
+                return;
+            }
+            activeScannerTarget.value = decodedText;
+            activeScannerTarget.dispatchEvent(new Event('input', { bubbles: true }));
+            activeScannerTarget.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
         async function stopScanner() {
             if (activeHtml5Qrcode) {
                 try {
@@ -402,6 +496,92 @@
             temporaryStream.getTracks().forEach((track) => track.stop());
         }
 
+        async function decodeQrFromFileWithNativeDetector(file) {
+            if (typeof BarcodeDetector !== 'function' || typeof createImageBitmap !== 'function') {
+                throw new Error('native-detector-unavailable');
+            }
+
+            const detector = new BarcodeDetector({ formats: ['qr_code'] });
+            const imageBitmap = await createImageBitmap(file);
+            try {
+                const results = await detector.detect(imageBitmap);
+                if (!results.length || !results[0].rawValue) {
+                    throw new Error('qr-not-found');
+                }
+                return results[0].rawValue;
+            } finally {
+                if (typeof imageBitmap.close === 'function') {
+                    imageBitmap.close();
+                }
+            }
+        }
+
+        async function decodeQrFromFileWithLibrary(file) {
+            const Html5Qrcode = await ensureScannerLibrary();
+            if (!Html5Qrcode) {
+                throw new Error('scanner-load-failed');
+            }
+
+            let fileScanner = null;
+            try {
+                fileScanner = new Html5Qrcode('qrScannerReader');
+                return await fileScanner.scanFile(file, true);
+            } finally {
+                if (fileScanner) {
+                    try {
+                        await fileScanner.clear();
+                    } catch (error) {
+                    }
+                }
+            }
+        }
+
+        async function scanQrFromSelectedFile(file) {
+            if (!file || !scannerStatus) {
+                return;
+            }
+
+            await stopScanner();
+            openScannerModal('جاري قراءة رمز QR من الصورة...');
+            setScannerFallbackVisible(true);
+
+            try {
+                let decodedText = null;
+
+                try {
+                    decodedText = await decodeQrFromFileWithNativeDetector(file);
+                } catch (nativeError) {
+                    decodedText = await decodeQrFromFileWithLibrary(file);
+                }
+
+                applyScannerResult(decodedText);
+                await closeScanner();
+            } catch (error) {
+                scannerStatus.textContent = 'تعذر قراءة QR من الصورة. جرّب تقريب الرمز أو التقاط صورة أوضح.';
+            } finally {
+                if (scannerCameraInput) {
+                    scannerCameraInput.value = '';
+                }
+                if (scannerImageInput) {
+                    scannerImageInput.value = '';
+                }
+            }
+        }
+
+        function openFileScanner(targetInput, autoOpenCamera = false) {
+            activeScannerTarget = targetInput;
+            openScannerModal('التقط صورة واضحة للرمز أو اختر صورة محفوظة من الهاتف.');
+            setScannerFallbackVisible(true);
+
+            if (scannerReader) {
+                scannerReader.innerHTML = '';
+            }
+
+            if (autoOpenCamera) {
+                scannerCameraInput?.click();
+            }
+        }
+
         async function openScanner(targetId) {
             const targetInput = document.getElementById(targetId);
             if (!targetInput || !scannerModal || !scannerStatus || !scannerReader) {
@@ -409,21 +589,18 @@
             }
 
             activeScannerTarget = targetInput;
-            scannerStatus.textContent = 'جاري تجهيز الماسح...';
-            scannerModal.classList.remove('hidden');
-            scannerModal.classList.add('flex');
-            document.body.style.overflow = 'hidden';
+            setScannerFallbackVisible(false);
+            openScannerModal('جاري تجهيز الماسح...');
+
+            if (!canUseLiveScanner()) {
+                openFileScanner(targetInput, true);
+                return;
+            }
 
             try {
                 const Html5Qrcode = await ensureScannerLibrary();
-                if (!Html5Qrcode || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    scannerStatus.textContent = 'الكاميرا غير متاحة على هذا الجهاز. استخدم الإدخال اليدوي.';
-                    return;
-                }
-
-                if (!window.isSecureContext && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-                    scannerStatus.textContent = 'فتح الكاميرا على الهاتف يتطلب HTTPS أو تشغيل الموقع محلياً.';
-                    return;
+                if (!Html5Qrcode) {
+                    throw new Error('scanner-load-failed');
                 }
 
                 scannerStatus.textContent = 'انتظر طلب إذن الكاميرا من المتصفح ثم اسمح به.';
@@ -436,17 +613,14 @@
                     { facingMode: { ideal: 'environment' } },
                     { fps: 10, qrbox: { width: 220, height: 220 } },
                     (decodedText) => {
-                        if (activeScannerTarget) {
-                            activeScannerTarget.value = decodedText;
-                            activeScannerTarget.dispatchEvent(new Event('input', { bubbles: true }));
-                            activeScannerTarget.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
+                        applyScannerResult(decodedText);
                         closeScanner();
                     },
-                    () => {}
+                    () => { }
                 );
             } catch (error) {
-                scannerStatus.textContent = 'تعذر تشغيل الكاميرا أو تم رفض الإذن. يمكنك المتابعة بالإدخال اليدوي.';
+                scannerStatus.textContent = 'تعذر تشغيل الكاميرا المباشرة. يمكنك متابعة المسح عبر كاميرا الهاتف أو من صورة QR.';
+                setScannerFallbackVisible(true);
             }
         }
 
@@ -458,20 +632,33 @@
             scannerModal.classList.add('hidden');
             scannerModal.classList.remove('flex');
             document.body.style.overflow = 'auto';
+            setScannerFallbackVisible(false);
+            activeScannerTarget = null;
+            if (scannerCameraInput) {
+                scannerCameraInput.value = '';
+            }
+            if (scannerImageInput) {
+                scannerImageInput.value = '';
+            }
         }
 
         document.querySelectorAll('.qr-scan-button').forEach((button) => {
             button.addEventListener('click', () => openScanner(button.dataset.scanTarget));
         });
 
+        scannerCaptureButton?.addEventListener('click', () => scannerCameraInput?.click());
+        scannerImageButton?.addEventListener('click', () => scannerImageInput?.click());
+        scannerCameraInput?.addEventListener('change', (event) => scanQrFromSelectedFile(event.target.files?.[0]));
+        scannerImageInput?.addEventListener('change', (event) => scanQrFromSelectedFile(event.target.files?.[0]));
+
         closeScannerModalBtn?.addEventListener('click', closeScanner);
         scannerModal?.addEventListener('click', (event) => {
             if (event.target === scannerModal) {
                 closeScanner();
             }
-        });
-    </script>
+        });    </script>
 
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>

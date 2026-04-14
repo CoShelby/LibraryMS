@@ -12,6 +12,10 @@ def get_reservation_duration():
     return timedelta(minutes=2) if is_demo_mode() else timedelta(days=2)
 
 
+def get_reservation_reminder_lead_time():
+    return timedelta(minutes=1) if is_demo_mode() else timedelta(days=1)
+
+
 def get_borrow_duration():
     return timedelta(minutes=3) if is_demo_mode() else timedelta(days=3)
 

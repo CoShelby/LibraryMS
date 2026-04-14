@@ -259,18 +259,19 @@ def dashboard_books_list(request):
     query = (request.GET.get("q") or "").strip()
     if query:
         from books.selectors import search_books
-        books_list = search_books(query=query, search_scope="all")
-        # search_books returns objects with `total_copies`, `usable_copies`, `active_borrowings`, `has_digital` etc.
-        # dashboard template expects: `borrowed_copies` instead of `active_borrowings`
-        for b in books_list:
-            if not hasattr(b, 'borrowed_copies') and hasattr(b, 'active_borrowings'):
-                b.borrowed_copies = b.active_borrowings
-        books = books_list
+        books = list(search_books(query=query, search_scope="all"))
     else:
-        books = _books_dashboard_queryset()
+        books = list(_books_dashboard_queryset())
+
+    for book in books:
+        if not hasattr(book, "borrowed_copies") and hasattr(book, "active_borrowings"):
+            book.borrowed_copies = book.active_borrowings
+
+        available_copies = getattr(book, "available_copies", None)
+        if available_copies is not None:
+            book.usable_copies = max(available_copies, 0)
 
     return render(request, "dashboard/books/books_list.html", {"books": books, "query": query})
-
 
 
 @admin_capability_required("can_manage_books")
@@ -303,7 +304,7 @@ def dashboard_add_book(request):
                 matched_book = conflict["book"]
                 if duplicate_action == "add_copy" and matched_book_id == matched_book.id:
                     add_copies_to_book(matched_book, copies_to_add)
-                    messages.success(request, "الكتاب موجود مسبقًا، وتمت إضافة نسخة جديدة إليه.")
+                    messages.success(request, "الكتاب موجود مسبقاً، وتمت إضافة نسخة جديدة إليه.")
                     return redirect("dashboard_books_list")
                 form.add_error(None, "تم العثور على كتاب مطابق بنفس ISBN. اختر إضافة نسخة من النافذة المنبثقة للمتابعة.")
             elif conflict["type"] == "similar":
@@ -316,7 +317,7 @@ def dashboard_add_book(request):
                     book = form.save(created_by=request.user)
                     messages.success(request, f"تمت إضافة الكتاب: {book.title}")
                     return redirect("dashboard_books_list")
-                form.add_error(None, "تم العثور على كتاب مشابه. اختر من النافذة المنبثقة ما إذا كان نفس الكتاب أو كتابًا جديدًا.")
+                form.add_error(None, "تم العثور على كتاب مشابه. اختر من النافذة المنبثقة ما إذا كان نفس الكتاب أو كتاباً جديداً.")
             else:
                 book = form.save(created_by=request.user)
                 messages.success(request, f"تمت إضافة الكتاب: {book.title}")
@@ -396,6 +397,16 @@ def dashboard_book_copies(request, book_id):
 
     paginator = Paginator(copies, 24)
     page_obj = paginator.get_page(request.GET.get("page"))
+
+    active_borrowings_by_copy = {
+        borrowing.book_copy_id: borrowing
+        for borrowing in Borrowing.objects.select_related("member").filter(
+            book_copy_id__in=[copy.id for copy in page_obj.object_list],
+            return_date__isnull=True,
+        )
+    }
+    for copy in page_obj.object_list:
+        copy.current_borrowing = active_borrowings_by_copy.get(copy.id)
 
     return render(
         request,
@@ -1014,11 +1025,18 @@ def dashboard_reports(request):
 
     selected_member, member_matches = _find_member_for_reports(member_query, member_id)
     member_snapshot = _member_report_snapshot(selected_member) if selected_member else None
-
+    books_report_queryset = Book.objects.select_related("category", "publisher", "created_by").prefetch_related("authors").annotate(
+        borrowings_total=Count("bookcopy__borrowing", distinct=True),
+        reservations_total=Count("reservation", distinct=True),
+    )
+    borrowings_report_queryset = Borrowing.objects.select_related("book_copy__book", "member", "employee", "created_by").annotate(
+        book_borrowings_total=Count("book_copy__book__bookcopy__borrowing", distinct=True),
+        book_reservations_total=Count("book_copy__book__reservation", distinct=True),
+    )
     report_tables = {
         "books": {
             "label": "الكتب",
-            "queryset": Book.objects.select_related("category", "publisher", "created_by").prefetch_related("authors"),
+            "queryset": books_report_queryset,
             "sort_options": [
                 ("title", "العنوان (أ-ي)"),
                 ("-title", "العنوان (ي-أ)"),
@@ -1026,13 +1044,15 @@ def dashboard_reports(request):
                 ("-created_at", "تاريخ الإدراج (أحدث)"),
                 ("view_count", "الأقل مشاهدة"),
                 ("-view_count", "الأكثر مشاهدة"),
+                ("-reservations_total", "\u0627\u0644\u0623\u0643\u062b\u0631 \u0637\u0644\u0628\u064b\u0627"),
+                ("-borrowings_total", "\u0627\u0644\u0623\u0643\u062b\u0631 \u0627\u0633\u062a\u0639\u0627\u0631\u0629"),
             ],
             "headers": ["ID", "العنوان", "المؤلفون", "الفئة", "الناشر", "أضيف بواسطة", "السنة", "اللغة", "الصفحات"],
             "rows": lambda q: [
                 [
                     item.id,
                     item.title,
-                    "، ".join(item.authors.values_list("name", flat=True)) or "-",
+                    " - ".join(item.authors.values_list("name", flat=True)) or "-",
                     item.category.name if item.category else "-",
                     item.publisher.name if item.publisher else "-",
                     item.created_by.username if item.created_by else "-",
@@ -1072,12 +1092,14 @@ def dashboard_reports(request):
         },
         "borrowings": {
             "label": "الاستعارات",
-            "queryset": Borrowing.objects.select_related("book_copy__book", "member", "employee", "created_by"),
+            "queryset": borrowings_report_queryset,
             "sort_options": [
                 ("borrow_date", "تاريخ الاستعارة (الأقدم)"),
                 ("-borrow_date", "تاريخ الاستعارة (الأحدث)"),
                 ("due_date", "تاريخ الاستحقاق (الأقرب)"),
                 ("-due_date", "تاريخ الاستحقاق (الأبعد)"),
+                ("-book_reservations_total", "\u0627\u0644\u0623\u0643\u062b\u0631 \u0637\u0644\u0628\u064b\u0627"),
+                ("-book_borrowings_total", "\u0627\u0644\u0623\u0643\u062b\u0631 \u0627\u0633\u062a\u0639\u0627\u0631\u0629"),
             ],
             "headers": ["ID", "الكتاب", "النسخة", "العضو", "الموظف", "أُنشئت بواسطة", "الاستعارة", "الاستحقاق", "الإرجاع", "طلب تجديد"],
             "rows": lambda q: [
@@ -1104,6 +1126,7 @@ def dashboard_reports(request):
                 ("-due_date", "الأحدث استحقاقًا"),
                 ("borrow_date", "أقدم استعارة"),
                 ("-borrow_date", "أحدث استعارة"),
+
             ],
             "headers": ["ID", "العضو", "الكتاب", "تاريخ الاستعارة", "تاريخ الانتهاء", "مدة التأخير", "الغرامة"],
             "rows": _overdue_report_rows,
@@ -1342,7 +1365,7 @@ def _get_managed_admin(request, admin_id):
 
 
 def _delete_admin_related_data(admin_user):
-    # نحذف العلاقات المباشرة المرتبطة بالحساب قبل الحذف النهائي لتفادي بيانات يتيمة.
+    # حذف العلاقات المباشرة المرتبطة بالحساب قبل الحذف النهائي لتفادي بيانات يتيمة.
     Log.objects.filter(user=admin_user).delete()
     Loan.objects.filter(user=admin_user).delete()
     Borrowing.objects.filter(employee=admin_user).delete()
@@ -1637,37 +1660,4 @@ def api_create_entity(request):
         return JsonResponse({"success": True, "id": obj.id, "name": getattr(obj, "name", "")})
     except Exception as exc:
         return JsonResponse({"error": str(exc)}, status=500)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

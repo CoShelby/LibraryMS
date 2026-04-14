@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}إدارة النسخ | {{ book.title }}{% endblock %}
 
@@ -52,6 +52,18 @@
                                 <div class="font-bold">{{ copy.barcode }}</div>
                                 <div class="text-xs text-slate-500">رقم النسخة الداخلي: {{ copy.copy_number|default:"-" }}</div>
                                 <div class="text-xs text-slate-500 mt-1">الحالة: {{ copy.get_status_display }}</div>
+                                <div class="text-xs text-slate-500 mt-1">
+                                    التواجد الحالي:
+                                    {% if copy.current_borrowing %}
+                                        <span class="font-bold text-amber-700">عند العضو {{ copy.current_borrowing.member.name }}</span>
+                                    {% else %}
+                                        <span class="font-bold text-emerald-700">في المكتبة</span>
+                                    {% endif %}
+                                </div>
+                                {% if copy.current_borrowing %}
+                                    <div class="text-xs text-slate-500 mt-1">رقم العضوية: {{ copy.current_borrowing.member.membership_number }}</div>
+                                    <div class="text-xs text-slate-500 mt-1">تاريخ الإعارة الحالية: {{ copy.current_borrowing.borrow_date|date:"Y-m-d H:i" }}</div>
+                                {% endif %}
                             </div>
                             <div class="text-left text-xs">
                                 <div class="px-2 py-1 rounded-full {% if copy.is_printed %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-800{% endif %}">
@@ -59,7 +71,7 @@
                                 </div>
                                 <div class="text-slate-500 mt-2">{{ copy.created_at|date:"Y-m-d H:i" }}</div>
                                 <div class="mt-2 flex justify-end">
-                                    <form method="post" action="{% url 'dashboard_delete_book_copy' copy.id %}" onsubmit="return confirm('هل أنت متأكد من حذف هذه النسخة نهائياً؟');">
+                                    <form method="post" action="{% url 'dashboard_delete_book_copy' copy.id %}" onsubmit="return confirm('هل أنت متأكد من حذف هذه النسخة نهائيًا؟');">
                                         {% csrf_token %}
                                         <button type="submit" class="text-red-500 hover:text-red-700" title="حذف النسخة">
                                             <i class="fa-solid fa-trash-can"></i>

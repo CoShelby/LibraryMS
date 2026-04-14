@@ -443,15 +443,15 @@ def get_search_suggestions(query, limit=8):
     return result
 
 
-def get_popular_books(limit=8):
+def get_popular_books(limit=20):
     return _base_books_queryset().order_by("-view_count", "title")[:limit]
 
 
-def get_recent_books(limit=8):
+def get_recent_books(limit=20):
     return _base_books_queryset().order_by("-created_at")[:limit]
 
 
-def get_popular_categories(limit=8):
+def get_popular_categories(limit=5):
     return (
         Category.objects.annotate(
             book_count=Count("book", distinct=True),

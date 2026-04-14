@@ -1,4 +1,3 @@
-﻿from accounts.models import User
 from books.models import Author, Book, BookCopy, Category, CategorySearchStat, Publisher
 from circulations.models import Borrowing, Fine, FinePayment, Loan, Reservation
 from dashboard.models import LibraryBranding
@@ -6,7 +5,6 @@ from digital_library.models import DigitalLibrary
 from members.models import Member
 
 API_MODELS = [
-    User,
     Category,
     CategorySearchStat,
     Author,

@@ -29,7 +29,7 @@
                 <h2 class="text-2xl font-black">الأكثر مشاهدة</h2>
                 <p class="text-sm text-slate-500">أكثر العناوين التي يتم الاطلاع عليها داخل النظام.</p>
             </div>
-            <a href="{% url 'most_viewed_books' %}" class="btn-secondary">عرض الكل</a>
+            <a href="{% url 'most_viewed_books' %}" class="btn-secondary" id="popularBooksCta">عرض الكل</a>
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 home-most-viewed-grid">
@@ -46,15 +46,52 @@
                 <h3 title="{{ book.title }}">{{ book.title }}</h3>
                 <p>{{ book.category.name|default:"-" }}</p>
                 <div class="mt-auto pt-2 text-xs font-bold text-slate-500">{{ book.view_count }} مشاهدة</div>
+                <div class="book-card-actions">
+                    <a href="{% url 'book_detail' book.id %}" class="btn-primary">التفاصيل</a>
+                </div>
             </article>
             {% empty %}
             <div class="col-span-full card text-center py-10 text-slate-500">لا توجد بيانات مشاهدة بعد.</div>
             {% endfor %}
 
             <a href="{% url 'most_viewed_books' %}" class="card more-books-card">
-                <!-- <span class="text-sm text-slate-500">المزيد من العناوين</span> -->
                 <span class="text-2xl font-black">مشاهدة المزيد</span>
-                <!-- <span class="text-sm text-slate-500">عرض القائمة الكاملة مرتبة حسب المشاهدات</span> -->
+            </a>
+        </div>
+    </section>
+
+    <section class="space-y-4">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+                <h2 class="text-2xl font-black">المضافة مؤخرًا</h2>
+                <p class="text-sm text-slate-500">أحدث العناوين التي أضيفت إلى المكتبة.</p>
+            </div>
+            <a href="{% url 'recent_books' %}" class="btn-secondary" id="recentBooksCta">فتح صفحة البحث</a>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 home-most-viewed-grid">
+            {% for book in recent_books %}
+            <article class="card book-card book-card-compact">
+                <a href="{% url 'book_detail' book.id %}" class="book-card-link-overlay"
+                    aria-label="{{ book.title }}"></a>
+                {% if book.cover_image %}
+                <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="book-card-media">
+                {% else %}
+                <img src="{{ library_branding.logo_url }}" alt="{{ book.title }}" class="book-card-media"
+                    style="object-fit: contain; padding: 1rem;">
+                {% endif %}
+                <h3 title="{{ book.title }}">{{ book.title }}</h3>
+                <p>{{ book.category.name|default:"-" }}</p>
+                <!-- <div class="mt-auto pt-2 text-xs font-bold text-slate-500">أضيف {{ book.created_at|date:"Y-m-d" }}</div> -->
+                <div class="book-card-actions">
+                    <a href="{% url 'book_detail' book.id %}" class="btn-primary">التفاصيل</a>
+                </div>
+            </article>
+            {% empty %}
+            <div class="col-span-full card text-center py-10 text-slate-500">لا توجد كتب مضافة حديثًا بعد.</div>
+            {% endfor %}
+            <a href="{% url 'recent_books' %}" class="card more-books-card">
+                <span class="text-2xl font-black">مشاهدة المزيد</span>
             </a>
         </div>
     </section>
@@ -86,9 +123,15 @@
     const homeSearchTarget = "{% url 'search_results' %}";
     const homeSearchGateway = document.getElementById('homeSearchGateway');
     const homeSearchButton = document.getElementById('homeSearchButton');
+    const popularBooksCta = document.getElementById('popularBooksCta');
+    const recentBooksCta = document.getElementById('recentBooksCta');
 
     function openSearchPage() {
         window.location.href = homeSearchTarget;
+    }
+
+    if (popularBooksCta && recentBooksCta) {
+        recentBooksCta.textContent = popularBooksCta.textContent;
     }
 
     homeSearchGateway?.addEventListener('focus', openSearchPage);

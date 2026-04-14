@@ -10,9 +10,32 @@
             <h1 class="text-2xl font-black">المكتبة الرقمية</h1>
             <p class="text-sm text-slate-500 mt-1">موارد رقمية بملفات PDF أو بروابط DOI.</p>
         </div>
-        <a href="{% url 'search_results' %}?search_scope=digital" class="btn-secondary" title="بحث داخل الرقمي"><i class="fa-solid fa-magnifying-glass"></i></a>
+        <div class="flex items-center gap-2 shrink-0">
+            <button type="button" id="openDigitalFilterDrawer" class="btn-secondary !px-3 !py-2"><i class="fa-solid fa-filter"></i></button>
+            <a href="{% url 'search_results' %}?search_scope=digital" class="btn-secondary" title="بحث داخل الرقمي"><i class="fa-solid fa-magnifying-glass"></i></a>
+        </div>
     </div>
 
+    <div id="digitalFilterBackdrop" class="fixed inset-0 bg-black/40 z-40 hidden"></div>
+    <aside id="digitalFilterDrawer" class="fixed top-0 left-0 h-full w-full max-w-md bg-white dark:bg-slate-950 z-50 transform -translate-x-full transition-transform duration-300 shadow-xl overflow-y-auto">
+        <form method="get" class="p-4 space-y-3">
+            <input type="hidden" name="search_scope" value="{{ fixed_search_scope }}">
+            <div>{{ filter_form.query }}</div>
+            <div>{{ filter_form.category }}</div>
+            <div>{{ filter_form.author }}</div>
+            <div>{{ filter_form.publisher }}</div>
+            <div>{{ filter_form.language }}</div>
+            <div class="grid grid-cols-2 gap-3">
+                {{ filter_form.min_pages }}
+                {{ filter_form.max_pages }}
+            </div>
+            <div>{{ filter_form.year }}</div>
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i></button>
+                <a href="{{ request.path }}" class="btn-secondary text-center"><i class="fa-solid fa-rotate-left"></i></a>
+            </div>
+        </form>
+    </aside>
     <div class="books-grid">
         {% for dbook in digital_books %}
             <article class="card book-card">
@@ -45,4 +68,27 @@
         {% endfor %}
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const digitalFilterDrawer = document.getElementById('digitalFilterDrawer');
+    const digitalFilterBackdrop = document.getElementById('digitalFilterBackdrop');
+    const openDigitalFilterDrawerBtn = document.getElementById('openDigitalFilterDrawer');
+
+    function openDigitalFilterDrawer() {
+        digitalFilterDrawer?.classList.remove('-translate-x-full');
+        digitalFilterBackdrop?.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDigitalFilterDrawer() {
+        digitalFilterDrawer?.classList.add('-translate-x-full');
+        digitalFilterBackdrop?.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    openDigitalFilterDrawerBtn?.addEventListener('click', openDigitalFilterDrawer);
+    digitalFilterBackdrop?.addEventListener('click', closeDigitalFilterDrawer);
+</script>
 {% endblock %}

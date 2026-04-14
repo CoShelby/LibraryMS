@@ -1,8 +1,10 @@
 from django.db.models import Count, ExpressionWrapper, F, IntegerField, Q
+from django.forms import HiddenInput
 from django.shortcuts import get_object_or_404, render
 
+from .forms import BookSearchForm
 from .models import Book
-from .selectors import get_similar_books
+from .selectors import get_similar_books, search_books
 
 
 def _books_queryset(ordering=("title",), physical_only=True):
@@ -31,13 +33,71 @@ def _books_queryset(ordering=("title",), physical_only=True):
     return qs.order_by(*ordering)
 
 
+FILTER_TRIGGER_FIELDS = (
+    "query",
+    "category",
+    "author",
+    "publisher",
+    "min_pages",
+    "max_pages",
+    "year",
+    "language",
+)
+
+
+def _has_active_filters(request):
+    for field in FILTER_TRIGGER_FIELDS:
+        value = request.GET.get(field)
+        if value and str(value).strip():
+            return True
+    return False
+
+
+def _filter_form(request, fixed_scope):
+    form = BookSearchForm(request.GET or None, initial={"search_scope": fixed_scope})
+    form.fields["search_scope"].widget = HiddenInput()
+    form.fields["search_scope"].initial = fixed_scope
+    return form
+
+
+def _ordered_books(books, ordering):
+    if hasattr(books, "order_by"):
+        return books.order_by(*ordering)
+    return books
+
+
+def _list_page_payload(request, fixed_scope, default_ordering):
+    form = _filter_form(request, fixed_scope)
+
+    if form.is_valid():
+        books = search_books(
+            query=form.cleaned_data.get("query"),
+            category=form.cleaned_data.get("category"),
+            author=form.cleaned_data.get("author"),
+            publisher=form.cleaned_data.get("publisher"),
+            min_pages=form.cleaned_data.get("min_pages"),
+            max_pages=form.cleaned_data.get("max_pages"),
+            year=form.cleaned_data.get("year"),
+            language=form.cleaned_data.get("language"),
+            search_scope=fixed_scope,
+        )
+    else:
+        books = search_books(search_scope=fixed_scope)
+
+    return {
+        "books": _ordered_books(books, default_ordering),
+        "filter_form": form,
+        "fixed_search_scope": fixed_scope,
+        "filters_active": _has_active_filters(request),
+    }
+
 def book_list_view(request):
-    books = _books_queryset(ordering=("title",), physical_only=True)
+    page_state = _list_page_payload(request, fixed_scope="physical", default_ordering=("title",))
     return render(
         request,
         "books/book_list.html",
         {
-            "books": books,
+            **page_state,
             "page_title": "دليل الكتب الورقية",
             "page_description": "استعراض جميع الكتب الورقية المتاحة داخل المكتبة.",
         },
@@ -45,15 +105,28 @@ def book_list_view(request):
 
 
 def most_viewed_books_view(request):
-    books = _books_queryset(ordering=("-view_count", "title"), physical_only=False)
+    page_state = _list_page_payload(request, fixed_scope="all", default_ordering=("-view_count", "title"))
     return render(
         request,
         "books/book_list.html",
         {
-            "books": books,
+            **page_state,
             "page_title": "الأكثر مشاهدة",
             "page_description": "الكتب الأعلى مشاهدة مرتبة من الأكثر إلى الأقل.",
             "show_view_count": True,
+        },
+    )
+
+
+def recent_books_view(request):
+    page_state = _list_page_payload(request, fixed_scope="all", default_ordering=("-created_at", "title"))
+    return render(
+        request,
+        "books/book_list.html",
+        {
+            **page_state,
+            "page_title": "Recently added",
+            "page_description": "Newest books sorted from latest to earliest.",
         },
     )
 
