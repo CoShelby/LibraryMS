@@ -35,6 +35,27 @@ def can_member_borrow(member):
     return get_active_borrows_count(member) < MAX_BORROW_LIMIT
 
 
+
+def get_member_active_borrowing_for_book(member, book):
+    return (
+        Borrowing.objects.filter(
+            member=member,
+            book_copy__book=book,
+            return_date__isnull=True,
+        )
+        .order_by("-borrow_date", "-id")
+        .first()
+    )
+
+
+
+def has_conflicting_approved_reservations(borrowing):
+    return Reservation.objects.filter(
+        book=borrowing.book_copy.book,
+        status="approved",
+    ).exclude(member=borrowing.member).exists()
+
+
 def _book_supply(book):
     usable_copies = BookCopy.objects.filter(book=book, status="new").count()
     active_borrowings = Borrowing.objects.filter(book_copy__book=book, return_date__isnull=True).count()
@@ -128,7 +149,7 @@ def renew_borrowing(borrowing):
 
     # تمنع تجديد الاستعارة فقط إذا كان هناك حجز معتمد (approved) على هذا الكتاب
     # الحجز المعلق (pending) وحده لا يمنع التجديد
-    if Reservation.objects.filter(book=borrowing.book_copy.book, status="approved").exists():
+    if has_conflicting_approved_reservations(borrowing):
         raise ValueError("لا يمكن تجديد الإعارة لوجود حجز معتمد على هذا الكتاب بانتظار عضو آخر.")
 
     borrowing.due_date = borrowing.due_date + get_borrow_duration()
@@ -147,6 +168,9 @@ def request_renewal(borrowing):
 
     if borrowing.renewal_requested:
         raise ValueError("تم إرسال طلب تجديد مسبقًا.")
+
+    if has_conflicting_approved_reservations(borrowing):
+        raise ValueError('Renewal is not allowed while another approved reservation exists for this book.')
 
     borrowing.renewal_requested = True
     borrowing.save(update_fields=["renewal_requested"])
@@ -190,6 +214,14 @@ def reserve_book(member, book):
     if not BookCopy.objects.filter(book=book).exists():
         raise ValueError("لا يمكن حجز كتاب رقمي فقط بدون نسخة ورقية.")
 
+    member_active_borrowing = get_member_active_borrowing_for_book(member, book)
+    if member_active_borrowing:
+        request_renewal(member_active_borrowing)
+        return {
+            'created_reservation': None,
+            'created_renewal_request': member_active_borrowing,
+        }
+
     usable_copies = BookCopy.objects.filter(book=book, status="new").count()
     active_borrowings = Borrowing.objects.filter(book_copy__book=book, return_date__isnull=True).count()
     if (usable_copies - active_borrowings) > 0:
@@ -209,7 +241,10 @@ def reserve_book(member, book):
         cancel_date=None,
     )
     create_reservation_created_notification(reservation)
-    return reservation
+    return {
+        'created_reservation': reservation,
+        'created_renewal_request': None,
+    }
 
 
 def approve_reservation(reservation):

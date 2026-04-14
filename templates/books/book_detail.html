@@ -71,11 +71,11 @@
                     <a href="{% url 'read_digital_book' book.id %}" class="btn-primary w-full">قراءة المورد الرقمي</a>
                     {% if digital_copy.pdf_file %}
                         <a href="{% url 'download_digital_book' book.id %}" class="btn-secondary w-full">تحميل الملف</a>
-                    {% elif book.doi %}
+                    <!-- {% elif book.doi %}
                         <a href="https://doi.org/{{ book.doi }}" target="_blank" rel="noopener" class="btn-secondary w-full">فتح DOI</a>
                     {% endif %}
                 {% elif book.doi %}
-                    <a href="https://doi.org/{{ book.doi }}" target="_blank" rel="noopener" class="btn-secondary w-full">فتح DOI</a>
+                    <a href="https://doi.org/{{ book.doi }}" target="_blank" rel="noopener" class="btn-secondary w-full">فتح DOI</a> -->
                 {% endif %}
 
                 {% if has_physical_copies %}

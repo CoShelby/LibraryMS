@@ -49,8 +49,11 @@ def reserve_view(request, book_id):
 
         try:
             member = Member.objects.get(membership_number=membership_number)
-            reserve_book(member, book)
-            messages.success(request, "تم إرسال طلب الحجز بنجاح، بانتظار موافقة الإدارة.")
+            reserve_result = reserve_book(member, book)
+            if reserve_result.get('created_renewal_request'):
+                messages.success(request, 'Renewal request sent to administration.')
+            else:
+                messages.success(request, "تم إرسال طلب الحجز بنجاح، بانتظار موافقة الإدارة.")
         except Member.DoesNotExist:
             messages.error(request, "رقم العضوية غير صحيح.")
         except ValueError as exc:

@@ -8,6 +8,7 @@ from accounts.services import admin_capability_required
 
 from .forms import MemberForm
 from .models import Member
+from .services import member_can_be_deleted
 
 
 @admin_capability_required("can_manage_members")
@@ -76,6 +77,10 @@ def edit_member(request, member_id):
 def delete_member(request, member_id):
     if request.method == "POST":
         member = get_object_or_404(Member, id=member_id)
+        if not member_can_be_deleted(member):
+            messages.error(request, 'لا يمكن حذف عضو لديه كتب مستعارة أو غرامات غير مدفوعة.')
+            return redirect('member_list')
+
         name = member.name
         member.delete()
         messages.success(request, f"تم حذف العضو {name} بنجاح.")

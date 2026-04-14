@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 
 from django.contrib import messages
@@ -424,6 +424,9 @@ def dashboard_delete_book_copy(request, copy_id):
     if request.method == "POST":
         copy = get_object_or_404(BookCopy, id=copy_id)
         book_id = copy.book_id
+        if Borrowing.objects.filter(book_copy=copy, return_date__isnull=True).exists():
+            messages.error(request, 'لا يمكن حذف نسخة مستعارة أثناء استعارتها.')
+            return redirect('dashboard_book_copies', book_id=book_id)
         copy.delete()
         messages.success(request, "تم حذف النسخة بنجاح.")
         return redirect("dashboard_book_copies", book_id=book_id)

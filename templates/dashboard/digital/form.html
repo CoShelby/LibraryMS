@@ -56,7 +56,7 @@
             <div>
                 <label for="{{ form.pdf_file.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.pdf_file.label }}</label>
                 {{ form.pdf_file }}
-                <p class="text-xs text-slate-500 mt-1">الملف اختياري إذا كان المورد يعتمد على DOI فقط.</p>
+                <!-- <p class="text-xs text-slate-500 mt-1">الملف اختياري إذا كان المورد يعتمد على DOI فقط.</p> -->
                 {% for error in form.pdf_file.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
         </div>

@@ -284,10 +284,8 @@
                 <div id="qrScannerFallbackActions" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button type="button" id="qrScannerCaptureButton" class="btn-primary w-full">فتح كاميرا
                         الهاتف</button>
-                    <button type="button" id="qrScannerImageButton" class="btn-secondary w-full">اختيار صورة QR</button>
                 </div>
-                <input id="qrScannerCameraInput" type="file" accept="image/*" capture="environment" class="hidden">
-                <input id="qrScannerImageInput" type="file" accept="image/*" class="hidden">
+                <input id="qrScannerCameraInput" type="file" accept="image/jpeg,image/png" capture="environment" class="hidden">
                 <p class="text-xs text-slate-500">سيحاول النظام تشغيل الكاميرا مباشرة عند توفرها، وإذا كان المتصفح يمنع
                     ذلك عبر الشبكة المحلية فسيتم فتح كاميرا الهاتف أو اختيار صورة QR بدلاً من ذلك.</p>
             </div>
@@ -432,9 +430,9 @@
 
         const scannerFallbackActions = document.getElementById('qrScannerFallbackActions');
         const scannerCaptureButton = document.getElementById('qrScannerCaptureButton');
-        const scannerImageButton = document.getElementById('qrScannerImageButton');
+        const scannerImageButton = null;
         const scannerCameraInput = document.getElementById('qrScannerCameraInput');
-        const scannerImageInput = document.getElementById('qrScannerImageInput');
+        const scannerImageInput = null;
 
         function isLocalScannerHost() {
             return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -442,6 +440,10 @@
 
         function canUseLiveScanner() {
             return Boolean(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && (window.isSecureContext || isLocalScannerHost());
+        }
+
+        function shouldPreferCameraCapture() {
+            return window.matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
         }
 
         function setScannerFallbackVisible(isVisible) {
@@ -592,7 +594,7 @@
             setScannerFallbackVisible(false);
             openScannerModal('جاري تجهيز الماسح...');
 
-            if (!canUseLiveScanner()) {
+            if (!canUseLiveScanner() || shouldPreferCameraCapture()) {
                 openFileScanner(targetInput, true);
                 return;
             }
