@@ -16,6 +16,7 @@ urlpatterns = [
     path("digital/", views.dashboard_digital_list, name="dashboard_digital_list"),
     path("digital/add/", views.dashboard_digital_add, name="dashboard_digital_add"),
     path("digital/edit/<int:digital_id>/", views.dashboard_digital_edit, name="dashboard_digital_edit"),
+    path("digital/delete/<int:digital_id>/", views.dashboard_digital_delete, name="dashboard_digital_delete"),
     path("categories/", views.dashboard_categories, name="dashboard_categories"),
     path("categories/<str:entity_type>/<int:entity_id>/update/", views.dashboard_update_entity, name="dashboard_update_entity"),
     path("categories/<str:entity_type>/<int:entity_id>/delete/", views.dashboard_delete_entity, name="dashboard_delete_entity"),

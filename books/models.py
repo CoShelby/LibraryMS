@@ -50,7 +50,6 @@ class Book(models.Model):
     dewey_decimal_number = models.CharField(max_length=100, db_index=True)
     title = models.CharField(max_length=300, db_index=True)
     isbn = models.CharField(max_length=32, blank=True, default="", db_index=True)
-    doi = models.CharField(max_length=255, blank=True, default="", db_index=True)
     authors = models.ManyToManyField(Author)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     publisher = models.ForeignKey(Publisher, on_delete=models.SET_NULL, null=True)
@@ -70,7 +69,6 @@ class Book(models.Model):
             models.Index(fields=["title", "view_count"]),
             models.Index(fields=["language", "publication_year"]),
             models.Index(fields=["isbn"]),
-            models.Index(fields=["doi"]),
         ]
 
     def __str__(self):

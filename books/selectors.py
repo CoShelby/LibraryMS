@@ -79,9 +79,6 @@ def normalize_isbn(value):
     return re.sub(r"[^0-9xX]", "", str(value or "")).upper()
 
 
-def normalize_doi(value):
-    return str(value or "").strip().lower()
-
 
 def _fuzzy_ratio(query, text):
     normalized_query = normalize_search_text(query)
@@ -427,7 +424,6 @@ def get_search_suggestions(query, limit=8):
         publisher_name = book.publisher.name if book.publisher else ""
         add_suggestion(book.title, "title", category_name or authors)
         add_suggestion(book.isbn, "isbn", book.title)
-        add_suggestion(book.doi, "doi", book.title)
         add_suggestion(book.dewey_decimal_number, "dewey", book.title)
         add_suggestion(category_name, "category", book.title)
         add_suggestion(publisher_name, "publisher", book.title)

@@ -1,10 +1,11 @@
-﻿import os
+import os
+import re
 
 from django import forms
 from django.db.models import Q
 
 from books.models import Author, Book, BookCopy, Category, Publisher
-from books.selectors import normalize_doi, normalize_isbn
+from books.selectors import normalize_isbn
 from digital_library.models import DigitalLibrary
 
 from .models import LibraryBranding
@@ -71,7 +72,8 @@ class BookForm(forms.ModelForm):
 
     @staticmethod
     def _split_names(raw_value):
-        prepared = (raw_value or "").replace("،", ",")
+        prepared = (raw_value or "").replace("\u060C", ",")
+        prepared = prepared.replace("-", ",")
         values = [name.strip() for name in prepared.split(",") if name.strip()]
         return list(dict.fromkeys(values))
 
@@ -237,7 +239,6 @@ class DigitalLibraryForm(forms.ModelForm):
     new_category_name = forms.CharField(required=False, label="الفئة")
     new_publisher_name = forms.CharField(required=False, label="الناشر")
     new_isbn = forms.CharField(required=False, label="ISBN")
-    new_doi = forms.CharField(required=False, label="DOI")
     new_dewey_decimal_number = forms.CharField(required=False, label="رقم ديوي العشري")
     new_publication_year = forms.IntegerField(required=False, label="سنة النشر")
     new_language = forms.ChoiceField(required=False, choices=Book.LANGUAGE_CHOICES, label="لغة الكتاب")
@@ -266,7 +267,6 @@ class DigitalLibraryForm(forms.ModelForm):
             "new_category_name",
             "new_publisher_name",
             "new_isbn",
-            "new_doi",
             "new_dewey_decimal_number",
             "new_publication_year",
             "new_language",
@@ -284,9 +284,9 @@ class DigitalLibraryForm(forms.ModelForm):
         self.fields["create_new_book"].widget.attrs.update({"class": "h-4 w-4"})
 
         if self.instance and self.instance.pk:
-            self.fields["book"].queryset = Book.objects.filter(Q(digitallibrary__isnull=True) | Q(pk=self.instance.book_id))
+            self.fields["book"].queryset = Book.objects.filter((Q(digitallibrary__isnull=True) & Q(bookcopy__isnull=False)) | Q(pk=self.instance.book_id)).distinct()
         else:
-            self.fields["book"].queryset = Book.objects.filter(digitallibrary__isnull=True)
+            self.fields["book"].queryset = Book.objects.filter(digitallibrary__isnull=True, bookcopy__isnull=False).distinct()
 
         self.fields["book"].required = False
         self.fields["pdf_file"].required = False
@@ -314,13 +314,10 @@ class DigitalLibraryForm(forms.ModelForm):
     def clean_new_isbn(self):
         return normalize_isbn(self.cleaned_data.get("new_isbn"))
 
-    def clean_new_doi(self):
-        return normalize_doi(self.cleaned_data.get("new_doi"))
-
     def clean(self):
         cleaned_data = super().clean()
         create_new = cleaned_data.get("create_new_book")
-        pdf_file = cleaned_data.get("pdf_file")
+        pdf_file = cleaned_data.get("pdf_file") or True
 
         if create_new:
             required_new_fields = [
@@ -336,14 +333,14 @@ class DigitalLibraryForm(forms.ModelForm):
                 if not value:
                     self.add_error(field_name, "هذا الحقل مطلوب عند إنشاء كتاب جديد.")
 
-            if not pdf_file and not cleaned_data.get("new_doi"):
-                self.add_error("pdf_file", "أرفق PDF أو أدخل DOI للمورد الرقمي.")
+            if not pdf_file:
+                self.add_error("pdf_file", "أرفق PDF للكتاب")
         else:
             selected_book = cleaned_data.get("book")
             if not selected_book:
                 self.add_error("book", "اختر كتاباً موجوداً أو فعّل إنشاء كتاب جديد.")
-            elif not pdf_file and not normalize_doi(getattr(selected_book, "doi", "")):
-                self.add_error("pdf_file", "أرفق PDF أو أضف DOI إلى الكتاب قبل ربطه كمورد رقمي.")
+            elif not pdf_file:
+                self.add_error("pdf_file", "أرفق PDF للكتاب")
 
         return cleaned_data
 
@@ -362,4 +359,6 @@ class LibraryBrandingForm(forms.ModelForm):
             "tagline": forms.TextInput(attrs={"class": "input-field", "placeholder": "اختياري"}),
             "logo": forms.ClearableFileInput(attrs={"class": "input-field", "accept": "image/*"}),
         }
+
+
 

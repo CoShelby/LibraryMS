@@ -18,7 +18,7 @@
 
         <form method="get" action="{% url 'search_results' %}" class="flex flex-col sm:flex-row gap-2 items-start" autocomplete="off" id="searchForm">
             <div class="suggestions-host flex-1 w-full">
-                <input id="searchQueryInput" type="text" name="query" value="{{ form.query.value|default:'' }}" class="input-field" placeholder="ابدأ الكتابة للبحث في العنوان والمؤلف والفئة والناشر وISBN وDOI..." autofocus>
+                <input id="searchQueryInput" type="text" name="query" value="{{ form.query.value|default:'' }}" class="input-field" placeholder="ابدأ الكتابة للبحث في العنوان والمؤلف والفئة والناشر وISBN..." autofocus>
                 <div id="searchSuggestions" class="search-suggestions hidden"></div>
             </div>
             {% if form.search_scope.value %}<input type="hidden" name="search_scope" value="{{ form.search_scope.value }}">{% endif %}
@@ -74,7 +74,8 @@
                     <p>الفئة: {{ book.category.name|default:"-" }}</p>
                     <p>المؤلف: {% for author in book.authors.all %}{{ author.name }}{% if not forloop.last %}، {% endif %}{% empty %}-{% endfor %}</p>
                     {% if book.publisher %}<p>الناشر: {{ book.publisher.name }}</p>{% endif %}
-                    {% if book.isbn %}<p dir="ltr">ISBN: {{ book.isbn }}</p>{% elif book.doi %}<p dir="ltr">DOI: {{ book.doi }}</p>{% endif %}
+                    {% if book.isbn %}<p dir="ltr">ISBN: {{ book.isbn }}</p>
+                    {% endif %}
 
                     <div class="mt-2 text-xs space-y-1">
                         <div>
@@ -101,7 +102,7 @@
                     {% if book.has_digital %}
                         <div class="book-card-actions !mt-2">
                             <a href="{% url 'read_digital_book' book.id %}" class="btn-secondary">قراءة</a>
-                            {% if book.doi %}<a href="https://doi.org/{{ book.doi }}" target="_blank" rel="noopener" class="btn-secondary">فتح DOI</a>{% else %}<a href="{% url 'download_digital_book' book.id %}" class="btn-secondary">تحميل</a>{% endif %}
+                            {% if book.digital_copy.pdf_file %}<a href="{% url 'download_digital_book' book.id %}" class="btn-secondary">تحميل</a>{% endif %}
                         </div>
                     {% endif %}
                 </article>
@@ -180,7 +181,6 @@
         'category': 'الفئة',
         'publisher': 'الناشر',
         'isbn': 'ISBN',
-        'doi': 'DOI',
         'dewey': 'ديوي'
     };
 

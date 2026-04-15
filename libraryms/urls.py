@@ -18,6 +18,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from rest_framework.authtoken.views import obtain_auth_token
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -29,4 +30,10 @@ urlpatterns = [
     path('members/', include('members.urls')),
     path('circulations/', include('circulations.urls')),
     path('api/', include('libraryms.api.urls')),
+    # Token auth quick usage:
+    # 1) Create a user from Django admin (/admin/) or run: python manage.py createsuperuser
+    # 2) Request token by POSTing username/password to: /api-token-auth/
+    # 3) In Postman for protected API calls, add header:
+    #    Authorization: Token <your_token>
+    path('api-token-auth/', obtain_auth_token, name='api_token_auth'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

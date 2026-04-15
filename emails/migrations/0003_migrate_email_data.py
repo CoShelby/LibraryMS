@@ -3,45 +3,62 @@
 from django.db import migrations
 
 
+def _safe_get_model(apps, app_label, model_name):
+    try:
+        return apps.get_model(app_label, model_name)
+    except LookupError:
+        return None
+
+
 def forward_func(apps, schema_editor):
-    OldLog = apps.get_model("dashboard", "MemberMessageLog")
-    NewLog = apps.get_model("emails", "MemberMessageLog")
+    OldLog = _safe_get_model(apps, "dashboard", "MemberMessageLog")
+    NewLog = _safe_get_model(apps, "emails", "MemberMessageLog")
+    if not OldLog or not NewLog:
+        return
 
     for old_obj in OldLog.objects.all():
-        NewLog.objects.create(
+        NewLog.objects.update_or_create(
             id=old_obj.id,
-            member_id=old_obj.member_id,
-            notification_id=old_obj.notification_id,
-            message_type=old_obj.message_type,
-            channel=old_obj.channel,
-            recipient=old_obj.recipient,
-            subject=old_obj.subject,
-            body=old_obj.body,
-            status=old_obj.status,
-            error_message=old_obj.error_message,
-            sent_by_id=old_obj.sent_by_id,
-            created_at=old_obj.created_at,
+            defaults={
+                "member_id": old_obj.member_id,
+                "notification_id": old_obj.notification_id,
+                "message_type": old_obj.message_type,
+                "channel": old_obj.channel,
+                "recipient": old_obj.recipient,
+                "subject": old_obj.subject,
+                "body": old_obj.body,
+                "status": old_obj.status,
+                "error_message": old_obj.error_message,
+                "sent_by_id": old_obj.sent_by_id,
+                "created_at": old_obj.created_at,
+            },
         )
+
 
 def reverse_func(apps, schema_editor):
-    OldLog = apps.get_model("dashboard", "MemberMessageLog")
-    NewLog = apps.get_model("emails", "MemberMessageLog")
+    OldLog = _safe_get_model(apps, "dashboard", "MemberMessageLog")
+    NewLog = _safe_get_model(apps, "emails", "MemberMessageLog")
+    if not OldLog or not NewLog:
+        return
 
     for new_obj in NewLog.objects.all():
-        OldLog.objects.create(
+        OldLog.objects.update_or_create(
             id=new_obj.id,
-            member_id=new_obj.member_id,
-            notification_id=new_obj.notification_id,
-            message_type=new_obj.message_type,
-            channel=new_obj.channel,
-            recipient=new_obj.recipient,
-            subject=new_obj.subject,
-            body=new_obj.body,
-            status=new_obj.status,
-            error_message=new_obj.error_message,
-            sent_by_id=new_obj.sent_by_id,
-            created_at=new_obj.created_at,
+            defaults={
+                "member_id": new_obj.member_id,
+                "notification_id": new_obj.notification_id,
+                "message_type": new_obj.message_type,
+                "channel": new_obj.channel,
+                "recipient": new_obj.recipient,
+                "subject": new_obj.subject,
+                "body": new_obj.body,
+                "status": new_obj.status,
+                "error_message": new_obj.error_message,
+                "sent_by_id": new_obj.sent_by_id,
+                "created_at": new_obj.created_at,
+            },
         )
+
 
 class Migration(migrations.Migration):
 

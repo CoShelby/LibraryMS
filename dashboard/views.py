@@ -563,7 +563,6 @@ def dashboard_digital_add(request):
                 book = Book.objects.create(
                     title=inferred_title,
                     isbn=form.cleaned_data.get("new_isbn") or "",
-                    doi=form.cleaned_data.get("new_doi") or "",
                     dewey_decimal_number=form.cleaned_data["new_dewey_decimal_number"].strip(),
                     category=category,
                     publisher=publisher,
@@ -668,6 +667,16 @@ def dashboard_digital_edit(request, digital_id):
         },
     )
 
+
+@admin_capability_required("can_manage_books")
+def dashboard_digital_delete(request, digital_id):
+    if request.method != "POST":
+        return redirect("dashboard_digital_list")
+
+    digital_book = get_object_or_404(DigitalLibrary, id=digital_id)
+    digital_book.delete()
+    messages.success(request, "Digital resource deleted successfully.")
+    return redirect("dashboard_digital_list")
 
 @admin_capability_required("can_manage_categories")
 def dashboard_categories(request):
@@ -1371,7 +1380,10 @@ def _delete_admin_related_data(admin_user):
     # حذف العلاقات المباشرة المرتبطة بالحساب قبل الحذف النهائي لتفادي بيانات يتيمة.
     Log.objects.filter(user=admin_user).delete()
     Loan.objects.filter(user=admin_user).delete()
+    FinePayment.objects.filter(created_by=admin_user).delete()
+    Borrowing.objects.filter(created_by=admin_user).delete()
     Borrowing.objects.filter(employee=admin_user).delete()
+    Book.objects.filter(created_by=admin_user).delete()
 
 
 def _apply_input_css(form):
@@ -1663,4 +1675,3 @@ def api_create_entity(request):
         return JsonResponse({"success": True, "id": obj.id, "name": getattr(obj, "name", "")})
     except Exception as exc:
         return JsonResponse({"error": str(exc)}, status=500)
-

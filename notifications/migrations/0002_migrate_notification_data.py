@@ -3,41 +3,58 @@
 from django.db import migrations
 
 
+def _safe_get_model(apps, app_label, model_name):
+    try:
+        return apps.get_model(app_label, model_name)
+    except LookupError:
+        return None
+
+
 def forward_func(apps, schema_editor):
-    OldNotification = apps.get_model("dashboard", "Notification")
-    NewNotification = apps.get_model("notifications", "Notification")
+    OldNotification = _safe_get_model(apps, "dashboard", "Notification")
+    NewNotification = _safe_get_model(apps, "notifications", "Notification")
+    if not OldNotification or not NewNotification:
+        return
 
     for old_obj in OldNotification.objects.all():
-        NewNotification.objects.create(
+        NewNotification.objects.update_or_create(
             id=old_obj.id,
-            notification_type=old_obj.notification_type,
-            title=old_obj.title,
-            message=old_obj.message,
-            borrowing_id=old_obj.borrowing_id,
-            reservation_id=old_obj.reservation_id,
-            member_id=old_obj.member_id,
-            is_read=old_obj.is_read,
-            created_at=old_obj.created_at,
-            updated_at=old_obj.updated_at,
+            defaults={
+                "notification_type": old_obj.notification_type,
+                "title": old_obj.title,
+                "message": old_obj.message,
+                "borrowing_id": old_obj.borrowing_id,
+                "reservation_id": old_obj.reservation_id,
+                "member_id": old_obj.member_id,
+                "is_read": old_obj.is_read,
+                "created_at": old_obj.created_at,
+                "updated_at": old_obj.updated_at,
+            },
         )
+
 
 def reverse_func(apps, schema_editor):
-    OldNotification = apps.get_model("dashboard", "Notification")
-    NewNotification = apps.get_model("notifications", "Notification")
+    OldNotification = _safe_get_model(apps, "dashboard", "Notification")
+    NewNotification = _safe_get_model(apps, "notifications", "Notification")
+    if not OldNotification or not NewNotification:
+        return
 
     for new_obj in NewNotification.objects.all():
-        OldNotification.objects.create(
+        OldNotification.objects.update_or_create(
             id=new_obj.id,
-            notification_type=new_obj.notification_type,
-            title=new_obj.title,
-            message=new_obj.message,
-            borrowing_id=new_obj.borrowing_id,
-            reservation_id=new_obj.reservation_id,
-            member_id=new_obj.member_id,
-            is_read=new_obj.is_read,
-            created_at=new_obj.created_at,
-            updated_at=new_obj.updated_at,
+            defaults={
+                "notification_type": new_obj.notification_type,
+                "title": new_obj.title,
+                "message": new_obj.message,
+                "borrowing_id": new_obj.borrowing_id,
+                "reservation_id": new_obj.reservation_id,
+                "member_id": new_obj.member_id,
+                "is_read": new_obj.is_read,
+                "created_at": new_obj.created_at,
+                "updated_at": new_obj.updated_at,
+            },
         )
+
 
 class Migration(migrations.Migration):
 

@@ -1,6 +1,6 @@
 ﻿{% extends "base.html" %}
 
-{% block title %}قراءة مورد رقمي | {{ library_branding.name }}{% endblock %}
+{% block title %}قراءة الكتاب | {{ library_branding.name }}{% endblock %}
 
 {% block content %}
 <section class="space-y-4">
@@ -8,7 +8,6 @@
         <h1 class="text-2xl font-black">{{ digital_book.book.title }}</h1>
         <div class="flex gap-2 flex-wrap">
             {% if digital_book.pdf_file %}<a href="{% url 'download_digital_book' digital_book.book.id %}" class="btn-primary">تحميل الملف</a>{% endif %}
-            {% if digital_book.book.doi %}<a href="https://doi.org/{{ digital_book.book.doi }}" target="_blank" rel="noopener" class="btn-secondary">فتح DOI</a>{% endif %}
             <a href="{% url 'book_detail' digital_book.book.id %}" class="btn-secondary">تفاصيل الكتاب</a>
         </div>
     </div>
@@ -16,16 +15,8 @@
     <div class="card p-0 overflow-hidden h-[78vh]">
         {% if digital_book.pdf_file %}
             <iframe src="{{ digital_book.pdf_file.url }}#toolbar=1&navpanes=1&scrollbar=1" class="w-full h-full border-0" title="{{ digital_book.book.title }}" loading="eager"></iframe>
-        {% elif digital_book.book.doi %}
-            <div class="w-full h-full grid place-content-center text-center px-6">
-                <div>
-                    <h2 class="text-xl font-black mb-2">لا يوجد ملف PDF مرفق</h2>
-                    <p class="text-slate-500 mb-4">هذا المورد الرقمي متاح عبر DOI فقط.</p>
-                    <a href="https://doi.org/{{ digital_book.book.doi }}" target="_blank" rel="noopener" class="btn-primary">فتح المورد عبر DOI</a>
-                </div>
-            </div>
         {% else %}
-            <div class="w-full h-full grid place-content-center text-slate-500">لا يوجد ملف PDF أو DOI متاح لهذا المورد.</div>
+            <div class="w-full h-full grid place-content-center text-slate-500">لا يوجد ملف PDF متاح لهذا الكتاب.</div>
         {% endif %}
     </div>
 </section>

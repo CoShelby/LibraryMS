@@ -28,8 +28,8 @@ class PublisherAdmin(admin.ModelAdmin):
 
 @admin.register(Book)
 class BookAdmin(admin.ModelAdmin):
-    list_display = ("title", "isbn", "doi", "category", "publisher", "created_by", "publication_year", "language", "view_count")
-    search_fields = ("title", "isbn", "doi", "dewey_decimal_number")
+    list_display = ("title", "isbn", "category", "publisher", "created_by", "publication_year", "language", "view_count")
+    search_fields = ("title", "isbn", "dewey_decimal_number")
     list_filter = ("category", "publication_year", "language")
 
 

@@ -25,6 +25,47 @@
         background: #0f172a !important;
         color: #e2e8f0 !important;
     }
+    .book-search-dropdown {
+        position: absolute;
+        inset-inline: 0;
+        top: calc(100% + 0.35rem);
+        z-index: 30;
+        max-height: 16rem;
+        overflow-y: auto;
+        border: 1px solid rgba(93, 62, 63, 0.2);
+        border-radius: 0.75rem;
+        background: #ffffff;
+        box-shadow: 0 12px 20px rgba(15, 23, 42, 0.1);
+    }
+    .book-search-dropdown.hidden {
+        display: none;
+    }
+    .book-search-option {
+        display: block;
+        width: 100%;
+        text-align: start;
+        background: transparent;
+        border: 0;
+        padding: 0.6rem 0.85rem;
+        cursor: pointer;
+        font-size: 0.92rem;
+    }
+    .book-search-option:hover,
+    .book-search-option:focus,
+    .book-search-option.active {
+        background: rgba(15, 23, 42, 0.08);
+        outline: none;
+    }
+    html[data-theme="dark"] .book-search-dropdown {
+        background: #0f172a;
+        border-color: rgba(166, 186, 174, 0.35);
+        box-shadow: 0 10px 22px rgba(2, 6, 23, 0.45);
+    }
+    html[data-theme="dark"] .book-search-option:hover,
+    html[data-theme="dark"] .book-search-option:focus,
+    html[data-theme="dark"] .book-search-option.active {
+        background: rgba(148, 163, 184, 0.18);
+    }
 </style>
 {% endblock %}
 
@@ -33,7 +74,7 @@
     <div class="flex items-center justify-between gap-3 flex-wrap">
         <div>
             <h1 class="text-2xl font-black">{{ title }}</h1>
-            <p class="text-sm text-slate-500 mt-1">يمكن أن يكون المورد الرقمي ملف PDF أو رابط DOI أو كليهما.</p>
+            <p class="text-sm text-slate-500 mt-1"> ملف PDF .</p>
         </div>
         <a href="{% url 'dashboard_digital_list' %}" class="btn-secondary">رجوع</a>
     </div>
@@ -56,7 +97,6 @@
             <div>
                 <label for="{{ form.pdf_file.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.pdf_file.label }}</label>
                 {{ form.pdf_file }}
-                <!-- <p class="text-xs text-slate-500 mt-1">الملف اختياري إذا كان المورد يعتمد على DOI فقط.</p> -->
                 {% for error in form.pdf_file.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
         </div>
@@ -82,11 +122,7 @@
                 {{ form.new_isbn }}
                 {% for error in form.new_isbn.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
             </div>
-            <div>
-                <label for="{{ form.new_doi.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_doi.label }}</label>
-                {{ form.new_doi }}
-                {% for error in form.new_doi.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
-            </div>
+           
             <div>
                 <label for="{{ form.new_author_names.id_for_label }}" class="block text-sm font-bold mb-1">{{ form.new_author_names.label }}</label>
                 {{ form.new_author_names }}
@@ -148,36 +184,194 @@
 <script>
     const searchInput = document.getElementById('existing_book_search');
     const hiddenBookId = document.getElementById('{{ form.book.id_for_label }}');
-
-    if (searchInput && hiddenBookId) {
-        searchInput.addEventListener('input', function(e) {
-            const val = e.target.value;
-            // Handle explicit escaping issues by comparing exactly what's typed
-            const allOptions = document.querySelectorAll('#existing-books-options option');
-            let matchedId = '';
-            for (let opt of allOptions) {
-                if (opt.value === val) {
-                    matchedId = opt.getAttribute('data-id');
-                    break;
-                }
-            }
-            hiddenBookId.value = matchedId;
-        });
-    }
+    const optionsHost = document.getElementById('existing-books-options');
 
     const createCheckbox = document.getElementById('{{ form.create_new_book.id_for_label }}');
     const newFieldsBox = document.getElementById('new-book-fields');
     const existingBookContainer = document.getElementById('existing_book_search');
+
+    const allBookOptions = optionsHost
+        ? Array.from(optionsHost.querySelectorAll('option')).map((opt) => ({
+            id: (opt.getAttribute('data-id') || '').trim(),
+            title: (opt.value || '').trim(),
+            lookup: (opt.value || '').toLowerCase().trim(),
+        })).filter((item) => item.id && item.title)
+        : [];
+
+    let dropdownEl = null;
+    let highlightedIndex = -1;
+
+    function ensureDropdown() {
+        if (!searchInput || dropdownEl) {
+            return;
+        }
+        searchInput.removeAttribute('list');
+        const wrapper = searchInput.parentElement;
+        if (!wrapper) {
+            return;
+        }
+        wrapper.style.position = 'relative';
+        dropdownEl = document.createElement('div');
+        dropdownEl.className = 'book-search-dropdown hidden';
+        dropdownEl.id = 'existing-book-dropdown';
+        wrapper.appendChild(dropdownEl);
+    }
+
+    function setSelectedBook(option) {
+        if (!searchInput || !hiddenBookId) {
+            return;
+        }
+        searchInput.value = option?.title || '';
+        hiddenBookId.value = option?.id || '';
+    }
+
+    function syncSelectionFromText() {
+        if (!searchInput || !hiddenBookId) {
+            return;
+        }
+        const typed = searchInput.value.trim();
+        if (!typed) {
+            hiddenBookId.value = '';
+            return;
+        }
+        const exact = allBookOptions.find((item) => item.title === typed);
+        hiddenBookId.value = exact ? exact.id : '';
+    }
+
+    function closeDropdown() {
+        if (!dropdownEl) {
+            return;
+        }
+        dropdownEl.classList.add('hidden');
+        highlightedIndex = -1;
+    }
+
+    function renderDropdown() {
+        if (!searchInput || !dropdownEl) {
+            return;
+        }
+        if (createCheckbox?.checked) {
+            closeDropdown();
+            return;
+        }
+
+        const query = searchInput.value.toLowerCase().trim();
+        const filtered = allBookOptions
+            .filter((item) => !query || item.lookup.includes(query))
+            .slice(0, 50);
+
+        dropdownEl.innerHTML = '';
+        highlightedIndex = -1;
+
+        if (!filtered.length) {
+            closeDropdown();
+            return;
+        }
+
+        filtered.forEach((item, index) => {
+            const optionBtn = document.createElement('button');
+            optionBtn.type = 'button';
+            optionBtn.className = 'book-search-option';
+            optionBtn.textContent = item.title;
+            optionBtn.dataset.id = item.id;
+            optionBtn.dataset.title = item.title;
+            optionBtn.dataset.index = String(index);
+            optionBtn.addEventListener('mousedown', (event) => {
+                event.preventDefault();
+                setSelectedBook(item);
+                closeDropdown();
+            });
+            dropdownEl.appendChild(optionBtn);
+        });
+
+        dropdownEl.classList.remove('hidden');
+    }
+
+    function moveHighlight(step) {
+        if (!dropdownEl || dropdownEl.classList.contains('hidden')) {
+            return;
+        }
+        const items = Array.from(dropdownEl.querySelectorAll('.book-search-option'));
+        if (!items.length) {
+            return;
+        }
+
+        highlightedIndex += step;
+        if (highlightedIndex < 0) {
+            highlightedIndex = items.length - 1;
+        } else if (highlightedIndex >= items.length) {
+            highlightedIndex = 0;
+        }
+
+        items.forEach((item, idx) => {
+            item.classList.toggle('active', idx === highlightedIndex);
+        });
+        items[highlightedIndex].scrollIntoView({ block: 'nearest' });
+    }
+
+    if (searchInput && hiddenBookId) {
+        ensureDropdown();
+        syncSelectionFromText();
+
+        searchInput.addEventListener('input', () => {
+            syncSelectionFromText();
+            renderDropdown();
+        });
+
+        searchInput.addEventListener('focus', () => {
+            renderDropdown();
+        });
+
+        searchInput.addEventListener('keydown', (event) => {
+            if (!dropdownEl || dropdownEl.classList.contains('hidden')) {
+                if (event.key === 'ArrowDown') {
+                    renderDropdown();
+                }
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                moveHighlight(1);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                moveHighlight(-1);
+            } else if (event.key === 'Enter') {
+                const items = Array.from(dropdownEl.querySelectorAll('.book-search-option'));
+                if (items.length && highlightedIndex >= 0) {
+                    event.preventDefault();
+                    const picked = items[highlightedIndex];
+                    setSelectedBook({ id: picked.dataset.id, title: picked.dataset.title });
+                    closeDropdown();
+                }
+            } else if (event.key === 'Escape') {
+                closeDropdown();
+            }
+        });
+
+        document.addEventListener('mousedown', (event) => {
+            if (!dropdownEl) {
+                return;
+            }
+            const insideSearch = searchInput.contains(event.target);
+            const insideDropdown = dropdownEl.contains(event.target);
+            if (!insideSearch && !insideDropdown) {
+                closeDropdown();
+            }
+        });
+    }
 
     function toggleNewBookFields() {
         if (!createCheckbox || !newFieldsBox || !existingBookContainer) return;
         const createNew = createCheckbox.checked;
         newFieldsBox.style.display = createNew ? 'grid' : 'none';
         existingBookContainer.closest('div').style.opacity = createNew ? '0.6' : '1';
-        
+        existingBookContainer.readOnly = createNew;
+
         if (createNew) {
             existingBookContainer.value = '';
             if (hiddenBookId) hiddenBookId.value = '';
+            closeDropdown();
         }
     }
 
