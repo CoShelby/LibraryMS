@@ -555,7 +555,7 @@ def dashboard_digital_add(request):
                     detected_pages, extracted_cover, metadata_title = _extract_pdf_metadata(pdf_file)
 
                 typed_title = (form.cleaned_data.get("new_title") or "").strip()
-                inferred_title = typed_title or metadata_title or (_title_from_filename(pdf_file) if pdf_file else "") or "مورد رقمي"
+                inferred_title = typed_title or metadata_title or (_title_from_filename(pdf_file) if pdf_file else "") or "نسخة رقمية"
                 pages_value = form.cleaned_data.get("new_pages") or detected_pages
                 category = _resolve_category(form.cleaned_data["new_category_name"].strip())
                 publisher, _ = Publisher.objects.get_or_create(name=form.cleaned_data["new_publisher_name"].strip())
@@ -620,7 +620,7 @@ def dashboard_digital_add(request):
 
                 form.save()
 
-            messages.success(request, "تمت إضافة المورد الرقمي.")
+            messages.success(request, "تمت إضافة الملف الرقمي.")
             return redirect("dashboard_digital_list")
     else:
         form = DigitalLibraryForm()
@@ -630,7 +630,7 @@ def dashboard_digital_add(request):
         "dashboard/digital/form.html",
         {
             "form": form,
-            "title": "إضافة مورد رقمي",
+            "title": "إضافة  نسخة رقمية",
             "submit_label": "حفظ",
             "authors_options": Author.objects.order_by("name").values_list("name", flat=True),
             "categories_options": Category.objects.order_by("name").values_list("name", flat=True),
@@ -647,9 +647,9 @@ def dashboard_digital_edit(request, digital_id):
         if form.is_valid():
             if form.cleaned_data.get("book"):
                 form.save()
-                messages.success(request, "تم تحديث بيانات المورد الرقمي.")
+                messages.success(request, "تم تحديث بيانات الملف الرقمي.")
                 return redirect("dashboard_digital_list")
-            messages.error(request, "في التعديل اختر كتابًا موجودًا مرتبطًا بالمورد الرقمي.")
+            messages.error(request, "في التعديل اختر كتابًا موجودًا مرتبطًا الملف الرقمي.")
     else:
         form = DigitalLibraryForm(instance=digital_book)
 
@@ -658,7 +658,7 @@ def dashboard_digital_edit(request, digital_id):
         "dashboard/digital/form.html",
         {
             "form": form,
-            "title": f"تعديل مورد رقمي: {digital_book.book.title}",
+            "title": f"تعديل  ملف رقمي: {digital_book.book.title}",
             "submit_label": "حفظ التعديلات",
             "digital_book": digital_book,
             "authors_options": Author.objects.order_by("name").values_list("name", flat=True),

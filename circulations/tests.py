@@ -68,7 +68,7 @@ class ReserveBookRenewalFlowTests(TestCase):
 
         with self.assertRaisesMessage(
             ValueError,
-            "Renewal is not allowed while another approved reservation exists for this book.",
+            "التجديد  غير مسموح به بينما يوجد حجز آخر معتمد لهذا الكتاب.",
         ):
             reserve_book(borrower, book)
 

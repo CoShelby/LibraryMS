@@ -233,7 +233,7 @@ class BookCopyForm(forms.ModelForm):
 
 
 class DigitalLibraryForm(forms.ModelForm):
-    create_new_book = forms.BooleanField(required=False, label="إضافة كتاب جديد مع المورد الرقمي")
+    create_new_book = forms.BooleanField(required=False, label="إضافة كتاب جديد الملف  الرقمي")
     new_title = forms.CharField(required=False, label="عنوان الكتاب")
     new_author_names = forms.CharField(required=False, label="المؤلف/المؤلفون")
     new_category_name = forms.CharField(required=False, label="الفئة")
@@ -298,7 +298,7 @@ class DigitalLibraryForm(forms.ModelForm):
 
         extension = os.path.splitext((pdf_file.name or "").lower())[1]
         if extension != ".pdf":
-            raise forms.ValidationError("ملف المورد الرقمي يجب أن يكون PDF.")
+            raise forms.ValidationError("ملف الملف الرقمي يجب أن يكون PDF.")
 
         content_type = getattr(pdf_file, "content_type", "") or ""
         if content_type and "pdf" not in content_type.lower():

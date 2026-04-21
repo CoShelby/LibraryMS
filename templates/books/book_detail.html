@@ -94,7 +94,7 @@
                 {% endif %}
 
                 {% if digital_copy %}
-                    <a href="{% url 'read_digital_book' book.id %}" class="btn-primary w-full">قراءة المورد الرقمي</a>
+                    <a href="{% url 'read_digital_book' book.id %}" class="btn-primary w-full">قراءة النسخة الرقمي</a>
                     {% if digital_copy.pdf_file %}
                         <a href="{% url 'download_digital_book' book.id %}" class="btn-secondary w-full">تحميل الملف</a>
                     {% endif %}
