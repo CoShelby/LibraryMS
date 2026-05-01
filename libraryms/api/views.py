@@ -4,10 +4,13 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from books.models import Book
+from circulations.models import Fine, FinePayment
 from books.selectors import get_popular_books
 
 from .registry import API_MODELS
 from .serializers import build_serializer
+
+READ_ONLY_MODELS = {Fine, FinePayment}
 
 
 def _queryset_for_model(model):
@@ -86,6 +89,8 @@ def build_viewset(model):
         "filterset_fields": _filterset_fields(model),
         "search_fields": _search_fields(model),
     }
+    if model in READ_ONLY_MODELS:
+        attrs["http_method_names"] = ["get", "head", "options"]
     return type(f"{model.__name__}ViewSet", (viewsets.ModelViewSet,), attrs)
 
 
@@ -103,3 +108,4 @@ def most_viewed_books_endpoint(request):
 @api_view(["GET"])
 def recent_searches_endpoint(request):
     return Response({"results": request.session.get("recent_searches", [])})
+

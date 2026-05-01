@@ -368,3 +368,176 @@ body {
         background: #ffffff !important;
     }
 }
+/* Global polish and desktop navigation behavior */
+:root {
+    --surface-0: #f4efe5;
+    --surface-1: #ffffff;
+    --surface-2: #f8fafc;
+    --surface-border: rgba(93, 62, 63, 0.16);
+    --text-primary: #1f2937;
+    --text-muted: #64748b;
+    --ring-color: rgba(93, 62, 63, 0.18);
+}
+
+body {
+    line-height: 1.55;
+    color: var(--text-primary);
+}
+
+main {
+    max-width: 1800px;
+}
+
+h1,
+h2,
+h3,
+h4 {
+    letter-spacing: -0.015em;
+}
+
+.card {
+    border-radius: 1rem;
+    border: 1px solid var(--surface-border);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.09);
+}
+
+.input-field,
+select.input-field,
+textarea.input-field {
+    min-height: 2.65rem;
+    background: var(--surface-1);
+    border-color: rgba(100, 116, 139, 0.28);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.input-field:focus,
+select.input-field:focus,
+textarea.input-field:focus {
+    box-shadow: 0 0 0 4px var(--ring-color);
+}
+
+.btn-primary,
+.btn-secondary {
+    min-height: 2.6rem;
+    border-radius: 0.8rem;
+    font-size: 0.9rem;
+}
+
+.btn-primary {
+    box-shadow: 0 10px 18px rgba(93, 62, 63, 0.22);
+}
+
+.btn-secondary {
+    border: 1px solid rgba(71, 85, 105, 0.24);
+}
+
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+thead th {
+    font-weight: 800;
+    color: #334155;
+}
+
+tbody td,
+tbody th {
+    vertical-align: middle;
+}
+
+tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+tbody tr:hover {
+    background: rgba(148, 163, 184, 0.12);
+}
+
+.sidebar-link {
+    min-height: 2.65rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease, gap 0.2s ease, font-size 0.2s ease;
+}
+
+.sidebar-link i {
+    width: 1.15rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.notification-modal-dialog {
+    box-shadow: 0 24px 56px rgba(15, 23, 42, 0.22);
+}
+
+[data-theme="dark"] {
+    --surface-0: #0f172a;
+    --surface-1: #0b1220;
+    --surface-2: #0f172a;
+    --surface-border: rgba(148, 163, 184, 0.26);
+    --text-primary: #e2e8f0;
+    --text-muted: #94a3b8;
+    --ring-color: rgba(166, 186, 174, 0.2);
+}
+
+[data-theme="dark"] thead th {
+    color: #cbd5e1;
+}
+
+@media (min-width: 768px) {
+    #app-drawer {
+        width: 5.4rem;
+        transition: width 0.28s ease, box-shadow 0.28s ease;
+        overflow-x: hidden;
+    }
+
+    #app-drawer:hover,
+    #app-drawer:focus-within {
+        width: 18.6rem;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+    }
+
+    #app-drawer:not(:hover):not(:focus-within) > div:first-child,
+    #app-drawer:not(:hover):not(:focus-within) > div:last-child {
+        opacity: 0;
+        pointer-events: none;
+        height: 0;
+        overflow: hidden;
+        margin: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        border: 0;
+    }
+
+    #app-drawer:not(:hover):not(:focus-within) nav {
+        padding-inline: 0.6rem;
+        margin-top: 0.7rem;
+    }
+
+    #app-drawer:not(:hover):not(:focus-within) nav > .text-xs {
+        display: none;
+    }
+
+    #app-drawer:not(:hover):not(:focus-within) .sidebar-link {
+        justify-content: center;
+        gap: 0;
+        font-size: 0;
+        padding-inline: 0.75rem;
+    }
+
+    #app-drawer:not(:hover):not(:focus-within) .sidebar-link i {
+        font-size: 1rem;
+    }
+
+    main.md\:pr-80 {
+        padding-right: 7.25rem;
+        transition: padding-right 0.28s ease;
+    }
+
+    #app-drawer:hover ~ main.md\:pr-80,
+    #app-drawer:focus-within ~ main.md\:pr-80 {
+        padding-right: 20rem;
+    }
+}

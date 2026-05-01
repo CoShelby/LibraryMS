@@ -105,9 +105,16 @@ def _extract_pdf_metadata(pdf_file):
         pdf_file.seek(0)
         data = pdf_file.read()
         document = fitz.open(stream=data, filetype="pdf")
+        if pages is None:
+            pages = document.page_count
+        if not metadata_title:
+            fitz_title = (document.metadata or {}).get("title")
+            if fitz_title:
+                metadata_title = str(fitz_title).strip()
         first_page = document.load_page(0)
         pix = first_page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
         cover_content = ContentFile(pix.tobytes("png"))
+        document.close()
     except Exception:
         cover_content = None
     finally:
@@ -646,7 +653,12 @@ def dashboard_digital_edit(request, digital_id):
         form = DigitalLibraryForm(request.POST, request.FILES, instance=digital_book)
         if form.is_valid():
             if form.cleaned_data.get("book"):
-                form.save()
+                updated_digital = form.save()
+                if updated_digital.pdf_file and not updated_digital.book.cover_image:
+                    _, extracted_cover, _ = _extract_pdf_metadata(updated_digital.pdf_file)
+                    if extracted_cover:
+                        filename = f"{slugify(updated_digital.book.title) or 'book'}-cover.png"
+                        updated_digital.book.cover_image.save(filename, extracted_cover, save=True)
                 messages.success(request, "تم تحديث بيانات الملف الرقمي.")
                 return redirect("dashboard_digital_list")
             messages.error(request, "في التعديل اختر كتابًا موجودًا مرتبطًا الملف الرقمي.")
@@ -1028,6 +1040,16 @@ def dashboard_reject_renewal(request, borrowing_id):
     return redirect("dashboard_circulation")
 
 
+
+def _latest_fine_payment_user(fine):
+    payments = list(fine.payments.all())
+    if not payments:
+        return "-"
+    latest_payment = max(payments, key=lambda payment: payment.created_at)
+    if latest_payment.created_by:
+        return latest_payment.created_by.username
+    return "-"
+
 @admin_required
 def dashboard_reports(request):
     table = request.GET.get("table", "books")
@@ -1202,7 +1224,7 @@ def dashboard_reports(request):
         },
         "fines": {
             "label": "الغرامات",
-            "queryset": Fine.objects.select_related("borrowing__member", "borrowing__book_copy__book", "payment__created_by"),
+            "queryset": Fine.objects.select_related("borrowing__member", "borrowing__book_copy__book").prefetch_related("payments__created_by"),
             "sort_options": [
                 ("created_at", "الأقدم"),
                 ("-created_at", "الأحدث"),
@@ -1218,7 +1240,7 @@ def dashboard_reports(request):
                     item.days_late,
                     item.amount,
                     "paid" if item.paid else "unpaid",
-                    item.payment.created_by.username if hasattr(item, "payment") and item.payment and item.payment.created_by else "-",
+                    _latest_fine_payment_user(item),
                     item.created_at,
                 ]
                 for item in q
@@ -1276,24 +1298,8 @@ def dashboard_reports(request):
 
 @admin_capability_required("can_manage_circulation")
 def dashboard_update_fine_payment(request, fine_id):
-    fine = get_object_or_404(Fine, id=fine_id)
     next_url = request.POST.get("next") or reverse("dashboard_reports")
-
-    if request.method == "POST":
-        is_paid = request.POST.get("paid_status") == "paid"
-        fine.paid = is_paid
-        fine.save(update_fields=["paid"])
-
-        if is_paid:
-            FinePayment.objects.update_or_create(
-                fine=fine,
-                defaults={"created_by": request.user},
-            )
-        else:
-            FinePayment.objects.filter(fine=fine).delete()
-
-        messages.success(request, "تم تحديث حالة دفع الغرامة.")
-
+    messages.error(request, "Fine payments are API-only and cannot be submitted from the dashboard.")
     return redirect(next_url)
 
 @admin_required

@@ -1,4 +1,4 @@
-﻿from django.contrib import admin
+from django.contrib import admin
 
 from .models import Borrowing, Fine, FinePayment, Loan, Reservation
 
@@ -24,7 +24,7 @@ class FineAdmin(admin.ModelAdmin):
 
 @admin.register(FinePayment)
 class FinePaymentAdmin(admin.ModelAdmin):
-    list_display = ("fine", "created_by", "created_at")
+    list_display = ("fine", "amount", "created_by", "created_at")
     search_fields = ("fine__borrowing__member__name", "fine__borrowing__book_copy__book__title", "created_by__username")
 
 

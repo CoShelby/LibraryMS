@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Sum
 
 from accounts.models import User
 from books.models import Book, BookCopy
@@ -49,17 +50,43 @@ class Fine(models.Model):
     paid = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def total_paid_amount(self):
+        if "payments" in getattr(self, "_prefetched_objects_cache", {}):
+            return sum(payment.amount for payment in self.payments.all())
+        return self.payments.aggregate(total=Sum("amount")).get("total") or 0
+
+    @property
+    def unpaid_amount(self):
+        return max(self.amount - self.total_paid_amount, 0)
+
+    def sync_paid_status(self, save=True):
+        next_paid_value = self.unpaid_amount == 0
+        if self.paid != next_paid_value:
+            self.paid = next_paid_value
+            if save:
+                self.save(update_fields=["paid"])
+        return self.paid
+
     def __str__(self):
         return f"{self.amount}"
 
 
 class FinePayment(models.Model):
-    fine = models.OneToOneField(Fine, on_delete=models.CASCADE, related_name='payment')
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_fine_payments')
+    fine = models.ForeignKey(Fine, on_delete=models.CASCADE, related_name="payments")
+    amount = models.PositiveIntegerField()
+    external_reference = models.CharField(max_length=120, blank=True, default="")
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_fine_payments",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'Payment for Fine #{self.fine_id}'
+        return f"Payment for Fine #{self.fine_id}"
 
 
 class Loan(models.Model):
