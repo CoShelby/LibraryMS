@@ -141,6 +141,74 @@ body {
     transform: translateY(-1px);
 }
 
+.fa,
+.fa-solid {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.1em;
+    min-height: 1em;
+    color: currentColor !important;
+    font-family: "Segoe UI Symbol", "Segoe UI Emoji", Arial, sans-serif !important;
+    font-style: normal !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.fa::before,
+.fa-solid::before {
+    content: "\25CF";
+}
+
+.fa-arrow-right::before { content: "\2192"; }
+.fa-bars::before { content: "\2630"; }
+.fa-bell::before { content: "\1F514"; }
+.fa-book::before,
+.fa-book-open::before,
+.fa-book-open-reader::before { content: "\1F56E"; }
+.fa-bookmark::before { content: "\1F516"; }
+.fa-camera::before { content: "\25C9"; }
+.fa-check::before,
+.fa-circle-check::before { content: "\2713"; }
+.fa-clock-rotate-left::before { content: "\23F2"; }
+.fa-credit-card::before { content: "\25A4"; }
+.fa-download::before { content: "\2B07"; }
+.fa-envelope::before { content: "\2709"; }
+.fa-eye::before { content: "\25C9"; }
+.fa-file-pdf::before { content: "PDF"; font-size: 0.7em; }
+.fa-filter::before { content: "\25BC"; }
+.fa-floppy-disk::before { content: "\1F5AB"; }
+.fa-gauge::before { content: "\25D4"; }
+.fa-hand-holding-hand::before { content: "\261E"; }
+.fa-house::before { content: "\2302"; }
+.fa-id-card::before { content: "\25A3"; }
+.fa-key::before { content: "\26BF"; }
+.fa-laptop-file::before { content: "\25A4"; }
+.fa-list-check::before { content: "\2611"; }
+.fa-magnifying-glass::before,
+.fa-magnifying-glass-plus::before,
+.fa-search::before { content: "\2315"; }
+.fa-moon::before { content: "\25D0"; }
+.fa-pen-to-square::before { content: "\270E"; }
+.fa-plus::before { content: "+"; }
+.fa-print::before { content: "\2399"; }
+.fa-qrcode::before { content: "QR"; font-size: 0.72em; }
+.fa-right-from-bracket::before { content: "\21B1"; }
+.fa-right-left::before { content: "\2194"; }
+.fa-right-to-bracket::before { content: "\21B0"; }
+.fa-rotate-left::before { content: "\21BA"; }
+.fa-table::before { content: "\25A6"; }
+.fa-tags::before { content: "\25C8"; }
+.fa-trash::before,
+.fa-trash-can::before { content: "\232B"; }
+.fa-user-gear::before,
+.fa-user-plus::before,
+.fa-users::before,
+.fa-user-shield::before { content: "\25C9"; }
+.fa-xmark::before { content: "\00D7"; }
+
 .suggestions-host {
     position: relative;
     z-index: 70;

@@ -43,7 +43,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=icons-20260507">
     {% block extra_head %}{% endblock %}
 </head>
 
@@ -51,14 +51,14 @@
     <div
         class="md:hidden sticky top-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur border-b border-slate-200 dark:border-slate-800">
         <div class="px-4 py-3 flex items-center justify-between gap-2">
-            <button id="mobile-menu-btn" type="button" class="btn-secondary px-3 py-2">
+            <button id="mobile-menu-btn" type="button" class="btn-secondary px-3 py-2" title="فتح القائمة" aria-label="فتح القائمة">
                 <i class="fa-solid fa-bars"></i>
             </button>
             <div class="nav-brand min-w-0">
                 <img src="{{ library_branding.logo_url }}" alt="Library Logo" class="mobile-nav-logo">
                 <h1 class="text-xs font-black text-brand dark:text-mint truncate">{{ library_branding.name }}</h1>
             </div>
-            <button id="theme-toggle-mobile" type="button" class="btn-secondary px-3 py-2">
+            <button id="theme-toggle-mobile" type="button" class="btn-secondary px-3 py-2" title="تغيير الثيم" aria-label="تغيير الثيم">
                 <i class="fa-solid fa-moon"></i>
             </button>
         </div>
@@ -215,7 +215,7 @@
                         <button type="submit" class="text-xs font-bold text-brand">تعليم الكل كمقروء</button>
                     </form>
                     {% endif %}
-                    <button id="adminNotificationsClose" type="button" class="btn-secondary px-3 py-2"
+                    <button id="adminNotificationsClose" type="button" class="btn-secondary px-3 py-2" title="إغلاق الإشعارات"
                         aria-label="إغلاق الإشعارات">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
@@ -256,7 +256,7 @@
         <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl">
             <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <h3 class="font-extrabold">طلب حجز كتاب ورقي</h3>
-                <button type="button" onclick="closeReserveModal()" class="text-slate-500 hover:text-red-600"><i
+                <button type="button" onclick="closeReserveModal()" class="text-slate-500 hover:text-red-600" title="إغلاق" aria-label="إغلاق"><i
                         class="fa-solid fa-xmark"></i></button>
             </div>
             <form id="reserveForm" method="post" class="p-4 space-y-3">
@@ -274,7 +274,7 @@
         <div class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden">
             <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <h3 class="font-extrabold">مسح QR</h3>
-                <button type="button" id="closeScannerModal" class="text-slate-500 hover:text-red-600"><i
+                <button type="button" id="closeScannerModal" class="text-slate-500 hover:text-red-600" title="إغلاق" aria-label="إغلاق"><i
                         class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-3">
@@ -300,6 +300,7 @@
         const scannerReader = document.getElementById('qrScannerReader');
         const closeScannerModalBtn = document.getElementById('closeScannerModal');
         let activeScannerTarget = null;
+        let activeScannerTrigger = null;
         let activeHtml5Qrcode = null;
         let scannerLibraryPromise = null;
 
@@ -467,6 +468,9 @@
             activeScannerTarget.value = decodedText;
             activeScannerTarget.dispatchEvent(new Event('input', { bubbles: true }));
             activeScannerTarget.dispatchEvent(new Event('change', { bubbles: true }));
+            if (activeScannerTrigger?.dataset.scanSubmit === 'closest-form') {
+                activeScannerTrigger.closest('form')?.requestSubmit();
+            }
         }
 
         async function stopScanner() {
@@ -584,13 +588,14 @@
             }
         }
 
-        async function openScanner(targetId) {
+        async function openScanner(targetId, triggerButton = null) {
             const targetInput = document.getElementById(targetId);
             if (!targetInput || !scannerModal || !scannerStatus || !scannerReader) {
                 return;
             }
 
             activeScannerTarget = targetInput;
+            activeScannerTrigger = triggerButton;
             setScannerFallbackVisible(false);
             openScannerModal('جاري تجهيز الماسح...');
 
@@ -636,6 +641,7 @@
             document.body.style.overflow = 'auto';
             setScannerFallbackVisible(false);
             activeScannerTarget = null;
+            activeScannerTrigger = null;
             if (scannerCameraInput) {
                 scannerCameraInput.value = '';
             }
@@ -645,7 +651,7 @@
         }
 
         document.querySelectorAll('.qr-scan-button').forEach((button) => {
-            button.addEventListener('click', () => openScanner(button.dataset.scanTarget));
+            button.addEventListener('click', () => openScanner(button.dataset.scanTarget, button));
         });
 
         scannerCaptureButton?.addEventListener('click', () => scannerCameraInput?.click());
@@ -658,7 +664,158 @@
             if (event.target === scannerModal) {
                 closeScanner();
             }
-        });    </script>
+        });
+
+        const commandIconSkipSelector = [
+            '.sidebar-link',
+            '.search-suggestions',
+            '.book-search-dropdown',
+            '[data-no-iconify]'
+        ].join(',');
+        const commandSelector = 'button, a.btn-primary, a.btn-secondary, .book-card-actions a, table a[class*="rounded"], .digital-actions a';
+
+        function commandText(element) {
+            return (element.textContent || '').replace(/\s+/g, ' ').trim();
+        }
+
+        function commandFallbackLabel(element) {
+            const context = [
+                element.id,
+                element.name,
+                element.className,
+                element.getAttribute('href') || '',
+                element.getAttribute('formaction') || '',
+                element.closest('form')?.getAttribute('action') || ''
+            ].join(' ').toLowerCase();
+
+            if (context.includes('mobile-menu') || context.includes('drawer')) return 'فتح القائمة';
+            if (context.includes('theme')) return 'تبديل النمط';
+            if (context.includes('notification')) return 'الإشعارات';
+            if (context.includes('close')) return 'إغلاق';
+            if (context.includes('print')) return 'طباعة';
+            if (context.includes('search')) return 'بحث';
+            if (context.includes('filter')) return 'الفلاتر';
+            if (context.includes('camera')) return 'فتح الكاميرا';
+            if (context.includes('qr') || context.includes('scan')) return 'مسح QR';
+            if (context.includes('delete')) return 'حذف';
+            if (context.includes('edit')) return 'تعديل';
+            if (context.includes('download')) return 'تحميل';
+            return 'إجراء';
+        }
+
+        function commandIconClass(element, label) {
+            const context = [
+                label,
+                element.id,
+                element.name,
+                element.className,
+                element.getAttribute('href') || '',
+                element.getAttribute('formaction') || '',
+                element.closest('form')?.getAttribute('action') || ''
+            ].join(' ').toLowerCase();
+
+            if (context.includes('حذف') || context.includes('delete') || context.includes('remove')) return 'fa-trash-can';
+            if (context.includes('mobile-menu') || context.includes('drawer')) return 'fa-bars';
+            if (context.includes('theme') || context.includes('النمط')) return 'fa-moon';
+            if (context.includes('notification') || context.includes('إشعار')) return 'fa-bell';
+            if (context.includes('رفض') || context.includes('تعطيل') || context.includes('إلغاء') || context.includes('إغلاق') || context.includes('close') || context.includes('cancel') || context.includes('reject') || context.includes('disable')) return 'fa-xmark';
+            if (context.includes('كلمة المرور') || context.includes('password')) return 'fa-key';
+            if (context.includes('إعادة') || context.includes('reset') || context.includes('clear')) return 'fa-rotate-left';
+            if (context.includes('تحديث') || context.includes('تجديد') || context.includes('renew')) return 'fa-clock-rotate-left';
+            if (context.includes('تعديل') || context.includes('edit') || context.includes('update')) return 'fa-pen-to-square';
+            if (context.includes('حفظ') || context.includes('save')) return 'fa-floppy-disk';
+            if (context.includes('بحث') || context.includes('search')) return 'fa-magnifying-glass';
+            if (context.includes('filter') || context.includes('تصفية') || context.includes('فلتر') || context.includes('الفلاتر')) return 'fa-filter';
+            if (context.includes('طباعة') || context.includes('print')) return 'fa-print';
+            if (context.includes('كاميرا') || context.includes('camera') || context.includes('capture')) return 'fa-camera';
+            if (context.includes('qr') || context.includes('scan') || context.includes('مسح')) return 'fa-qrcode';
+            if (context.includes('download') || context.includes('تنزيل') || context.includes('تحميل')) return 'fa-download';
+            if (context.includes('قراءة') || context.includes('read')) return 'fa-book-open-reader';
+            if (context.includes('عرض') || context.includes('استعراض') || context.includes('تفاصيل') || context.includes('التفاصيل') || context.includes('view') || context.includes('detail')) return 'fa-eye';
+            if (context.includes('حجز') || context.includes('reserve')) return 'fa-bookmark';
+            if (context.includes('إرجاع') || context.includes('return')) return 'fa-rotate-left';
+            if (context.includes('إعارة') || context.includes('استعارة') || context.includes('borrow')) return 'fa-hand-holding-hand';
+            if (context.includes('دخول') || context.includes('login')) return 'fa-right-to-bracket';
+            if (context.includes('خروج') || context.includes('logout')) return 'fa-right-from-bracket';
+            if (context.includes('تسديد') || context.includes('غرامة') || context.includes('payment') || context.includes('fine')) return 'fa-credit-card';
+            if (context.includes('إرسال') || context.includes('بريد') || context.includes('email') || context.includes('message') || context.includes('reminder')) return 'fa-envelope';
+            if (context.includes('تحديد') || context.includes('selected') || context.includes('select')) return 'fa-list-check';
+            if (context.includes('إضافة عضو') || context.includes('add_member')) return 'fa-user-plus';
+            if (context.includes('إضافة') || context.includes('add') || context.includes('create') || context.includes('new')) return 'fa-plus';
+            if (context.includes('رجوع') || context.includes('back') || context.includes('return')) return 'fa-arrow-right';
+            if (context.includes('الرئيسية') || context.includes('home')) return 'fa-house';
+            if (context.includes('عضو') || context.includes('member')) return 'fa-id-card';
+            if (context.includes('مشرف') || context.includes('supervisor') || context.includes('admin')) return 'fa-user-shield';
+            if (context.includes('تفعيل') || context.includes('اعتماد') || context.includes('موافقة') || context.includes('تأكيد') || context.includes('متابعة') || context.includes('تطبيق') || context.includes('confirm') || context.includes('approve') || context.includes('enable') || element.type === 'submit') return 'fa-check';
+            return 'fa-circle-check';
+        }
+
+        const commandIconClasses = [
+            'fa-arrow-right', 'fa-bars', 'fa-bell', 'fa-book', 'fa-book-open',
+            'fa-book-open-reader', 'fa-bookmark', 'fa-camera', 'fa-check',
+            'fa-circle-check', 'fa-clock-rotate-left', 'fa-credit-card',
+            'fa-download', 'fa-envelope', 'fa-eye', 'fa-file-pdf', 'fa-filter',
+            'fa-floppy-disk', 'fa-gauge', 'fa-hand-holding-hand', 'fa-house',
+            'fa-id-card', 'fa-key', 'fa-laptop-file', 'fa-list-check',
+            'fa-magnifying-glass', 'fa-magnifying-glass-plus', 'fa-moon',
+            'fa-pen-to-square', 'fa-plus', 'fa-print', 'fa-qrcode',
+            'fa-right-from-bracket', 'fa-right-left', 'fa-right-to-bracket',
+            'fa-rotate-left', 'fa-search', 'fa-table', 'fa-tags', 'fa-trash',
+            'fa-trash-can', 'fa-user-gear', 'fa-user-plus', 'fa-users', 'fa-user-shield',
+            'fa-xmark'
+        ];
+
+        function syncCommandIcon(icon, iconClass) {
+            commandIconClasses.forEach((className) => icon.classList.remove(className));
+            icon.classList.add('fa-solid', iconClass);
+            icon.setAttribute('aria-hidden', 'true');
+        }
+
+        function decorateCommand(element) {
+            if (!element || element.closest(commandIconSkipSelector) || element.dataset.iconDecorated === '1') return;
+            if (element.matches('input, select, textarea')) return;
+
+            const visibleText = commandText(element);
+            const label = element.getAttribute('aria-label') || element.getAttribute('title') || visibleText || commandFallbackLabel(element);
+            if (!visibleText) {
+                element.setAttribute('title', label);
+                element.setAttribute('aria-label', label);
+            }
+
+            const iconClass = commandIconClass(element, label);
+            const existingIcon = element.querySelector(':scope > i[class*="fa-"]');
+            if (existingIcon) {
+                syncCommandIcon(existingIcon, iconClass);
+            } else {
+                const icon = document.createElement('i');
+                syncCommandIcon(icon, iconClass);
+                if (visibleText) {
+                    icon.classList.add('ms-1');
+                }
+                element.prepend(icon);
+            }
+            element.dataset.iconDecorated = '1';
+        }
+
+        function decoratePageCommands(root = document) {
+            root.querySelectorAll(commandSelector).forEach(decorateCommand);
+        }
+
+        decoratePageCommands();
+
+        const commandIconObserver = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType !== Node.ELEMENT_NODE) return;
+                    if (node.matches?.(commandSelector)) {
+                        decorateCommand(node);
+                    }
+                    decoratePageCommands(node);
+                });
+            }
+        });
+        commandIconObserver.observe(document.body, { childList: true, subtree: true });
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

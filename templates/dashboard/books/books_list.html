@@ -26,7 +26,7 @@
             </div>
             <button type="submit" class="btn-primary sm:w-auto">بحث</button>
             {% if query %}
-            <a href="{% url 'dashboard_books_list' %}" class="btn-secondary text-center text-rose-600 sm:w-auto"><i
+            <a href="{% url 'dashboard_books_list' %}" class="btn-secondary text-center text-rose-600 sm:w-auto" title="إلغاء البحث" aria-label="إلغاء البحث"><i
                     class="fa-solid fa-xmark"></i></a>
             {% endif %}
         </form>

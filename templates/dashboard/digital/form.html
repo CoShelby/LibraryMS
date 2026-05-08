@@ -74,9 +74,11 @@
     <div class="flex items-center justify-between gap-3 flex-wrap">
         <div>
             <h1 class="text-2xl font-black">{{ title }}</h1>
-            <p class="text-sm text-slate-500 mt-1"> ملف PDF .</p>
+            <p class="text-sm text-slate-500 mt-1">اربط الكتاب بملف PDF رقمي أو أنشئ كتابا جديدا له.</p>
         </div>
-        <a href="{% url 'dashboard_digital_list' %}" class="btn-secondary">رجوع</a>
+        <a href="{% url 'dashboard_digital_list' %}" class="btn-secondary">
+            <i class="fa-solid fa-arrow-right ms-1" aria-hidden="true"></i>رجوع
+        </a>
     </div>
 
     <form method="post" enctype="multipart/form-data" class="card space-y-4">
@@ -85,7 +87,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label for="existing_book_search" class="block text-sm font-bold mb-1">{{ form.book.label }}</label>
-                <input type="text" id="existing_book_search" list="existing-books-options" class="input-field" placeholder="ابحث واختر كتاباً موجوداً..." value="{% if digital_book %}{{ digital_book.book.title }}{% endif %}">
+                <input type="text" id="existing_book_search" list="existing-books-options" class="input-field" placeholder="ابحث واختر كتابا موجودا..." value="{% if digital_book %}{{ digital_book.book.title }}{% endif %}">
                 <datalist id="existing-books-options">
                     {% for b in form.fields.book.queryset %}
                         <option data-id="{{ b.id }}" value="{{ b.title }}"></option>
@@ -102,7 +104,7 @@
         </div>
 
         <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
-            <label class="inline-flex items-center gap-2 text-sm font-bold">{{ form.create_new_book }} إنشاء كتاب جديد الملف الرقمي </label>
+            <label class="inline-flex items-center gap-2 text-sm font-bold">{{ form.create_new_book }} إنشاء كتاب جديد للملف الرقمي</label>
             {% for error in form.create_new_book.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
         </div>
 
@@ -175,7 +177,9 @@
             {% for name in publishers_options %}<option value="{{ name }}"></option>{% endfor %}
         </datalist>
 
-        <button type="submit" class="btn-primary">{{ submit_label }}</button>
+        <button type="submit" class="btn-primary">
+            <i class="fa-solid fa-floppy-disk ms-1" aria-hidden="true"></i>{{ submit_label }}
+        </button>
     </form>
 </section>
 {% endblock %}

@@ -30,7 +30,7 @@ def message_type_from_notification(notification):
 def _member_status_snapshot(member):
     now = timezone.now()
     overdue_count = Borrowing.objects.filter(member=member, return_date__isnull=True, due_date__lt=now).count()
-    unpaid_fines = Fine.objects.filter(borrowing__member=member, paid=False)
+    unpaid_fines = Fine.objects.select_related("borrowing__book_copy__book").filter(borrowing__member=member, paid=False)
     unpaid_count = unpaid_fines.count()
     unpaid_total = unpaid_fines.aggregate(total=Sum("amount")).get("total") or 0
 
@@ -38,7 +38,28 @@ def _member_status_snapshot(member):
         "overdue_count": overdue_count,
         "unpaid_count": unpaid_count,
         "unpaid_total": unpaid_total,
+        "unpaid_fine_books": [
+            fine.borrowing.book_copy.book.title
+            for fine in unpaid_fines
+            if fine.borrowing_id and fine.borrowing.book_copy_id
+        ],
     }
+
+
+def _notification_book_title(notification):
+    if notification is None:
+        return ""
+    if notification.borrowing_id:
+        return notification.borrowing.book_copy.book.title
+    if notification.reservation_id:
+        return notification.reservation.book.title
+    return ""
+
+
+def _notification_due_date(notification):
+    if notification is not None and notification.borrowing_id:
+        return notification.borrowing.due_date
+    return None
 
 
 def _message_template(message_type, member, snapshot):
@@ -88,6 +109,15 @@ def _message_template(message_type, member, snapshot):
             "مع تحيات إدارة المكتبة."
         )
 
+    book_title = snapshot.get("book_title")
+    if book_title:
+        body = f"{body}\n\nBook: {book_title}"
+    due_date = snapshot.get("due_date")
+    if due_date:
+        body = f"{body}\nDue: {due_date:%Y-%m-%d %H:%M}"
+    elif message_type == MemberMessageLog.MESSAGE_PENDING_FINE and snapshot.get("unpaid_fine_books"):
+        body = f"{body}\n\nBooks: {', '.join(snapshot['unpaid_fine_books'])}"
+
     return subject, body
 
 
@@ -124,6 +154,47 @@ def sync_automatic_member_messages(now=None):
     reminder_lead_time = get_reservation_reminder_lead_time()
     reminders_sent = 0
 
+    notification_message_types = [
+        Notification.TYPE_RESERVATION_APPROVED,
+        Notification.TYPE_RESERVATION_AVAILABLE,
+        Notification.TYPE_PENDING_FINE,
+        Notification.TYPE_OVERDUE,
+        Notification.TYPE_DUE_SOON,
+    ]
+
+    notifications = Notification.objects.select_related(
+        "member",
+        "borrowing__book_copy__book",
+        "reservation__book",
+        "reservation__member",
+    ).filter(
+        notification_type__in=notification_message_types,
+    )
+
+    for notification in notifications:
+        member = notification.member
+        if member is None and notification.reservation_id:
+            member = notification.reservation.member
+        if member is None:
+            continue
+
+        if notification.notification_type == Notification.TYPE_PENDING_FINE:
+            result = send_member_message(
+                member=member,
+                message_type=message_type_from_notification(notification),
+                notification=notification,
+                skip_if_sent_after=notification.updated_at,
+            )
+        else:
+            result = send_member_message(
+                member=member,
+                message_type=message_type_from_notification(notification),
+                notification=notification,
+                skip_if_notification_sent=True,
+            )
+        if result["email_sent"]:
+            reminders_sent += 1
+
     notifications = Notification.objects.select_related("reservation__member").filter(
         notification_type=Notification.TYPE_RESERVATION_APPROVED,
         reservation__status="approved",
@@ -158,6 +229,12 @@ def send_member_message(
     skip_if_sent_after=None,
 ):
     snapshot = _member_status_snapshot(member)
+    book_title = _notification_book_title(notification)
+    if book_title:
+        snapshot["book_title"] = book_title
+    due_date = _notification_due_date(notification)
+    if due_date:
+        snapshot["due_date"] = due_date
     subject, body = _message_template(message_type, member, snapshot)
 
     results = {

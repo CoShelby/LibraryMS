@@ -1,11 +1,14 @@
 ﻿import json
 import os
+import secrets
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.core.exceptions import PermissionDenied
 from django.core.files.base import ContentFile
+from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db.models import Count, ExpressionWrapper, F, IntegerField, Q, Sum
 from django.http import JsonResponse
@@ -51,7 +54,11 @@ from .forms import (
 from emails.member_messages import message_type_from_notification, send_member_message
 from .models import LibraryBranding
 from notifications.models import Notification
-from .notifications import notification_target_url
+from .notifications import notification_target_url, notify_reserved_book_available
+
+PASSWORD_CHANGE_SESSION_KEY = "dashboard_pending_password_change"
+PASSWORD_CHANGE_CODE_TTL_SECONDS = 600
+
 
 def _split_names(raw_value):
     values = [name.strip() for name in (raw_value or "").split("-") if name.strip()]
@@ -285,11 +292,7 @@ def dashboard_books_list(request):
 def dashboard_confirm_physical_book(request, book_id):
     book = get_object_or_404(Book, id=book_id)
     if request.method == "POST":
-        if not book.bookcopy_set.exists():
-            BookCopy.objects.create(book=book, status="new")
-            messages.success(request, "تم تأكيد إدراج الكتاب ضمن الكتب الورقية بإضافة أول نسخة.")
-        else:
-            messages.info(request, "الكتاب لديه نسخ بالفعل.")
+        return redirect("dashboard_book_copies", book_id=book.id)
     return redirect("dashboard_books_list")
 
 
@@ -385,14 +388,22 @@ def dashboard_book_copies(request, book_id):
         form = BookCopyForm(request.POST)
         if form.is_valid():
             copy = form.save(commit=False)
-            if copy.copy_number and BookCopy.objects.filter(book=book, copy_number=copy.copy_number).exists():
+            copies_count = form.cleaned_data.get("new_copies_count") or 1
+            has_custom_copy_fields = bool((copy.copy_number or "").strip() or (copy.barcode or "").strip())
+            if copies_count > 1 and has_custom_copy_fields:
+                messages.error(request, "Use automatic copy number and QR fields when adding multiple copies.")
+                form = BookCopyForm()
+            elif copy.copy_number and BookCopy.objects.filter(book=book, copy_number=copy.copy_number).exists():
                 messages.error(request, f"رقم النسخة '{copy.copy_number}' موجود مسبقاً لهذا الكتاب.")
                 form = BookCopyForm()
             else:
-                copy.book = book
-                # النسخة الجديدة تعتبر غير مطبوعة حتى تمر عبر صفحة الطباعة.
-                copy.is_printed = False
-                copy.save()
+                for _ in range(int(copies_count)):
+                    new_copy = copy if copies_count == 1 else BookCopy(status=copy.status)
+                    new_copy.book = book
+                    # النسخة الجديدة تعتبر غير مطبوعة حتى تمر عبر صفحة الطباعة.
+                    new_copy.is_printed = False
+                    new_copy.save()
+                notify_reserved_book_available(book)
                 messages.success(request, "تمت إضافة النسخة بنجاح.")
                 return redirect("dashboard_book_copies", book_id=book.id)
     else:
@@ -412,8 +423,15 @@ def dashboard_book_copies(request, book_id):
             return_date__isnull=True,
         )
     }
+    digital_by_book_id = {
+        digital.book_id: digital
+        for digital in DigitalLibrary.objects.filter(
+            book_id__in=[copy.book_id for copy in page_obj.object_list]
+        )
+    }
     for copy in page_obj.object_list:
         copy.current_borrowing = active_borrowings_by_copy.get(copy.id)
+        copy.digital_copy = digital_by_book_id.get(copy.book_id)
 
     return render(
         request,
@@ -803,7 +821,15 @@ def _build_manual_borrow_preview(membership_number, copy_barcode):
         raise ValueError("رقم نسخة الكتاب مطلوب.")
 
     member = Member.objects.get(membership_number=membership_number)
-    copy = BookCopy.objects.select_related("book").get(barcode=copy_barcode)
+    copy = BookCopy.objects.select_related("book").filter(barcode=copy_barcode).first()
+    if copy is None:
+        matching_copies = list(BookCopy.objects.select_related("book").filter(copy_number=copy_barcode)[:2])
+        if len(matching_copies) > 1:
+            raise ValueError("Copy number matches more than one book. Scan QR or use the full copy code.")
+        if matching_copies:
+            copy = matching_copies[0]
+    if copy is None:
+        raise BookCopy.DoesNotExist
     active_copy_borrowing = (
         Borrowing.objects.select_related("member")
         .filter(book_copy=copy, return_date__isnull=True)
@@ -823,6 +849,7 @@ def _build_manual_borrow_preview(membership_number, copy_barcode):
         "member": member,
         "copy": copy,
         "book": copy.book,
+        "digital_copy": DigitalLibrary.objects.filter(book=copy.book).first(),
         "active_member_borrows": active_member_borrows,
         "status_label": "متاحة",
         "status_tone": "emerald",
@@ -1078,6 +1105,7 @@ def dashboard_reports(request):
                 ("-created_at", "تاريخ الإدراج (أحدث)"),
                 ("view_count", "الأقل مشاهدة"),
                 ("-view_count", "الأكثر مشاهدة"),
+                ("most_borrowed_most_viewed", "Most borrowed, most viewed"),
                 ("-reservations_total", "\u0627\u0644\u0623\u0643\u062b\u0631 \u0637\u0644\u0628\u064b\u0627"),
                 ("-borrowings_total", "\u0627\u0644\u0623\u0643\u062b\u0631 \u0627\u0633\u062a\u0639\u0627\u0631\u0629"),
             ],
@@ -1266,7 +1294,10 @@ def dashboard_reports(request):
         else:
             paid_status = "all"
 
-    queryset = queryset.order_by(sort)
+    if table == "books" and sort == "most_borrowed_most_viewed":
+        queryset = queryset.order_by("-borrowings_total", "-view_count")
+    else:
+        queryset = queryset.order_by(sort)
     rows = config["rows"](queryset[:500])
 
     return render(
@@ -1397,6 +1428,28 @@ def _apply_input_css(form):
         field.widget.attrs.update({"class": "input-field"})
 
 
+def _password_change_code_expired(created_at_value):
+    if not created_at_value:
+        return True
+    try:
+        created_at = timezone.datetime.fromisoformat(created_at_value)
+    except ValueError:
+        return True
+    if timezone.is_naive(created_at):
+        created_at = timezone.make_aware(created_at, timezone.get_current_timezone())
+    return timezone.now() > created_at + timezone.timedelta(seconds=PASSWORD_CHANGE_CODE_TTL_SECONDS)
+
+
+def _send_password_change_code(user, code):
+    send_mail(
+        "Password change verification",
+        f"Verification code: {code}",
+        settings.DEFAULT_FROM_EMAIL,
+        [user.email],
+        fail_silently=False,
+    )
+
+
 @admin_required
 def dashboard_admin_users(request):
     _admin_manager_required(request)
@@ -1510,6 +1563,7 @@ def dashboard_my_account(request):
     profile_form = AdminSelfProfileForm(instance=request.user, prefix="profile")
     password_form = PasswordChangeForm(user=request.user, prefix="password")
     _apply_input_css(password_form)
+    pending_password_change = request.session.get(PASSWORD_CHANGE_SESSION_KEY)
 
     branding_instance = get_library_branding()
     branding_form = None
@@ -1528,8 +1582,39 @@ def dashboard_my_account(request):
             password_form = PasswordChangeForm(user=request.user, data=request.POST, prefix="password")
             _apply_input_css(password_form)
             if password_form.is_valid():
-                user = password_form.save()
-                update_session_auth_hash(request, user)
+                if not request.user.email:
+                    messages.error(request, "Password verification requires an email address on your account.")
+                else:
+                    code = f"{secrets.randbelow(900000) + 100000}"
+                    try:
+                        _send_password_change_code(request.user, code)
+                    except Exception as exc:
+                        messages.error(request, f"Could not send verification code: {exc}")
+                    else:
+                        request.session[PASSWORD_CHANGE_SESSION_KEY] = {
+                            "user_id": request.user.id,
+                            "code": code,
+                            "new_password": password_form.cleaned_data["new_password1"],
+                            "created_at": timezone.now().isoformat(),
+                        }
+                        messages.success(request, "Verification code sent to your email.")
+                        return redirect("dashboard_my_account")
+
+        if "verify_password_change" in request.POST:
+            pending_password_change = request.session.get(PASSWORD_CHANGE_SESSION_KEY)
+            verification_code = (request.POST.get("password_verification_code") or "").strip()
+            if not pending_password_change or pending_password_change.get("user_id") != request.user.id:
+                messages.error(request, "No pending password change verification.")
+            elif _password_change_code_expired(pending_password_change.get("created_at")):
+                request.session.pop(PASSWORD_CHANGE_SESSION_KEY, None)
+                messages.error(request, "Verification code expired.")
+            elif verification_code != pending_password_change.get("code"):
+                messages.error(request, "Invalid verification code.")
+            else:
+                request.user.set_password(pending_password_change["new_password"])
+                request.user.save(update_fields=["password"])
+                update_session_auth_hash(request, request.user)
+                request.session.pop(PASSWORD_CHANGE_SESSION_KEY, None)
                 messages.success(request, "تم تغيير كلمة المرور بنجاح.")
                 return redirect("dashboard_my_account")
 
@@ -1568,6 +1653,11 @@ def dashboard_my_account(request):
         {
             "profile_form": profile_form,
             "password_form": password_form,
+            "password_change_pending": bool(
+                pending_password_change
+                and pending_password_change.get("user_id") == request.user.id
+                and not _password_change_code_expired(pending_password_change.get("created_at"))
+            ),
             "capability_labels": capability_labels,
             "managed_admins_count": managed_admins_count,
             "branding_form": branding_form,

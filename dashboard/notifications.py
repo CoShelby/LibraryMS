@@ -70,13 +70,20 @@ def create_reservation_created_notification(reservation):
 
 
 def create_reservation_approved_notification(reservation):
-    return _upsert_notification(
+    notification = _upsert_notification(
         Notification.TYPE_RESERVATION_APPROVED,
         "تمت الموافقة على الحجز",
         f"تمت الموافقة على الحجز الخاص بالعضو {reservation.member.name} للكتاب {reservation.book.title}.",
         reservation=reservation,
         member=reservation.member,
     )
+    send_member_message(
+        member=reservation.member,
+        message_type="reservation_approved",
+        notification=notification,
+        skip_if_notification_sent=True,
+    )
+    return notification
 
 
 def sync_overdue_notifications():
@@ -96,6 +103,31 @@ def sync_overdue_notifications():
             borrowing=borrowing,
             member=borrowing.member,
         )
+
+
+def sync_due_soon_notifications():
+    now = timezone.now()
+    reminder_end = now + timezone.timedelta(days=1)
+    due_borrowings = Borrowing.objects.select_related("member", "book_copy__book").filter(
+        return_date__isnull=True,
+        due_date__gt=now,
+        due_date__lte=reminder_end,
+    )
+
+    active_borrowing_ids = set()
+    for borrowing in due_borrowings:
+        active_borrowing_ids.add(borrowing.id)
+        _upsert_notification(
+            Notification.TYPE_DUE_SOON,
+            "Borrowing due soon",
+            f"Book: {borrowing.book_copy.book.title}\nMember: {borrowing.member.name}\nDue: {borrowing.due_date:%Y-%m-%d %H:%M}",
+            borrowing=borrowing,
+            member=borrowing.member,
+        )
+
+    Notification.objects.filter(notification_type=Notification.TYPE_DUE_SOON).exclude(
+        borrowing_id__in=active_borrowing_ids
+    ).delete()
 
 
 def _available_copies_for_book(book):
@@ -256,9 +288,9 @@ def notification_target_url(notification, user):
 
 def get_admin_notifications(limit=8):
     sync_overdue_notifications()
+    sync_due_soon_notifications()
     sync_high_risk_members_notifications()
     sync_pending_fines_notifications()
     sync_suspended_members_notifications()
     sync_automatic_member_messages()
     return Notification.objects.select_related("member", "borrowing", "reservation").order_by("-updated_at", "-id")[:limit]
-

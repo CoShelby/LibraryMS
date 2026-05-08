@@ -59,6 +59,16 @@
                 {% endfor %}
                 <button type="submit" name="change_password" class="btn-primary w-full">تحديث كلمة المرور</button>
             </form>
+            {% if password_change_pending %}
+            <form method="post" class="space-y-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                {% csrf_token %}
+                <div>
+                    <label for="passwordVerificationCode" class="block text-sm font-bold mb-1">Verification code</label>
+                    <input id="passwordVerificationCode" type="text" name="password_verification_code" class="input-field" inputmode="numeric" autocomplete="one-time-code">
+                </div>
+                <button type="submit" name="verify_password_change" class="btn-primary w-full">Verify and update password</button>
+            </form>
+            {% endif %}
         </article>
     </div>
 

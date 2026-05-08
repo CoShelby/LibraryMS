@@ -50,7 +50,7 @@
     <div class="w-full max-w-lg card !p-0 overflow-hidden">
         <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <h3 class="font-black" id="duplicateModalTitle">فحص الكتاب</h3>
-            <button type="button" class="btn-secondary px-3 py-2" id="duplicateModalClose"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" class="btn-secondary px-3 py-2" id="duplicateModalClose" title="إغلاق" aria-label="إغلاق"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="p-5 space-y-4">
             <p class="text-sm leading-7 text-slate-600 dark:text-slate-300" id="duplicateModalMessage"></p>
@@ -59,9 +59,9 @@
                 <div class="text-sm text-slate-500" id="duplicateBookMeta"></div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="duplicateModalActions">
-                <button type="button" class="btn-primary" id="duplicatePrimaryAction"></button>
-                <button type="button" class="btn-secondary hidden" id="duplicateSecondaryAction"></button>
-                <button type="button" class="btn-secondary" id="duplicateCancelAction">إلغاء</button>
+                <button type="button" class="btn-primary" id="duplicatePrimaryAction"><i class="fa-solid fa-check ms-1" aria-hidden="true"></i>متابعة</button>
+                <button type="button" class="btn-secondary hidden" id="duplicateSecondaryAction"><i class="fa-solid fa-plus ms-1" aria-hidden="true"></i>إضافة كتاب جديد</button>
+                <button type="button" class="btn-secondary" id="duplicateCancelAction"><i class="fa-solid fa-xmark ms-1" aria-hidden="true"></i>إلغاء</button>
             </div>
         </div>
     </div>
@@ -106,6 +106,13 @@
         bookCreateForm.submit();
     }
 
+    function setActionButton(button, label, iconClass) {
+        const icon = document.createElement('i');
+        icon.className = `fa-solid ${iconClass} ms-1`;
+        icon.setAttribute('aria-hidden', 'true');
+        button.replaceChildren(icon, document.createTextNode(label));
+    }
+
     function renderConflictModal(payload) {
         const book = payload.book || {};
         const authors = Array.isArray(book.authors) ? book.authors.join('، ') : '';
@@ -117,14 +124,14 @@
         if (payload.type === 'exact') {
             duplicateModalTitle.textContent = 'الكتاب موجود بالفعل';
             duplicateModalMessage.textContent = 'تم العثور على سجل مطابق بنفس ISBN. هل تريد إضافة نسخة جديدة بدل إنشاء كتاب جديد؟';
-            duplicatePrimaryAction.textContent = 'إضافة نسخة';
+            setActionButton(duplicatePrimaryAction, 'إضافة نسخة', 'fa-plus');
             duplicatePrimaryAction.onclick = () => setConfirmedAction('add_copy', book.id);
         } else {
             duplicateModalTitle.textContent = 'تم العثور على كتاب مشابه';
             duplicateModalMessage.textContent = 'تم العثور على عنوان مشابه بنسبة عالية. هل هذا هو نفس الكتاب؟';
-            duplicatePrimaryAction.textContent = 'نعم، أضف نسخة';
+            setActionButton(duplicatePrimaryAction, 'نعم، أضف نسخة', 'fa-check');
             duplicatePrimaryAction.onclick = () => setConfirmedAction('add_copy', book.id);
-            duplicateSecondaryAction.textContent = 'لا، أضفه كتابًا جديدًا';
+            setActionButton(duplicateSecondaryAction, 'لا، أضفه كتابًا جديدًا', 'fa-plus');
             duplicateSecondaryAction.classList.remove('hidden');
             duplicateSecondaryAction.onclick = () => setConfirmedAction('create_new', book.id);
         }

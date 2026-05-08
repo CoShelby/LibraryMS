@@ -11,7 +11,7 @@
             <p class="text-sm text-slate-500 mt-1">  كتب رقمية PDF للقراءة والتحميل .</p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-            <button type="button" id="openDigitalFilterDrawer" class="btn-secondary !px-3 !py-2"><i
+            <button type="button" id="openDigitalFilterDrawer" class="btn-secondary !px-3 !py-2" title="الفلاتر" aria-label="الفلاتر"><i
                     class="fa-solid fa-filter"></i></button>
             <a href="{% url 'search_results' %}?search_scope=digital" class="btn-secondary" title="بحث داخل الرقمي"><i
                     class="fa-solid fa-magnifying-glass"></i></a>
@@ -34,8 +34,8 @@
             </div>
             <div>{{ filter_form.year }}</div>
             <div class="grid grid-cols-2 gap-2 pt-2">
-                <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i></button>
-                <a href="{{ request.path }}" class="btn-secondary text-center"><i
+                <button type="submit" class="btn-primary" title="تطبيق" aria-label="تطبيق"><i class="fa-solid fa-check"></i></button>
+                <a href="{{ request.path }}" class="btn-secondary text-center" title="إعادة ضبط" aria-label="إعادة ضبط"><i
                         class="fa-solid fa-rotate-left"></i></a>
             </div>
         </form>

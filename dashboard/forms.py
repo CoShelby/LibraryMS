@@ -169,8 +169,13 @@ class BookForm(forms.ModelForm):
             if copies_to_add is None:
                 copies_to_add = 1 if is_new else 0
 
+            created_copies = []
             for _ in range(max(int(copies_to_add or 0), 0)):
-                BookCopy.objects.create(book=book, status="new")
+                created_copies.append(BookCopy.objects.create(book=book, status="new"))
+            if created_copies:
+                from dashboard.notifications import notify_reserved_book_available
+
+                notify_reserved_book_available(book)
 
         return book
 
@@ -217,6 +222,13 @@ class PublisherForm(forms.ModelForm):
 
 
 class BookCopyForm(forms.ModelForm):
+    new_copies_count = forms.IntegerField(
+        required=False,
+        min_value=1,
+        initial=1,
+        label="\u0639\u062f\u062f \u0627\u0644\u0646\u0633\u062e \u0627\u0644\u062c\u062f\u064a\u062f\u0629",
+    )
+
     class Meta:
         model = BookCopy
         fields = ["copy_number", "barcode", "status"]
@@ -230,6 +242,11 @@ class BookCopyForm(forms.ModelForm):
             "barcode": forms.TextInput(attrs={"class": "input-field", "placeholder": "اتركه فارغاً للتوليد التلقائي (bookId-copy)"}),
             "status": forms.Select(attrs={"class": "input-field"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["new_copies_count"].widget.attrs.update({"class": "input-field", "placeholder": "1"})
+        self.order_fields(["new_copies_count", "copy_number", "barcode", "status"])
 
 
 class DigitalLibraryForm(forms.ModelForm):

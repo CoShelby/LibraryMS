@@ -588,6 +588,9 @@ def add_copies_to_book(book, copies_count=1):
     created_copies = []
     for _ in range(copies_total):
         created_copies.append(BookCopy.objects.create(book=book, status="new"))
-    return created_copies
+    if created_copies:
+        from dashboard.notifications import notify_reserved_book_available
 
+        notify_reserved_book_available(book)
+    return created_copies
 

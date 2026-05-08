@@ -9,6 +9,7 @@ class Notification(models.Model):
     TYPE_RESERVATION_CREATED = "reservation_created"
     TYPE_RESERVATION_APPROVED = "reservation_approved"
     TYPE_RESERVATION_AVAILABLE = "reservation_available"
+    TYPE_DUE_SOON = "due_soon"
     TYPE_HIGH_RISK_MEMBER = "high_risk_member"
     TYPE_PENDING_FINE = "pending_fine"
     TYPE_SUSPENDED_MEMBER = "suspended_member"

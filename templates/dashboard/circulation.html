@@ -48,6 +48,16 @@
                     <div class="text-sm"><span class="font-bold">كود النسخة:</span> {{ manual_preview.copy.barcode }}</div>
                     <div class="text-sm"><span class="font-bold">رقم النسخة:</span> {{ manual_preview.copy.copy_number|default:'-' }}</div>
                     <div class="text-sm"><span class="font-bold">حالة النسخة:</span> {{ manual_preview.copy.get_status_display }}</div>
+                    <div class="text-sm">
+                        <span class="font-bold">Digital:</span>
+                        {% if manual_preview.digital_copy and manual_preview.digital_copy.pdf_file %}
+                            <a href="{% url 'read_digital_book' manual_preview.book.id %}" class="text-brand font-bold" title="Open digital book" aria-label="Open digital book">Available</a>
+                        {% elif manual_preview.digital_copy %}
+                            <span class="font-bold text-amber-700">Record only</span>
+                        {% else %}
+                            <span class="font-bold text-slate-500">Not available</span>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 
