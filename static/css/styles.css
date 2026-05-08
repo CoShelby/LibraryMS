@@ -179,6 +179,7 @@ body {
 .fa-eye::before { content: "\25C9"; }
 .fa-file-pdf::before { content: "PDF"; font-size: 0.7em; }
 .fa-filter::before { content: "\25BC"; }
+.fa-funnel::before { content: "\25BD"; }
 .fa-floppy-disk::before { content: "\1F5AB"; }
 .fa-gauge::before { content: "\25D4"; }
 .fa-hand-holding-hand::before { content: "\261E"; }

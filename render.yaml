@@ -1,3 +1,7 @@
+databases:
+  - name: libraryms-db
+    plan: free
+
 services:
   - type: web
     name: libraryms
@@ -5,10 +9,21 @@ services:
     buildCommand: |
       pip install -r requirements.txt
       python manage.py collectstatic --noinput
-      python manage.py migrate
-    startCommand: gunicorn libraryms.wsgi:application
+    startCommand: python manage.py migrate --noinput && gunicorn libraryms.wsgi:application
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: libraryms.settings
       - key: PYTHON_VERSION
-        value: 3.11
+        value: 3.14.3
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ".onrender.com,localhost,127.0.0.1"
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: "https://*.onrender.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: libraryms-db
+          property: connectionString

@@ -43,7 +43,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=icons-20260507">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=render-icons-20260508">
     {% block extra_head %}{% endblock %}
 </head>
 
@@ -714,6 +714,8 @@
                 element.closest('form')?.getAttribute('action') || ''
             ].join(' ').toLowerCase();
 
+            if (context.includes('الرئيسية') || context.includes('home')) return 'fa-house';
+            if (context.includes('filter') || context.includes('تصفية') || context.includes('فلتر') || context.includes('الفلاتر')) return 'fa-filter';
             if (context.includes('حذف') || context.includes('delete') || context.includes('remove')) return 'fa-trash-can';
             if (context.includes('mobile-menu') || context.includes('drawer')) return 'fa-bars';
             if (context.includes('theme') || context.includes('النمط')) return 'fa-moon';
@@ -743,18 +745,17 @@
             if (context.includes('إضافة عضو') || context.includes('add_member')) return 'fa-user-plus';
             if (context.includes('إضافة') || context.includes('add') || context.includes('create') || context.includes('new')) return 'fa-plus';
             if (context.includes('رجوع') || context.includes('back') || context.includes('return')) return 'fa-arrow-right';
-            if (context.includes('الرئيسية') || context.includes('home')) return 'fa-house';
             if (context.includes('عضو') || context.includes('member')) return 'fa-id-card';
             if (context.includes('مشرف') || context.includes('supervisor') || context.includes('admin')) return 'fa-user-shield';
             if (context.includes('تفعيل') || context.includes('اعتماد') || context.includes('موافقة') || context.includes('تأكيد') || context.includes('متابعة') || context.includes('تطبيق') || context.includes('confirm') || context.includes('approve') || context.includes('enable') || element.type === 'submit') return 'fa-check';
-            return 'fa-circle-check';
+            return '';
         }
 
         const commandIconClasses = [
             'fa-arrow-right', 'fa-bars', 'fa-bell', 'fa-book', 'fa-book-open',
             'fa-book-open-reader', 'fa-bookmark', 'fa-camera', 'fa-check',
             'fa-circle-check', 'fa-clock-rotate-left', 'fa-credit-card',
-            'fa-download', 'fa-envelope', 'fa-eye', 'fa-file-pdf', 'fa-filter',
+            'fa-download', 'fa-envelope', 'fa-eye', 'fa-file-pdf', 'fa-filter', 'fa-funnel',
             'fa-floppy-disk', 'fa-gauge', 'fa-hand-holding-hand', 'fa-house',
             'fa-id-card', 'fa-key', 'fa-laptop-file', 'fa-list-check',
             'fa-magnifying-glass', 'fa-magnifying-glass-plus', 'fa-moon',
@@ -776,6 +777,11 @@
             if (element.matches('input, select, textarea')) return;
 
             const visibleText = commandText(element);
+            const existingIcon = element.querySelector(':scope > i[class*="fa-"]');
+            if (visibleText && !existingIcon && !element.hasAttribute('aria-label') && !element.hasAttribute('title')) {
+                element.dataset.iconDecorated = '1';
+                return;
+            }
             const label = element.getAttribute('aria-label') || element.getAttribute('title') || visibleText || commandFallbackLabel(element);
             if (!visibleText) {
                 element.setAttribute('title', label);
@@ -783,7 +789,10 @@
             }
 
             const iconClass = commandIconClass(element, label);
-            const existingIcon = element.querySelector(':scope > i[class*="fa-"]');
+            if (!iconClass) {
+                element.dataset.iconDecorated = '1';
+                return;
+            }
             if (existingIcon) {
                 syncCommandIcon(existingIcon, iconClass);
             } else {
