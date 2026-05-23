@@ -2,88 +2,19 @@
 
 {% block title %}إدارة الكتب الرقمية{% endblock %}
 
-{% block extra_head %}
-<style>
-    .digital-admin-screen .digital-shell {
-        background:
-            radial-gradient(120% 160% at 100% 0%, rgba(59, 130, 246, 0.12), transparent 45%),
-            radial-gradient(140% 120% at 0% 100%, rgba(16, 185, 129, 0.1), transparent 52%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.96) 100%);
-        border: 1px solid rgba(148, 163, 184, 0.28);
-        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.1);
-    }
-    html[data-theme="dark"] .digital-admin-screen .digital-shell {
-        background:
-            radial-gradient(120% 160% at 100% 0%, rgba(56, 189, 248, 0.16), transparent 50%),
-            radial-gradient(140% 120% at 0% 100%, rgba(16, 185, 129, 0.18), transparent 56%),
-            linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.98) 100%);
-        border-color: rgba(148, 163, 184, 0.25);
-        box-shadow: 0 24px 48px rgba(2, 6, 23, 0.5);
-    }
-    .digital-admin-screen table tbody tr {
-        transition: background-color 0.2s ease;
-    }
-    .digital-admin-screen table tbody tr:hover {
-        background: rgba(148, 163, 184, 0.1);
-    }
-    .digital-actions {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    .digital-action {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.35rem;
-        min-height: 2.15rem;
-        padding: 0.45rem 0.7rem;
-        border-radius: 0.55rem;
-        border: 1px solid rgba(148, 163, 184, 0.5);
-        background: rgba(255, 255, 255, 0.92);
-        color: #334155;
-        font-size: 0.78rem;
-        font-weight: 800;
-        line-height: 1;
-        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-    }
-    .digital-action:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 8px 16px rgba(15, 23, 42, 0.18);
-        border-color: rgba(15, 23, 42, 0.25);
-    }
-    .digital-action-delete {
-        color: #b91c1c;
-        border-color: rgba(248, 113, 113, 0.55);
-        background: rgba(254, 242, 242, 0.92);
-    }
-    html[data-theme="dark"] .digital-action {
-        background: rgba(15, 23, 42, 0.92);
-        color: #e2e8f0;
-        border-color: rgba(148, 163, 184, 0.35);
-    }
-    html[data-theme="dark"] .digital-action-delete {
-        color: #fca5a5;
-        border-color: rgba(248, 113, 113, 0.45);
-        background: rgba(127, 29, 29, 0.25);
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<section class="space-y-6 digital-admin-screen">
-    <div class="flex items-center justify-between gap-3 flex-wrap digital-header">
+<section class="space-y-6 digital-admin-screen admin-list-screen">
+    <div class="admin-page-header digital-header">
         <h1 class="text-2xl font-black">إدارة الكتب الرقمية</h1>
         <a href="{% url 'dashboard_digital_add' %}" class="btn-primary">
             <i class="fa-solid fa-plus ms-1" aria-hidden="true"></i>إضافة كتاب رقمي
         </a>
     </div>
 
-    <div class="card p-0 overflow-hidden digital-shell">
+    <div class="card admin-list-shell digital-shell">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm align-middle">
-                <thead class="bg-slate-50 dark:bg-slate-800">
+            <table class="admin-table align-middle">
+                <thead>
                     <tr>
                         <th class="p-3 text-right">الكتاب</th>
                         <th class="p-3 text-right">الفئة</th>
@@ -96,19 +27,19 @@
                             <td class="p-3 font-bold">{{ item.book.title }}</td>
                             <td class="p-3">{{ item.book.category.name|default:"-" }}</td>
                             <td class="p-3">
-                                <div class="digital-actions">
-                                    <a href="{% url 'dashboard_digital_edit' item.id %}" class="digital-action" title="تعديل بيانات الكتاب الرقمي" aria-label="تعديل بيانات الكتاب الرقمي">
+                                <div class="admin-row-actions">
+                                    <a href="{% url 'dashboard_digital_edit' item.id %}" class="admin-action" title="تعديل بيانات الكتاب الرقمي" aria-label="تعديل بيانات الكتاب الرقمي">
                                         <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>تعديل
                                     </a>
-                                    <a href="{% url 'read_digital_book' item.book.id %}" class="digital-action" title="قراءة الكتاب الرقمي" aria-label="قراءة الكتاب الرقمي">
+                                    <a href="{% url 'read_digital_book' item.book.id %}" class="admin-action admin-action-primary" title="قراءة الكتاب الرقمي" aria-label="قراءة الكتاب الرقمي">
                                         <i class="fa-solid fa-book-open-reader" aria-hidden="true"></i>قراءة
                                     </a>
-                                    <a href="{% url 'download_digital_book' item.book.id %}" class="digital-action" title="تحميل ملف PDF" aria-label="تحميل ملف PDF">
+                                    <a href="{% url 'download_digital_book' item.book.id %}" class="admin-action" title="تحميل ملف PDF" aria-label="تحميل ملف PDF">
                                         <i class="fa-solid fa-download" aria-hidden="true"></i>تحميل
                                     </a>
                                     <form method="post" action="{% url 'dashboard_digital_delete' item.id %}" onsubmit="return confirm('حذف هذا المورد الرقمي؟');" class="inline">
                                         {% csrf_token %}
-                                        <button type="submit" class="digital-action digital-action-delete" title="حذف المورد الرقمي" aria-label="حذف المورد الرقمي">
+                                        <button type="submit" class="admin-action admin-action-danger" title="حذف المورد الرقمي" aria-label="حذف المورد الرقمي">
                                             <i class="fa-solid fa-trash-can" aria-hidden="true"></i>حذف
                                         </button>
                                     </form>

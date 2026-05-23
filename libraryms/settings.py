@@ -186,10 +186,10 @@ X_FRAME_OPTIONS = 'SAMEORIGIN'
 # Email / OTP Settings
 # نعتمد فقط على متغيرات البيئة للقيم الحساسة الخاصة بالبريد.
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', '1').lower() in {'1', 'true', 'yes'}
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', '0').lower() in {'1', 'true', 'yes'}
 EMAIL_HOST_USER = os.getenv('EMAIL_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASS')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL') or EMAIL_HOST_USER
@@ -198,8 +198,10 @@ EMAIL_OTP_TTL_SECONDS = int(os.getenv('EMAIL_OTP_TTL_SECONDS', '300'))
 ADMIN_RESET_CODE_TTL_SECONDS = int(os.getenv('ADMIN_RESET_CODE_TTL_SECONDS', str(EMAIL_OTP_TTL_SECONDS)))
 
 # Library timing configuration
-LIBRARY_DEMO_MODE = os.getenv('LIBRARY_DEMO_MODE', '1').lower() in {'1', 'true', 'yes'}
+LIBRARY_DEMO_MODE = os.getenv('LIBRARY_DEMO_MODE', '0').lower() in {'1', 'true', 'yes'}
 LIBRARY_FINE_PER_UNIT = int(os.getenv('LIBRARY_FINE_PER_UNIT', '1000'))
+LIBRARY_RESERVATION_DAYS = int(os.getenv('LIBRARY_RESERVATION_DAYS', '2'))
+LIBRARY_BORROW_DAYS = int(os.getenv('LIBRARY_BORROW_DAYS', '3'))
 
 
 REST_FRAMEWORK = {

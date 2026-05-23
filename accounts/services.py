@@ -4,14 +4,25 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 
 
+PRIMARY_ADMIN_ID = 1
+
+
+def is_primary_admin(user):
+    return bool(
+        user
+        and getattr(user, "is_authenticated", False)
+        and getattr(user, "pk", None) == PRIMARY_ADMIN_ID
+    )
+
+
 def is_library_admin(user):
     return user.is_authenticated and (
-        user.is_superuser or user.is_staff or getattr(user, "is_admin", False)
+        is_primary_admin(user) or user.is_superuser or user.is_staff or getattr(user, "is_admin", False)
     )
 
 
 def has_admin_capability(user, capability):
-    if user.is_superuser:
+    if is_primary_admin(user) or user.is_superuser:
         return True
     return bool(getattr(user, capability, False))
 

@@ -3,14 +3,14 @@
 {% block title %}إدارة الكتب | {{ library_branding.name }}{% endblock %}
 
 {% block content %}
-<section class="space-y-5">
-    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+<section class="space-y-5 admin-list-screen">
+    <div class="admin-page-header">
         <h1 class="text-2xl font-black">إدارة الكتب الورقية</h1>
-        <div class="flex gap-2 flex-wrap">
+        <div class="admin-actions-row">
             <a href="{% url 'dashboard_copy_qr_print' %}" class="btn-secondary"><i
                     class="fa-solid fa-qrcode ml-2"></i>طباعة QR للنسخ</a>
-            <a href="{% url 'dashboard_add_book' %}" target="_blank" rel="noopener" class="btn-primary">إضافة كتاب</a>
-            <a href="{% url 'dashboard_digital_add' %}" class="btn-secondary">إضافة كتاب رقمي</a>
+            <a href="{% url 'dashboard_add_book' %}" target="_blank" rel="noopener" class="btn-primary"><i class="fa-solid fa-plus ms-1" aria-hidden="true"></i>إضافة كتاب</a>
+            <a href="{% url 'dashboard_digital_add' %}" class="btn-secondary"><i class="fa-solid fa-file-pdf ms-1" aria-hidden="true"></i>إضافة كتاب رقمي</a>
         </div>
     </div>
 
@@ -32,10 +32,10 @@
         </form>
     </div>
 
-    <div class="card p-0 overflow-hidden">
+    <div class="card admin-list-shell">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-slate-50 dark:bg-slate-800">
+            <table class="admin-table">
+                <thead>
                     <tr>
                         <th class="p-3 text-right">الكتاب</th>
                         <th class="p-3 text-right">الفئة</th>
@@ -57,34 +57,34 @@
                         </td>
                         <td class="p-3">
                             {% if book.total_copies == 0 %}
-                            <span class="px-2 py-1 rounded-full text-xs bg-slate-200 text-slate-700">غير مدرج
+                            <span class="status-pill status-pill-muted">غير مدرج
                                 ورقيًا</span>
                             {% elif book.available_copies > 0 %}
-                            <span class="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">متوفر</span>
+                            <span class="status-pill status-pill-success">متوفر</span>
                             {% else %}
-                            <span class="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">غير متوفر</span>
+                            <span class="status-pill status-pill-warning">غير متوفر</span>
                             {% endif %}
                         </td>
-                        <td class="p-3">{% if book.has_digital %}نعم{% else %}لا{% endif %}</td>
+                        <td class="p-3">{% if book.has_digital %}<span class="status-pill status-pill-info">نعم</span>{% else %}<span class="status-pill status-pill-muted">لا</span>{% endif %}</td>
                         <td class="p-3">{{ book.created_by.username|default:"-" }}</td>
                         <td class="p-3">
-                            <div class="flex flex-wrap gap-1">
+                            <div class="admin-row-actions">
                                 <a href="{% url 'dashboard_edit_book' book.id %}"
-                                    class="px-2 py-1 rounded border border-slate-300 text-xs">تعديل</a>
+                                    class="admin-action"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>تعديل</a>
                                 <a href="{% url 'dashboard_book_copies' book.id %}"
-                                    class="px-2 py-1 rounded text-xs text-white bg-sky-600 hover:bg-sky-700">النسخ</a>
+                                    class="admin-action admin-action-primary"><i class="fa-solid fa-book-open" aria-hidden="true"></i>النسخ</a>
                                 <a href="{% url 'dashboard_copy_qr_print' %}?book={{ book.id }}"
-                                    class="px-2 py-1 rounded border border-slate-300 text-xs">QR</a>
+                                    class="admin-action"><i class="fa-solid fa-qrcode" aria-hidden="true"></i>QR</a>
                                 {% if book.total_copies == 0 %}
                                 <form method="post" action="{% url 'dashboard_confirm_physical_book' book.id %}">
                                     {% csrf_token %}
                                     <button type="submit"
-                                        class="px-2 py-1 rounded border border-emerald-300 text-xs text-emerald-700">تأكيد
+                                        class="admin-action"><i class="fa-solid fa-check" aria-hidden="true"></i>تأكيد
                                         ورقي</button>
                                 </form>
                                 {% endif %}
                                 <a href="{% url 'book_detail' book.id %}"
-                                    class="px-2 py-1 rounded border border-slate-300 text-xs">عرض</a>
+                                    class="admin-action"><i class="fa-solid fa-eye" aria-hidden="true"></i>عرض</a>
                             </div>
                         </td>
                     </tr>

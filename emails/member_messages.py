@@ -1,5 +1,3 @@
-from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
 from django.db.models import Sum
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -10,6 +8,7 @@ from dashboard.branding import get_library_branding
 from libraryms.validation import normalize_yemen_phone
 
 from emails.models import MemberMessageLog
+from emails.config import configured_email_message
 from notifications.models import Notification
 
 
@@ -263,12 +262,7 @@ def send_member_message(
 
     if member.email:
         try:
-            message = EmailMultiAlternatives(
-                subject=subject,
-                body=body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[member.email],
-            )
+            message = configured_email_message(subject, body, [member.email])
             message.attach_alternative(_render_email_html(member, subject, body), "text/html")
             message.send(fail_silently=False)
             MemberMessageLog.objects.create(

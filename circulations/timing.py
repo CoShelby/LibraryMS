@@ -3,13 +3,29 @@
 from django.conf import settings
 from django.utils import timezone
 
+from dashboard.system_settings import configured_positive_int
+
 
 def is_demo_mode():
-    return bool(getattr(settings, "LIBRARY_DEMO_MODE", True))
+    return bool(getattr(settings, "LIBRARY_DEMO_MODE", False))
+
+
+def get_reservation_days():
+    return configured_positive_int(
+        "reservation_days",
+        getattr(settings, "LIBRARY_RESERVATION_DAYS", 2),
+    )
+
+
+def get_borrow_days():
+    return configured_positive_int(
+        "borrow_days",
+        getattr(settings, "LIBRARY_BORROW_DAYS", 3),
+    )
 
 
 def get_reservation_duration():
-    return timedelta(minutes=2) if is_demo_mode() else timedelta(days=2)
+    return timedelta(minutes=2) if is_demo_mode() else timedelta(days=get_reservation_days())
 
 
 def get_reservation_reminder_lead_time():
@@ -17,7 +33,7 @@ def get_reservation_reminder_lead_time():
 
 
 def get_borrow_duration():
-    return timedelta(minutes=3) if is_demo_mode() else timedelta(days=3)
+    return timedelta(minutes=3) if is_demo_mode() else timedelta(days=get_borrow_days())
 
 
 def get_fine_grace_period():
@@ -29,7 +45,10 @@ def get_fine_unit_duration():
 
 
 def get_fine_amount_per_unit():
-    return int(getattr(settings, "LIBRARY_FINE_PER_UNIT", 1000))
+    return configured_positive_int(
+        "fine_amount_per_unit",
+        getattr(settings, "LIBRARY_FINE_PER_UNIT", 1000),
+    )
 
 
 def fine_unit_label(count=1):
@@ -39,11 +58,11 @@ def fine_unit_label(count=1):
 
 
 def describe_reservation_duration():
-    return "دقيقتين" if is_demo_mode() else "يومين"
+    return "دقيقتين" if is_demo_mode() else f"{get_reservation_days()} يوم"
 
 
 def describe_borrow_duration():
-    return "3 دقائق" if is_demo_mode() else "3 أيام"
+    return "3 دقائق" if is_demo_mode() else f"{get_borrow_days()} يوم"
 
 
 def overdue_timedelta(due_date, reference_time=None):

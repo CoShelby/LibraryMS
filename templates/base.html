@@ -10,7 +10,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer"
+        onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';">
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
@@ -43,7 +45,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=render-icons-20260508">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=design-fix-20260518">
     {% block extra_head %}{% endblock %}
 </head>
 
@@ -293,6 +295,7 @@
     </div>
     <script>
         const html = document.documentElement;
+
         const themeToggleBtn = document.getElementById('theme-toggle');
         const themeToggleMobileBtn = document.getElementById('theme-toggle-mobile');
         const scannerModal = document.getElementById('qrScannerModal');
@@ -672,7 +675,7 @@
             '.book-search-dropdown',
             '[data-no-iconify]'
         ].join(',');
-        const commandSelector = 'button, a.btn-primary, a.btn-secondary, .book-card-actions a, table a[class*="rounded"], .digital-actions a';
+        const commandSelector = 'button, a.btn-primary, a.btn-secondary, .book-card-actions a, table a[class*="rounded"], .admin-action';
 
         function commandText(element) {
             return (element.textContent || '').replace(/\s+/g, ' ').trim();
@@ -700,6 +703,7 @@
             if (context.includes('delete')) return 'حذف';
             if (context.includes('edit')) return 'تعديل';
             if (context.includes('download')) return 'تحميل';
+            if (context.includes('upload')) return 'رفع';
             return 'إجراء';
         }
 
@@ -714,55 +718,73 @@
                 element.closest('form')?.getAttribute('action') || ''
             ].join(' ').toLowerCase();
 
-            if (context.includes('الرئيسية') || context.includes('home')) return 'fa-house';
-            if (context.includes('filter') || context.includes('تصفية') || context.includes('فلتر') || context.includes('الفلاتر')) return 'fa-filter';
-            if (context.includes('حذف') || context.includes('delete') || context.includes('remove')) return 'fa-trash-can';
             if (context.includes('mobile-menu') || context.includes('drawer')) return 'fa-bars';
-            if (context.includes('theme') || context.includes('النمط')) return 'fa-moon';
+            if (context.includes('الرئيسية') || context.includes('home')) return 'fa-house';
             if (context.includes('notification') || context.includes('إشعار')) return 'fa-bell';
-            if (context.includes('رفض') || context.includes('تعطيل') || context.includes('إلغاء') || context.includes('إغلاق') || context.includes('close') || context.includes('cancel') || context.includes('reject') || context.includes('disable')) return 'fa-xmark';
+            if (context.includes('theme') || context.includes('الثيم') || context.includes('النمط')) return 'fa-moon';
+            if (context.includes('الأكثر مشاهدة') || context.includes('most_viewed')) return 'fa-chart-line';
+            if (context.includes('عرض الكل')) return 'fa-list-ul';
+            if (context.includes('طباعة') || context.includes('print')) return 'fa-print';
+            if (context.includes('qr') || context.includes('scan') || context.includes('مسح')) return 'fa-qrcode';
+            if (context.includes('فلتر') || context.includes('الفلاتر') || context.includes('filter') || context.includes('تصفية')) return 'fa-filter';
+            if (context.includes('بحث متقدم')) return 'fa-magnifying-glass-plus';
+            if (context.includes('بحث') || context.includes('search')) return 'fa-magnifying-glass';
+            if (context.includes('إغلاق') || context.includes('close')) return 'fa-xmark';
+            if (context.includes('إلغاء الطلب')) return 'fa-bookmark';
+            if (context.includes('إلغاء') || context.includes('cancel')) return 'fa-ban';
+            if (context.includes('رفض') || context.includes('reject')) return 'fa-thumbs-down';
+            if (context.includes('تعطيل') || context.includes('disable')) return 'fa-toggle-off';
+            if (context.includes('تفعيل') || context.includes('enable')) return 'fa-toggle-on';
+            if (context.includes('حذف') || context.includes('delete') || context.includes('remove')) return 'fa-trash-can';
             if (context.includes('كلمة المرور') || context.includes('password')) return 'fa-key';
-            if (context.includes('إعادة') || context.includes('reset') || context.includes('clear')) return 'fa-rotate-left';
-            if (context.includes('تحديث') || context.includes('تجديد') || context.includes('renew')) return 'fa-clock-rotate-left';
+            if (context.includes('إعادة ضبط') || context.includes('reset') || context.includes('clear')) return 'fa-rotate-left';
+            if (context.includes('تحديث')) return 'fa-arrows-rotate';
+            if (context.includes('تجديد') || context.includes('renew')) return 'fa-clock-rotate-left';
             if (context.includes('تعديل') || context.includes('edit') || context.includes('update')) return 'fa-pen-to-square';
             if (context.includes('حفظ') || context.includes('save')) return 'fa-floppy-disk';
-            if (context.includes('بحث') || context.includes('search')) return 'fa-magnifying-glass';
-            if (context.includes('filter') || context.includes('تصفية') || context.includes('فلتر') || context.includes('الفلاتر')) return 'fa-filter';
-            if (context.includes('طباعة') || context.includes('print')) return 'fa-print';
             if (context.includes('كاميرا') || context.includes('camera') || context.includes('capture')) return 'fa-camera';
-            if (context.includes('qr') || context.includes('scan') || context.includes('مسح')) return 'fa-qrcode';
+            if (context.includes('رفع') || context.includes('upload')) return 'fa-upload';
             if (context.includes('download') || context.includes('تنزيل') || context.includes('تحميل')) return 'fa-download';
             if (context.includes('قراءة') || context.includes('read')) return 'fa-book-open-reader';
-            if (context.includes('عرض') || context.includes('استعراض') || context.includes('تفاصيل') || context.includes('التفاصيل') || context.includes('view') || context.includes('detail')) return 'fa-eye';
+            if (context.includes('تفاصيل') || context.includes('التفاصيل') || context.includes('detail')) return 'fa-circle-info';
+            if (context.includes('استعراض') || context.includes('عرض') || context.includes('view')) return 'fa-eye';
             if (context.includes('حجز') || context.includes('reserve')) return 'fa-bookmark';
-            if (context.includes('إرجاع') || context.includes('return')) return 'fa-rotate-left';
+            if (context.includes('إرجاع') || context.includes('return')) return 'fa-reply';
             if (context.includes('إعارة') || context.includes('استعارة') || context.includes('borrow')) return 'fa-hand-holding-hand';
             if (context.includes('دخول') || context.includes('login')) return 'fa-right-to-bracket';
             if (context.includes('خروج') || context.includes('logout')) return 'fa-right-from-bracket';
             if (context.includes('تسديد') || context.includes('غرامة') || context.includes('payment') || context.includes('fine')) return 'fa-credit-card';
-            if (context.includes('إرسال') || context.includes('بريد') || context.includes('email') || context.includes('message') || context.includes('reminder')) return 'fa-envelope';
+            if (context.includes('إرسال') || context.includes('بريد') || context.includes('email') || context.includes('message') || context.includes('reminder')) return 'fa-paper-plane';
+            if (context.includes('إنشاء الحساب')) return 'fa-user-plus';
             if (context.includes('تحديد') || context.includes('selected') || context.includes('select')) return 'fa-list-check';
             if (context.includes('إضافة عضو') || context.includes('add_member')) return 'fa-user-plus';
+            if (context.includes('إضافة كتاب رقمي')) return 'fa-file-circle-plus';
+            if (context.includes('إضافة كتاب') || context.includes('add_book')) return 'fa-book-medical';
+            if (context.includes('نسخة') || context.includes('نسخ')) return 'fa-copy';
             if (context.includes('إضافة') || context.includes('add') || context.includes('create') || context.includes('new')) return 'fa-plus';
-            if (context.includes('رجوع') || context.includes('back') || context.includes('return')) return 'fa-arrow-right';
+            if (context.includes('رجوع') || context.includes('العودة') || context.includes('back')) return 'fa-arrow-right';
             if (context.includes('عضو') || context.includes('member')) return 'fa-id-card';
             if (context.includes('مشرف') || context.includes('supervisor') || context.includes('admin')) return 'fa-user-shield';
-            if (context.includes('تفعيل') || context.includes('اعتماد') || context.includes('موافقة') || context.includes('تأكيد') || context.includes('متابعة') || context.includes('تطبيق') || context.includes('confirm') || context.includes('approve') || context.includes('enable') || element.type === 'submit') return 'fa-check';
-            return '';
+            if (context.includes('حساب')) return 'fa-user-gear';
+            if (context.includes('فتح') || context.includes('open')) return 'fa-up-right-from-square';
+            if (context.includes('اعتماد') || context.includes('موافقة') || context.includes('approve')) return 'fa-circle-check';
+            if (context.includes('تأكيد') || context.includes('متابعة') || context.includes('تطبيق') || context.includes('confirm') || element.type === 'submit') return 'fa-check';
+            return 'fa-circle-info';
         }
 
         const commandIconClasses = [
-            'fa-arrow-right', 'fa-bars', 'fa-bell', 'fa-book', 'fa-book-open',
-            'fa-book-open-reader', 'fa-bookmark', 'fa-camera', 'fa-check',
-            'fa-circle-check', 'fa-clock-rotate-left', 'fa-credit-card',
-            'fa-download', 'fa-envelope', 'fa-eye', 'fa-file-pdf', 'fa-filter', 'fa-funnel',
+            'fa-arrow-right', 'fa-arrows-rotate', 'fa-ban', 'fa-bars', 'fa-bell', 'fa-book', 'fa-book-open',
+            'fa-book-open-reader', 'fa-bookmark', 'fa-book-medical', 'fa-camera', 'fa-check',
+            'fa-chart-line', 'fa-circle-check', 'fa-circle-info', 'fa-clock-rotate-left', 'fa-copy', 'fa-credit-card',
+            'fa-download', 'fa-envelope', 'fa-eye', 'fa-file-circle-plus', 'fa-file-pdf', 'fa-filter', 'fa-funnel',
             'fa-floppy-disk', 'fa-gauge', 'fa-hand-holding-hand', 'fa-house',
             'fa-id-card', 'fa-key', 'fa-laptop-file', 'fa-list-check',
-            'fa-magnifying-glass', 'fa-magnifying-glass-plus', 'fa-moon',
-            'fa-pen-to-square', 'fa-plus', 'fa-print', 'fa-qrcode',
-            'fa-right-from-bracket', 'fa-right-left', 'fa-right-to-bracket',
-            'fa-rotate-left', 'fa-search', 'fa-table', 'fa-tags', 'fa-trash',
-            'fa-trash-can', 'fa-user-gear', 'fa-user-plus', 'fa-users', 'fa-user-shield',
+            'fa-list-ul', 'fa-magnifying-glass', 'fa-magnifying-glass-plus', 'fa-moon',
+            'fa-paper-plane', 'fa-pen-to-square', 'fa-plus', 'fa-print', 'fa-qrcode',
+            'fa-reply', 'fa-right-from-bracket', 'fa-right-left', 'fa-right-to-bracket',
+            'fa-rotate-left', 'fa-search', 'fa-table', 'fa-tags', 'fa-thumbs-down',
+            'fa-toggle-off', 'fa-toggle-on', 'fa-trash', 'fa-trash-can', 'fa-upload',
+            'fa-up-right-from-square', 'fa-user-gear', 'fa-user-plus', 'fa-users', 'fa-user-shield',
             'fa-xmark'
         ];
 
@@ -778,10 +800,6 @@
 
             const visibleText = commandText(element);
             const existingIcon = element.querySelector(':scope > i[class*="fa-"]');
-            if (visibleText && !existingIcon && !element.hasAttribute('aria-label') && !element.hasAttribute('title')) {
-                element.dataset.iconDecorated = '1';
-                return;
-            }
             const label = element.getAttribute('aria-label') || element.getAttribute('title') || visibleText || commandFallbackLabel(element);
             if (!visibleText) {
                 element.setAttribute('title', label);

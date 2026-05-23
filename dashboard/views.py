@@ -2,13 +2,11 @@
 import os
 import secrets
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.core.exceptions import PermissionDenied
 from django.core.files.base import ContentFile
-from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db.models import Count, ExpressionWrapper, F, IntegerField, Q, Sum
 from django.http import JsonResponse
@@ -20,7 +18,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from accounts.forms import AdminSelfProfileForm, AdminUserCreationForm, AdminUserUpdateForm
 from accounts.models import User
-from accounts.services import admin_capability_required, admin_required, has_admin_capability
+from accounts.services import admin_capability_required, admin_required, has_admin_capability, is_primary_admin
 from books.models import Author, Book, BookCopy, Category, Publisher
 from books.selectors import add_copies_to_book, find_duplicate_book_conflict
 from circulations.models import Borrowing, Fine, FinePayment, Loan, Reservation
@@ -51,6 +49,9 @@ from .forms import (
     LibraryBrandingForm,
     PublisherForm,
 )
+from .settings_forms import LibrarySystemSettingsForm
+from .system_settings import get_or_create_library_system_settings
+from emails.config import send_configured_mail
 from emails.member_messages import message_type_from_notification, send_member_message
 from .models import LibraryBranding
 from notifications.models import Notification
@@ -1395,7 +1396,7 @@ def dashboard_open_notification(request, notification_id):
 def _admin_manager_required(request):
     if not request.user.is_authenticated:
         raise PermissionDenied("ليس لديك صلاحية لإدارة حسابات المشرفين.")
-    if request.user.is_superuser or getattr(request.user, "can_manage_admins", False):
+    if is_primary_admin(request.user) or request.user.is_superuser or getattr(request.user, "can_manage_admins", False):
         return
     if request.user.created_admins.filter(is_staff=True, is_superuser=False).exists():
         return
@@ -1404,7 +1405,7 @@ def _admin_manager_required(request):
 
 def _managed_admins_queryset(actor):
     queryset = User.objects.filter(is_staff=True, is_superuser=False).select_related("created_by").order_by("-id")
-    if actor.is_superuser:
+    if is_primary_admin(actor) or actor.is_superuser:
         return queryset
     return queryset.filter(created_by=actor)
 
@@ -1441,10 +1442,9 @@ def _password_change_code_expired(created_at_value):
 
 
 def _send_password_change_code(user, code):
-    send_mail(
+    send_configured_mail(
         "Password change verification",
         f"Verification code: {code}",
-        settings.DEFAULT_FROM_EMAIL,
         [user.email],
         fail_silently=False,
     )
@@ -1455,7 +1455,7 @@ def dashboard_admin_users(request):
     _admin_manager_required(request)
 
     if request.method == "POST":
-        form = AdminUserCreationForm(request.POST, allow_admin_management=request.user.is_superuser)
+        form = AdminUserCreationForm(request.POST, allow_admin_management=is_primary_admin(request.user) or request.user.is_superuser)
         if form.is_valid():
             new_admin = form.save(commit=False)
             new_admin.created_by = request.user
@@ -1463,7 +1463,7 @@ def dashboard_admin_users(request):
             messages.success(request, "تم إنشاء حساب المشرف وتعيين كلمة المرور بنجاح.")
             return redirect("dashboard_supervisor_users")
     else:
-        form = AdminUserCreationForm(initial={"is_active": True}, allow_admin_management=request.user.is_superuser)
+        form = AdminUserCreationForm(initial={"is_active": True}, allow_admin_management=is_primary_admin(request.user) or request.user.is_superuser)
 
     admins = _managed_admins_queryset(request.user)
     return render(
@@ -1472,7 +1472,7 @@ def dashboard_admin_users(request):
         {
             "form": form,
             "admins": admins,
-            "can_manage_all_admins": request.user.is_superuser,
+            "can_manage_all_admins": is_primary_admin(request.user) or request.user.is_superuser,
         },
     )
 
@@ -1483,13 +1483,13 @@ def dashboard_admin_edit(request, admin_id):
     admin_user = _get_managed_admin(request, admin_id)
 
     if request.method == "POST":
-        form = AdminUserUpdateForm(request.POST, instance=admin_user, allow_admin_management=request.user.is_superuser)
+        form = AdminUserUpdateForm(request.POST, instance=admin_user, allow_admin_management=is_primary_admin(request.user) or request.user.is_superuser)
         if form.is_valid():
             form.save()
             messages.success(request, "تم تحديث بيانات المشرف.")
             return redirect("dashboard_supervisor_users")
     else:
-        form = AdminUserUpdateForm(instance=admin_user, allow_admin_management=request.user.is_superuser)
+        form = AdminUserUpdateForm(instance=admin_user, allow_admin_management=is_primary_admin(request.user) or request.user.is_superuser)
 
     return render(
         request,
@@ -1497,7 +1497,7 @@ def dashboard_admin_edit(request, admin_id):
         {
             "form": form,
             "admin_user": admin_user,
-            "can_manage_all_admins": request.user.is_superuser,
+            "can_manage_all_admins": is_primary_admin(request.user) or request.user.is_superuser,
         },
     )
 
@@ -1564,11 +1564,17 @@ def dashboard_my_account(request):
     password_form = PasswordChangeForm(user=request.user, prefix="password")
     _apply_input_css(password_form)
     pending_password_change = request.session.get(PASSWORD_CHANGE_SESSION_KEY)
+    primary_admin = is_primary_admin(request.user)
 
     branding_instance = get_library_branding()
     branding_form = None
-    if request.user.is_superuser:
+    system_settings_form = None
+    if primary_admin:
         branding_form = LibraryBrandingForm(instance=branding_instance, prefix="branding")
+        system_settings_form = LibrarySystemSettingsForm(
+            instance=get_or_create_library_system_settings(),
+            prefix="system",
+        )
 
     if request.method == "POST":
         if "save_profile" in request.POST:
@@ -1582,7 +1588,13 @@ def dashboard_my_account(request):
             password_form = PasswordChangeForm(user=request.user, data=request.POST, prefix="password")
             _apply_input_css(password_form)
             if password_form.is_valid():
-                if not request.user.email:
+                if primary_admin:
+                    password_form.save()
+                    update_session_auth_hash(request, request.user)
+                    request.session.pop(PASSWORD_CHANGE_SESSION_KEY, None)
+                    messages.success(request, "تم تغيير كلمة المرور بنجاح.")
+                    return redirect("dashboard_my_account")
+                elif not request.user.email:
                     messages.error(request, "Password verification requires an email address on your account.")
                 else:
                     code = f"{secrets.randbelow(900000) + 100000}"
@@ -1618,7 +1630,7 @@ def dashboard_my_account(request):
                 messages.success(request, "تم تغيير كلمة المرور بنجاح.")
                 return redirect("dashboard_my_account")
 
-        if request.user.is_superuser and "save_branding" in request.POST:
+        if primary_admin and "save_branding" in request.POST:
             branding_db_obj = LibraryBranding.objects.order_by("id").first() or LibraryBranding()
             branding_form = LibraryBrandingForm(
                 request.POST,
@@ -1631,8 +1643,21 @@ def dashboard_my_account(request):
                 messages.success(request, "تم تحديث بيانات هوية المكتبة.")
                 return redirect("dashboard_my_account")
 
+        if primary_admin and "save_system_settings" in request.POST:
+            system_settings_form = LibrarySystemSettingsForm(
+                request.POST,
+                instance=get_or_create_library_system_settings(),
+                prefix="system",
+            )
+            if system_settings_form.is_valid():
+                system_settings_form.save()
+                messages.success(request, "تم حفظ إعدادات النظام والبريد.")
+                return redirect("dashboard_my_account")
+
     capability_labels = []
-    if request.user.is_superuser:
+    if primary_admin:
+        capability_labels.append("المدير رقم 1")
+    elif request.user.is_superuser:
         capability_labels.append("Superuser")
     elif request.user.can_manage_admins:
         capability_labels.append("إدارة المشرفين")
@@ -1645,7 +1670,7 @@ def dashboard_my_account(request):
     if request.user.can_manage_categories:
         capability_labels.append("الفئات")
 
-    managed_admins_count = _managed_admins_queryset(request.user).count() if (request.user.is_superuser or request.user.can_manage_admins or request.user.created_admins.filter(is_staff=True, is_superuser=False).exists()) else 0
+    managed_admins_count = _managed_admins_queryset(request.user).count() if (primary_admin or request.user.is_superuser or request.user.can_manage_admins or request.user.created_admins.filter(is_staff=True, is_superuser=False).exists()) else 0
 
     return render(
         request,
@@ -1661,6 +1686,8 @@ def dashboard_my_account(request):
             "capability_labels": capability_labels,
             "managed_admins_count": managed_admins_count,
             "branding_form": branding_form,
+            "system_settings_form": system_settings_form,
+            "primary_admin": primary_admin,
         },
     )
 

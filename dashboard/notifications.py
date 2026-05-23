@@ -2,6 +2,7 @@ from django.db.models import Count, F, Q, Sum
 from django.urls import reverse
 from django.utils import timezone
 
+from accounts.services import is_primary_admin
 from books.models import BookCopy
 from circulations.models import Borrowing, Fine, Reservation
 from circulations.timing import calculate_fine_snapshot, get_reservation_duration
@@ -279,7 +280,7 @@ def notification_target_url(notification, user):
         return f"{reverse('dashboard_circulation')}#manual-borrow"
 
     if notification.member_id:
-        if user.is_superuser or getattr(user, "can_manage_members", False):
+        if is_primary_admin(user) or user.is_superuser or getattr(user, "can_manage_members", False):
             return reverse("edit_member", args=[notification.member_id])
         return f"{reverse('member_portal')}?member_id={notification.member_id}"
 
