@@ -1,5 +1,41 @@
 services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=libraryms
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+
   web:
     build: .
+    volumes:
+      - media_volume:/app/media
+      - static_volume:/app/staticfiles
     ports:
       - "8000:8000"
+    environment:
+      - DJANGO_SECRET_KEY=django-insecure-yc@w)wxjewtpn3fd9lla9o&ztq8gaoe4y#ny#extwei9$$8)wkz
+      - DJANGO_DEBUG=0
+      - DJANGO_ALLOWED_HOSTS=*
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/libraryms
+      - DJANGO_SUPERUSER_USERNAME=admin
+      - DJANGO_SUPERUSER_EMAIL=admin@example.com
+      - DJANGO_SUPERUSER_PASSWORD=admin12345
+      - EMAIL_HOST=smtp.gmail.com
+      - EMAIL_PORT=587
+      - EMAIL_USE_TLS=1
+      - EMAIL_USER=
+      - EMAIL_PASS=
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  media_volume:
+  static_volume:
